@@ -3,6 +3,7 @@
 	<name>PoolMemorias</name>
 	<comment></comment>
 	<projects>
+		<project>BibliotecaCompartida</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
