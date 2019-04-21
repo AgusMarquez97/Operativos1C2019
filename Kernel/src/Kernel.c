@@ -8,10 +8,10 @@
  ============================================================================
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include "Kernel.h"
 
 int main(void) {
 	puts("Hola Mundo"); /* prints Hola Mundo */
-	return EXIT_SUCCESS;
+
+	return 1;
 }

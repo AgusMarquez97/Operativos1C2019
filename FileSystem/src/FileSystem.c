@@ -8,10 +8,12 @@
  ============================================================================
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+
+#include "FileSystem.h"
 
 int main(void) {
-	puts("Hola Mundo"); /* prints Hola Mundo */
+
+	//levantarServidor("127.0.0.7","8080");
+	levantarCliente("127.0.0.1","8080","Hola Servidor\n");
 	return EXIT_SUCCESS;
 }
