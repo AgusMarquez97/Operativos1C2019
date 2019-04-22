@@ -17,9 +17,7 @@ void levantarCliente(char* servidorIP,char* servidorPuerto, void* datosAEnviar)
       		//Si es repetitivo agregar while(1)
         enviarDatos((char*)datosAEnviar,socketCliente);
         recibirDatos(socketCliente);
-
-
-		close(socketCliente);
+        close(socketCliente);
 
 }
 
@@ -133,7 +131,7 @@ void enviarDatos(void* datosAEnviar,int socketConexion)
 }
 
 
-void recibirDatos(int socketConexion)
+int recibirDatos(int socketConexion)
 {
         void* buffer[tam_Max_Transmision]; //Buffer para recibir
 		memset(buffer, '\0', sizeof(buffer));
@@ -144,14 +142,19 @@ void recibirDatos(int socketConexion)
 	        perror("No se pudieron recibir los datos del cliente");
 	        exit(1);
 	    }
-        if(cantidadRecibida==0)
+        /*if(cantidadRecibida==0)
 	    {
 	        perror("Se cerro la conexion");
 	        exit(1);
-	    }
+	    }*/
+
 
         //printf("Se recibieron: %d Bytes\n",cantidadRecibida);
+	    if(cantidadRecibida>0)
+	    {
         printf("Se recibio: %s\n",(char*)buffer);
+	    }
+	    return cantidadRecibida;
 }
 
 
@@ -162,34 +165,76 @@ void recibirDatos(int socketConexion)
 
 void levantarServidor(char * servidorIP, char* servidorPuerto)
 {
-        int socketServidor, socketRespuesta;
-		estructuraConexion* servidorObjetivo;
-        fd_set sockets, clientes;
+	  	  	int socketServidor, socketRespuesta, maximoSocket;
+	  	  	int datosRecibidos;
+			estructuraConexion* servidorObjetivo;
+	        fd_set sockets, clientes;
 
-        LimpiarSet(&sockets);
-        LimpiarSet(&clientes);
+			socketServidor = levantarSocketGenerico(servidorIP,servidorPuerto,&servidorObjetivo);
+			asociarPuerto(&socketServidor,servidorObjetivo);
 
-		socketServidor = levantarSocketGenerico(servidorIP,servidorPuerto,&servidorObjetivo);
-		asociarPuerto(&socketServidor,servidorObjetivo);
-        free(servidorObjetivo);
+	        free(servidorObjetivo);
 
+	        //system("clear");
+			escuchar(&socketServidor);
+
+	        printf("Escuchando...\n");
+
+	        //Manejo sets
+	        LimpiarSet(&sockets);
+	        LimpiarSet(&clientes);
+
+	        agregarASet(socketServidor,&sockets);
+	        maximoSocket = socketServidor;
 
 		while(1) // Loop para escuchar conexiones entrantes
-		{
-        system("clear");
-		escuchar(&socketServidor);
-		printf("Escuchando...\n");
+			{
+	        clientes = sockets;
 
-		socketRespuesta = aceptarConexion(socketServidor);
+	        // EJ si se quiere definir un tiempo maximo
+	            tiempoEspera esperaMaxima;
+	            esperaMaxima.tv_sec = 30;
+	            esperaMaxima.tv_usec = 0; //-> Espera como maximo 30 segundos hasta que pase algo
 
-		recibirDatos(socketRespuesta); // Se reciben / envian los datos con el cliente
 
-        printf("Cerrando conexion con el cliente...\n");
-        //sleep(3);
-        close(socketRespuesta); // Se cierra el socket conectado al cliente
+	        ejecutarSelect(maximoSocket,&clientes,&esperaMaxima); //pasarle null si no importa
 
-		}
+	        for(int i = 0;i<=maximoSocket;i++) //Itero hasta el ultimo socket
+	        	{
+	        		if (estaEnSet(i, &clientes)) //1 - Tengo un cliente nuevo que quiere leer!
+	        		{
+	                    if (i == socketServidor) //1-1 - Ese Cliente es el mismo servidor -> Acepto nuevas conexiones
+	                    {
 
+	                    socketRespuesta = aceptarConexion(socketServidor);
+
+	                    agregarASet(socketRespuesta,&sockets); //añado a sockets al nuevo cliente
+
+	                        if (socketRespuesta > maximoSocket) // Trackeo el maximo socket
+	                        {
+	                            maximoSocket = socketRespuesta;
+	                        }
+	                    printf("Nueva conexion asignada al socket: %d\n\n",socketRespuesta);// Guardo la conexion
+	                    }
+	                    else
+	                    {
+	                    	datosRecibidos = recibirDatos(i); // Recibo de ese cliente
+	                    	if(datosRecibidos==0)
+	                    	{
+	                    		printf("Se cerro la conexion con el socket: %d\n",i);
+	                    		close(i);
+	                    		EliminarDeSet(i,&sockets);
+	                    	}
+	                    }
+	                	/*else   //1-2 - Tengo un cliente que quiere leer y es distinto del server
+	                	{
+	                    recibirDatos(i); // Recibo de ese cliente
+	                    close(i);
+	                    EliminarDeSet(i,&sockets);
+	                	}*/
+	        		}
+	        	}
+			}
 }
 
 void asociarPuerto(int *socketServidor,estructuraConexion* estructuraServidor)
@@ -231,10 +276,26 @@ int aceptarConexion(int socketServidor)
 
 	    printf("\n-----------------Se acepta al cliente: ------------------- \n\n");
 	    imprimirDatosCliente(conexionEntrante,direc_tam);	//printf("Se crea el socket: %d\n",socketCliente);
-
+	    printf("\n");
 	    return socketCliente; // Retorna el socket asociado a un cliente que quiere conectarse al servidor
 }
 
+//Select:
+void ejecutarSelect(int maxSocket,fd_set *clientes, tiempoEspera* tiempo) //Pasar null a tiempo si no importa
+{
+    int retornoSelect;
+        retornoSelect  = select(maxSocket+1,clientes,NULL,NULL,tiempo);
+
+         if (retornoSelect == -1) {
+            perror("Error al ejecutar el select: ");
+            exit(4);
+        }
+		 if (retornoSelect == 0) {
+            printf("Se termino el tiempo de espera del servidor...");
+            exit(4);
+        }
+
+}
 
 //Manejo de Sets:
 
