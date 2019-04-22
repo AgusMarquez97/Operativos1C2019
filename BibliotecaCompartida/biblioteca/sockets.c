@@ -1,4 +1,4 @@
-#include "../biblioteca/sockets.h"
+#include "sockets.h"
 
 void levantarCliente(char* servidorIP,char* servidorPuerto, void* datosAEnviar)
 {
@@ -193,7 +193,7 @@ void levantarServidor(char * servidorIP, char* servidorPuerto)
 
 	        // EJ si se quiere definir un tiempo maximo
 	            tiempoEspera esperaMaxima;
-	            esperaMaxima.tv_sec = 30;
+	            esperaMaxima.tv_sec = 500;
 	            esperaMaxima.tv_usec = 0; //-> Espera como maximo 30 segundos hasta que pase algo
 
 
