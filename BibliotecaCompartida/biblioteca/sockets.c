@@ -157,7 +157,6 @@ int recibirDatos(int socketConexion)
 	    return cantidadRecibida;
 }
 
-
 int enviar(int socketConexion, void* datosAEnviar, tamanioAEnviar) {
 
 	int bytesTotales = 0;
