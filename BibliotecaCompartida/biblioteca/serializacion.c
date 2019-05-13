@@ -131,7 +131,7 @@ void deserializarListaString(t_list* listaString, void* buffer, int* desplazamie
 		list_add(listaString, (void*)cadena);
 
 	}
-
+	 int operacion,
 	free(cadena);
 }
 

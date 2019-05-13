@@ -6,9 +6,8 @@
 #include <string.h>
 
 #include <utils.h>
-#include <enums.h>
-
 #include <commons/collections/list.h>
+#include "enumsAndStructs.h"
 
 void serializarInt(void* buffer, int entero, int* desplazamiento);
 void serializarChar(void* buffer, char caracter, int* desplazamiento);
