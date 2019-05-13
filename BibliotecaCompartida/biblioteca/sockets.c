@@ -158,7 +158,47 @@ int recibirDatos(int socketConexion)
 }
 
 
+int enviar(int socketConexion, void* datosAEnviar, tamanioAEnviar) {
 
+	int bytesTotales = 0;
+
+	while (tamanioAEnviar - bytesTotales > 0) {
+
+		int bytesEnviados = send(socketConexion, datosAEnviar + bytesTotales, tamanioAEnviar - bytesTotales, 0);
+
+		if(bytesEnviados < 0) {
+			salirConError("No se pudieron enviar los datos al cliente", socketConexion);
+		}
+		bytesTotales += bytesEnviados;
+	}
+
+	loggearInfo("envio completo");
+
+	return bytesTotales; //los mando por si alguien lo necesita
+
+}
+
+int recibir(int socketConexion, void* buffer, tamanioARecibir) {
+
+	int bytesTotales = recv(socketConexion, buffer, tamanioARecibir, MSG_WAITALL);
+
+	if(bytesTotales <= 0) {
+		if(bytesTotales < 0){
+			salirConError("No se pudieron recibir los datos del cliente", socketConexion);
+		}
+		else {
+			salirConError("Se cerro la conexion", socketConexion);
+		}
+	}
+
+	if(bytesTotales < tamanioARecibir){
+		salirConError("Datos recibidos incompletos");
+	}
+
+	loggearInfo("recibido completo");
+
+	return bytesTotales; //los mando por si alguien lo necesita
+}
 
 
 //------------------ SERVIDOR-------------
