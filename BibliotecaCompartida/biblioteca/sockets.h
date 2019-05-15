@@ -21,7 +21,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
-#include <utils.h>
+#include "utils.h"
 
 //#define puerto "8080"
 #define tam_Max_Transmision 30
@@ -59,6 +59,7 @@ int aceptarConexion(int socketServidor);
 void ejecutarSelect(int maxSocket,fd_set *clientes, tiempoEspera* tiempo);
 
 //Manejo con sets:
+int estaEnSet(int socketNuevo,fd_set* setSockets);
 void agregarASet(int socketNuevo,fd_set* setSockets);
 void buscarEnSet(int socketNuevo,fd_set* setSockets);
 void EliminarDeSet(int socketNuevo,fd_set* setSockets);

@@ -9,11 +9,15 @@ typedef enum {
 
 typedef struct {
 
-	queryType tipo;
+	int32_t requestType;
 	char* tabla;
-	int key;
+	int32_t key;
 	char* value;
-	int timestamp;
+	int64_t timestamp;
 } query;
+
+//Faltarian los parametros de create -> Ver de hacer una estructura por cada request
+
+
 
 #endif /* ENUMSANDSTRUCTS_H_ */

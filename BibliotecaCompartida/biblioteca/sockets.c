@@ -157,7 +157,7 @@ int recibirDatos(int socketConexion)
 	    return cantidadRecibida;
 }
 
-int enviar(int socketConexion, void* datosAEnviar, tamanioAEnviar) {
+int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar) {
 
 	int bytesTotales = 0;
 
@@ -177,7 +177,7 @@ int enviar(int socketConexion, void* datosAEnviar, tamanioAEnviar) {
 
 }
 
-int recibir(int socketConexion, void* buffer, tamanioARecibir) {
+int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 
 	int bytesTotales = recv(socketConexion, buffer, tamanioARecibir, MSG_WAITALL);
 
@@ -191,7 +191,7 @@ int recibir(int socketConexion, void* buffer, tamanioARecibir) {
 	}
 
 	if(bytesTotales < tamanioARecibir){
-		salirConError("Datos recibidos incompletos");
+		salirConError("Datos recibidos incompletos",socketConexion);
 	}
 
 	loggearInfo("recibido completo");
