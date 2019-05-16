@@ -11,6 +11,7 @@
 //#include "../BibliotecaCompartida/src/sockets.h"
 
 #include <biblioteca/sockets.h>
-#include <commons/log.h>
+
+#include <biblioteca/serializacion.h>
 
 #endif /* FILESYSTEM_H_ */

@@ -1,5 +1,6 @@
 #include "utils.h"
 
+/*
 void iniciarLog(char* nombre) {
 
 	logger = log_create("Lissandra.log", nombre, true, LOG_LEVEL_TRACE);
@@ -40,5 +41,5 @@ void salirConError(char* mensaje, int socket) {
 void exitGracefully(int valorReturn) {
 	exit(valorReturn);
 }
-
+*/
 

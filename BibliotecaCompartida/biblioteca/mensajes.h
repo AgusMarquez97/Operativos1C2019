@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "utils.h"
+//#include "utils.h"
 #include "enumsAndStructs.h"
 #include "serializacion.h"
 #include "sockets.h"
@@ -24,7 +24,7 @@ void enviarQuery(int socketReceptor, query* myQuery);
 void enviarSelect(int socketReceptor, char* tabla, int32_t key);
 void enviarInsert(int socketReceptor, char* tabla, int32_t key, char* value, int64_t timestamp);
 
-void recibirQuery(int socketEmisor, query* myQuery, int* desplazamiento);
+void recibirQuery(int socketEmisor, query* myQuery);
 
 
 

@@ -8,6 +8,7 @@
 
 #include <commons/log.h>
 
+/*
 t_log * logger;
 
 void iniciarLog(char* nombre);
@@ -17,5 +18,5 @@ void loggearWarning(char* mensaje);
 void loggearError(char* mensaje);
 void salirConError(char* mensaje, int socket);
 void exitGracefully(int valorReturn);
-
+*/
 #endif /* UTILS_H_ */

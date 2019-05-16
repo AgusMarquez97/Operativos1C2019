@@ -21,15 +21,14 @@ void serializarChar(void* buffer, char caracter, int* desplazamiento) {
 
 	memcpy(buffer + *desplazamiento, &caracter, sizeof(char));
 	*desplazamiento += sizeof(char);
-
 }
 
 void serializarString(void* buffer, char* cadena, int* desplazamiento) {
 
 
-	serializarInt(buffer, strlen(cadena) + 1, desplazamiento);
+	serializarInt(buffer,strlen(cadena) + 1, desplazamiento);
 
-	memcpy(buffer + *desplazamiento, &cadena, strlen(cadena) + 1);
+	memcpy(buffer + *desplazamiento, cadena, strlen(cadena) + 1);
 	*desplazamiento += strlen(cadena) + 1;
 
 }
@@ -89,34 +88,19 @@ void serializarInsert(void* buffer, char* tabla, int32_t key, char* value, int64
 	serializarString(buffer, tabla, desplazamiento);
 	serializarInt(buffer, key, desplazamiento);
 	serializarString(buffer, value, desplazamiento);
-	deserializarDouble(buffer, timestamp, desplazamiento);
+	serializarDouble(buffer, timestamp, desplazamiento);
 
 }
 
-void deserializarSelectConHeader(char* tabla,int32_t* key, void* buffer, int* desplazamiento) {
-	deserializarInt(buffer,SELECT, desplazamiento);
-	deserializarString(buffer,tabla,desplazamiento);
-	deserializarInt(buffer,key, desplazamiento);
 
-}
-
-void deserializarSelectSinHeader(char* tabla, int32_t* key, void* buffer, int* desplazamiento) {
+void deserializarSelect(char* tabla, int32_t* key, void* buffer, int* desplazamiento) {
 
 	deserializarString(buffer,tabla,desplazamiento);
 	deserializarInt(buffer,key, desplazamiento);
 
 }
 
-void deserializarInsertConHeader(char* tabla, int32_t* key, char* value, int64_t* timestamp, void* buffer, int* desplazamiento) {
-	deserializarInt(buffer,INSERT, desplazamiento);
-	deserializarString(buffer,tabla, desplazamiento);
-	deserializarInt(buffer,key,desplazamiento);
-	deserializarString(buffer,value, desplazamiento);
-	deserializarDouble(buffer,timestamp,desplazamiento);
-
-}
-
-void deserializarInsertSinHeader(char* tabla, int32_t* key, char* value, int64_t* timestamp, void* buffer, int* desplazamiento) {
+void deserializarInsert(char* tabla, int32_t* key, char* value, int64_t* timestamp, void* buffer, int* desplazamiento) {
 
 	deserializarString(buffer,tabla, desplazamiento);
 	deserializarInt(buffer,key,desplazamiento);
@@ -175,7 +159,7 @@ void deserializarListaString( void* buffer, t_list* listaString, int* desplazami
 	char* cadena;
 
 	for(int i=0; i < cantElem; i++) {
-		deserializarString(buffer, &cadena, desplazamiento);
+		deserializarString(buffer, cadena, desplazamiento);
 		list_add(listaString, (void*)cadena);
 
 	}

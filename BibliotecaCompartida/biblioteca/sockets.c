@@ -166,12 +166,12 @@ int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar) {
 		int bytesEnviados = send(socketConexion, datosAEnviar + bytesTotales, tamanioAEnviar - bytesTotales, 0);
 
 		if(bytesEnviados < 0) {
-			salirConError("No se pudieron enviar los datos al cliente", socketConexion);
+			//salirConError("No se pudieron enviar los datos al cliente", socketConexion);
 		}
 		bytesTotales += bytesEnviados;
 	}
 
-	loggearInfo("envio completo");
+	//loggearInfo("envio completo");
 
 	return bytesTotales; //los mando por si alguien lo necesita
 
@@ -183,18 +183,18 @@ int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 
 	if(bytesTotales <= 0) {
 		if(bytesTotales < 0){
-			salirConError("No se pudieron recibir los datos del cliente", socketConexion);
+			//salirConError("No se pudieron recibir los datos del cliente", socketConexion);
 		}
 		else {
-			salirConError("Se cerro la conexion", socketConexion);
+			//salirConError("Se cerro la conexion", socketConexion);
 		}
 	}
 
 	if(bytesTotales < tamanioARecibir){
-		salirConError("Datos recibidos incompletos",socketConexion);
+		//salirConError("Datos recibidos incompletos",socketConexion);
 	}
 
-	loggearInfo("recibido completo");
+	//loggearInfo("recibido completo");
 
 	return bytesTotales; //los mando por si alguien lo necesita
 }

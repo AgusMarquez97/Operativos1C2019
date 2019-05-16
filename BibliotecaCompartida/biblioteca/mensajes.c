@@ -8,7 +8,7 @@ void enviarInt(int socketReceptor, int32_t entero){
 	void* buffer = malloc(sizeof(int32_t));
 
 	serializarInt(buffer, entero, &desplazamiento);
-	enviar(socketReceptor, buffer, sizeof(int32_t));
+	//enviar(socketReceptor, buffer, sizeof(int32_t));
 
 	free(buffer);
 
@@ -20,7 +20,7 @@ void enviarChar(int socketReceptor, char caracter){
 	void* buffer = malloc(sizeof(char));
 
 	serializarChar(buffer, caracter, &desplazamiento);
-	enviar(socketReceptor, buffer, sizeof(char));
+	//enviar(socketReceptor, buffer, sizeof(char));
 
 	free(buffer);
 
@@ -32,8 +32,9 @@ void enviarString(int socketReceptor, char* cadena){
 	int32_t tamanioBuffer = sizeof(int32_t) + strlen(cadena) + 1;
 	void* buffer = malloc(tamanioBuffer);
 
+	serializarInt(buffer,tamanioBuffer,&desplazamiento);
 	serializarString(buffer, cadena, &desplazamiento);
-	enviar(socketReceptor, buffer, tamanioBuffer);
+	//enviar(socketReceptor, buffer, tamanioBuffer);
 
 	free(buffer);
 
@@ -45,12 +46,13 @@ void enviarSelect(int socketReceptor, char* tabla, int32_t key) {
 
 	int desplazamiento = 0;
 	int32_t tamanioMensaje = sizeof(int32_t)*2 + strlen(tabla) + 1 + sizeof(int32_t);
+	int32_t tamanioTotal = tamanioMensaje + sizeof(int32_t);
+	void* buffer = malloc(tamanioTotal);
 
-	enviarInt(socketReceptor, tamanioMensaje); //Ver de omitir
+	serializarInt(buffer,tamanioMensaje,&desplazamiento);//Serializo el tamanio total del buffer
+	serializarSelect(buffer, tabla, key, &desplazamiento);//Serializo la query
 
-	char* buffer = malloc(tamanioMensaje);
-
-	serializarSelect(buffer, tabla, key, &desplazamiento);
+	//enviar(socketReceptor,buffer,tamanioTotal);
 
 	//enviar select
 
@@ -62,14 +64,13 @@ void enviarInsert(int socketReceptor, char* tabla, int32_t key, char* value, int
 
 	int desplazamiento = 0;
 	int32_t tamanioMensaje = sizeof(int32_t)*2 + strlen(tabla) + 1 + sizeof(int32_t)*2 + strlen(value) + 1 + sizeof(int64_t);
+	int32_t tamanioTotal = tamanioMensaje + sizeof(int32_t);
+	void* buffer = malloc(tamanioTotal);
 
-	enviarInt(socketReceptor, tamanioMensaje);
-
-	char* buffer = malloc(tamanioMensaje);
-
+	serializarInt(buffer,tamanioMensaje,&desplazamiento);//Serializo el tamanio total del buffer
 	serializarInsert(buffer, tabla, key, value, timestamp, &desplazamiento);
 
-	enviar(socketReceptor, buffer, tamanioMensaje);//Ver de omitir
+	//enviar(socketReceptor, buffer, tamanioTotal);//Ver de omitir
 
 	free(buffer);
 
@@ -104,45 +105,53 @@ void recibirInt(int socketEmisor, int32_t* entero){
 }
 
 void recibirChar(int socketEmisor, char* caracter){
+
 	int desplazamiento = 0;
 	void* buffer = malloc(sizeof(char));
+
 	recibir(socketEmisor, buffer, sizeof(char));
 	deserializarChar(buffer, caracter, &desplazamiento);
+
 	free(buffer);
 }
 
 void recibirString(int socketEmisor, char* cadena){
-	/*
-    VALIDAR TAM A RECIBIR -> ES VARIABLE recibir(socketEmisor, buffer,tam); -> que poner en tam
-	int desplazamiento = 0;
-	void* buffer = malloc(tam);
+		int32_t tam_cadena;
+		int desplazamiento = 0;
 
-	deserializarString(buffer, cadena, &desplazamiento);
-	free(buffer);
-	 */
+		recibir(socketEmisor, &tam_cadena, sizeof(int32_t)); //Se recibe el tam de la cadena
+
+		void * buffer = malloc(sizeof(tam_cadena));
+
+		recibir(socketEmisor, buffer, tam_cadena); //Se recibe el buffer
+		deserializarString(buffer, cadena, &desplazamiento);
+
+		free(buffer);
 }
 
 
 //RECIBIR QUERY
 
-void recibirQuery(int socketEmisor, query* myQuery, int* desplazamiento) {
+void recibirQuery(int socketEmisor, query* myQuery) {
 
+	int desplazamiento = 0;
 	int32_t tamanioQuery = 0;
 	int32_t tipoQuery;
-	recibirInt(socketEmisor, &tamanioQuery);
 
-	char* buffer = (char *)malloc(tamanioQuery);
+	recibirInt(socketEmisor, &tamanioQuery); //Se recibe el tam del buffer
 
-	recibir(socketEmisor,buffer, tamanioQuery);
+	void* buffer = malloc(tamanioQuery);
 
-	deserializarInt(buffer,&tipoQuery,desplazamiento);
+	recibir(socketEmisor,buffer,tamanioQuery); //Se recibe el buffer
+
+	deserializarInt(buffer,&tipoQuery,&desplazamiento);
 
 	switch(tipoQuery) {
 		case(SELECT):
-		deserializarSelectSinHeader(myQuery->tabla, &myQuery->key, buffer, desplazamiento);
+		deserializarSelect(myQuery->tabla, &myQuery->key, buffer, desplazamiento);
 			break;
 		case(INSERT):
-		deserializarInsertSinHeader(myQuery->tabla, &myQuery->key, myQuery->value, &myQuery->timestamp, buffer, desplazamiento);
+		deserializarInsert(myQuery->tabla, &myQuery->key, myQuery->value, &myQuery->timestamp, buffer, desplazamiento);
 			break;
 	}
 }
