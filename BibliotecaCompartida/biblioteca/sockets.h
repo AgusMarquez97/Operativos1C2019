@@ -32,7 +32,7 @@ typedef struct sockaddr_storage estructuraConexionEntrante; //Guarda datos de co
 typedef struct timeval tiempoEspera;
 
 
-void levantarCliente(char* servidorIP,char* servidorPuerto, void* datosAEnviar);
+int32_t levantarCliente(char* servidorIP,char* servidorPuerto);
 void levantarServidor(char * servidorIP, char* servidorPuerto);
 
                         //Estructuras
@@ -46,9 +46,12 @@ int crearSocket(estructuraConexion* estructura);
                         //Conexiones
 int conectarConServidor(int* socketCliente,estructuraConexion* estructuraServidor);
 
+
                         //Envio y recepcion de datos
-void enviarDatos(void* datosAEnviar,int socketConexion);
-int recibirDatos(int socketConexion);
+
+
+int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar);
+int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir);
 
                         //Servidor
 void asociarPuerto(int *socketServidor,estructuraConexion* estructuraServidor);

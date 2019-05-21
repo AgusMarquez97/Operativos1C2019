@@ -1,11 +1,9 @@
 #include "sockets.h"
 
-void levantarCliente(char* servidorIP,char* servidorPuerto, void* datosAEnviar)
+int levantarCliente(char* servidorIP,char* servidorPuerto)
 {
-        int socketCliente;
-        /*
-    Aca vendria la parte de serializacion y deserializacion
-        */
+		int socketCliente;
+
 		estructuraConexion* servidorObjetivo;
 
 		socketCliente = levantarSocketGenerico(servidorIP,servidorPuerto,&servidorObjetivo);
@@ -14,10 +12,7 @@ void levantarCliente(char* servidorIP,char* servidorPuerto, void* datosAEnviar)
 
       	free(servidorObjetivo); //Ya estoy conectado, no necesito guardar mas esto
 
-      		//Si es repetitivo agregar while(1)
-        enviarDatos((char*)datosAEnviar,socketCliente);
-        recibirDatos(socketCliente);
-        close(socketCliente);
+        return socketCliente;
 
 }
 
@@ -106,58 +101,7 @@ void imprimirDatosCliente(estructuraConexionEntrante estructuraObjetivo,socklen_
 
 }
 
-void enviarDatos(void* datosAEnviar,int socketConexion)
-{
-
-	int cantidadEnviada = -1;
-
-	//Agregar funcionalidad para enviar de a partes
-	if(strlen(datosAEnviar) >= tam_Max_Transmision)
-	{
-	cantidadEnviada = send(socketConexion,datosAEnviar,tam_Max_Transmision,0); //flag= MSG_DONTWAIT no bloqueante
-	}
-	else
-	{
-	cantidadEnviada = send(socketConexion,datosAEnviar,strlen(datosAEnviar),0);
-	}
-
-	    if(cantidadEnviada==-1)
-	    {
-	        perror("No se pudieron enviar los datos al cliente");
-	        exit(1);
-        }
-	    //printf("Se enviaron: %d bytes\n",cantidadEnviada);
-        printf("Se envio: %s",(char*)datosAEnviar);
-}
-
-
-int recibirDatos(int socketConexion)
-{
-        void* buffer[tam_Max_Transmision]; //Buffer para recibir
-		memset(buffer, '\0', sizeof(buffer));
-		int cantidadRecibida;
-		cantidadRecibida = recv(socketConexion,buffer,tam_Max_Transmision,0);
-	    if(cantidadRecibida==-1)
-	    {
-	        perror("No se pudieron recibir los datos del cliente");
-	        exit(1);
-	    }
-        /*if(cantidadRecibida==0)
-	    {
-	        perror("Se cerro la conexion");
-	        exit(1);
-	    }*/
-
-
-        //printf("Se recibieron: %d Bytes\n",cantidadRecibida);
-	    if(cantidadRecibida>0)
-	    {
-        printf("Se recibio: %s\n",(char*)buffer);
-	    }
-	    return cantidadRecibida;
-}
-
-int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar) {
+int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar){
 
 	int bytesTotales = 0;
 
@@ -204,6 +148,7 @@ int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 
 void levantarServidor(char * servidorIP, char* servidorPuerto)
 {
+			void * buffer;
 	  	  	int socketServidor, socketRespuesta, maximoSocket;
 	  	  	int datosRecibidos;
 			estructuraConexion* servidorObjetivo;
@@ -257,7 +202,9 @@ void levantarServidor(char * servidorIP, char* servidorPuerto)
 	                    }
 	                    else
 	                    {
-	                    	datosRecibidos = recibirDatos(i); // Recibo de ese cliente
+	                    	int tam;
+	                    	datosRecibidos = recibirInt(i,&tam); // Recibo de ese cliente
+
 	                    	if(datosRecibidos==0)
 	                    	{
 	                    		printf("Se cerro la conexion con el socket: %d\n",i);

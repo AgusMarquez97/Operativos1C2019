@@ -8,7 +8,7 @@ void enviarInt(int socketReceptor, int32_t entero){
 	void* buffer = malloc(sizeof(int32_t));
 
 	serializarInt(buffer, entero, &desplazamiento);
-	//enviar(socketReceptor, buffer, sizeof(int32_t));
+	enviar(socketReceptor, buffer, sizeof(int32_t));
 
 	free(buffer);
 

@@ -9,9 +9,16 @@
  */
 
 #include "PoolMemorias.h"
+#include <biblioteca/mensajes.h>
 
 int main(void) {
-	puts("Hola Mundo"); /* prints Hola Mundo */
+
+	int32_t nroEnviar = 13;
+	int clienteObj;
+	void * buffer2 = malloc(sizeof(int));
+	//clienteObj = levantarCliente("127.0.0.7","8080");
+
+	printf("%d\n",*(int*)buffer2);
 
 	return 1;
 }
