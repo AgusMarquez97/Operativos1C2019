@@ -11,7 +11,8 @@
 //#include "../BibliotecaCompartida/src/sockets.h"
 
 #include <biblioteca/sockets.h>
-
 #include <biblioteca/serializacion.h>
+#include <biblioteca/mensajes.h>
+#include <biblioteca/enumsAndStructs.h>
 
 #endif /* FILESYSTEM_H_ */

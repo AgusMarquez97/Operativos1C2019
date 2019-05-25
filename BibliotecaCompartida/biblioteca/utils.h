@@ -6,17 +6,26 @@
 #include <stdbool.h>
 #include <errno.h>
 
-#include <commons/log.h>
+
+
+#include <commons/process.h>
+#include <commons/temporal.h>
+
 
 /*
-t_log * logger;
+ * Para obtener el ID del proceso / hilo actual
+ */
 
-void iniciarLog(char* nombre);
-void loggearTrace(char* mensaje);
-void loggearInfo(char* mensaje);
-void loggearWarning(char* mensaje);
-void loggearError(char* mensaje);
-void salirConError(char* mensaje, int socket);
-void exitGracefully(int valorReturn);
-*/
+int ObtenerHilo();
+int ObtenerProceso();
+
+
+/*
+ * Para obtener la hora en formato string
+ */
+char * ObtenerTimeStamp();
+
+
+
+
 #endif /* UTILS_H_ */
