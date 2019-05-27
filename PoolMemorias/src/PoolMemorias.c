@@ -25,6 +25,8 @@ int main(void) {
 	printf("%d\n",*(int*)buffer2);
 
 	*/
+
+
 	pthread_t hilo_consola;
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 	pthread_join(hilo_consola,NULL);
