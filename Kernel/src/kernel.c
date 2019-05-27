@@ -95,7 +95,7 @@ void procesar_input(char * input) {
 		parse_script(string_substring(input, 1, string_length(input) - 3));
 	}
 }
-
+/*
 t_request_struct crear_estructura_para_planificar(t_queue* requests) {
 	t_request_struct request_struct;
 	request_struct.request_queue = requests;
@@ -104,6 +104,18 @@ t_request_struct crear_estructura_para_planificar(t_queue* requests) {
 	return request_struct;
 
 }
+*/
+
+
+t_request_struct *crear_estructura_para_planificar(t_queue* requests) {
+	t_request_struct *request_struct = malloc(sizeof(t_request_struct));
+	request_struct->request_queue = requests;
+	request_struct->request_cant = 1; //Posiblemente no se use
+	request_struct->request_left = 1; //Posiblemente no se use
+	return request_struct;
+
+}
+
 
 void *exec(void * numero_exec) {
 	int thread_n = (int) numero_exec;
@@ -119,19 +131,53 @@ void *exec(void * numero_exec) {
 				ready_queue);
 		pthread_mutex_unlock(&s_readyq);
 
-		while ((int) queue_size(next_request->request_queue) != 0) {
+		t_queue* requests = next_request->request_queue;
+		int quantum_utilizado = 1;
+
+if ((int) queue_size(requests) > 1) { sleep(7);} //Retrasa la ejecucion y me da tiempo de meter otro request en el medio
+
+		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0) ) {
 
 			printf(
 					"**** El hilo de ejecucion %d va a ejecutar el siguiente request ****\n",
 					thread_n);
 
-			printf("%s", queue_pop(next_request->request_queue));
+			printf("%s", queue_pop(requests));
 
-		}
+			quantum_utilizado++;
 
-		//queue_destroy(next_request->request_queue);
+		  }
 
+		if ((int) queue_size(requests) == 0) {  
+
+			queue_destroy(requests);
+			printf("Fin de proceso.\n\n\n\n");
+			printf("*********************************************\n\n\n\n");
+			}
+
+
+		 else {
+
+			printf("**** Se acabo el quantum, se vuelve a la ready queue ****\n");
+			agregar_request_ready(next_request);
 	}
+	
+
+}
+
+}
+
+
+void agregar_request_ready(t_request_struct * request)
+{
+
+		pthread_mutex_lock(&s_readyq);
+
+		queue_push(ready_queue, request);
+
+		pthread_mutex_unlock(&s_readyq);
+
+		sem_post(&s_exec_request_inicial);
 
 }
 
@@ -146,9 +192,11 @@ void *agregar_a_ready() {
 
 		pthread_mutex_unlock(&s_newq);
 
-		t_request_struct requests_struct = crear_estructura_para_planificar(
+		t_request_struct *requests_struct = crear_estructura_para_planificar(
 				(t_queue*) requests);
 
+		agregar_request_ready(requests_struct);
+/*
 		pthread_mutex_lock(&s_readyq);
 
 		queue_push(ready_queue, &requests_struct);
@@ -156,14 +204,14 @@ void *agregar_a_ready() {
 		pthread_mutex_unlock(&s_readyq);
 
 		sem_post(&s_exec_request_inicial);
-
+*/
 	}
 
 }
 
 void agregar_a_new(t_queue* requests) {
 	pthread_mutex_lock(&s_newq);
-	queue_push(new_queue, (void *) requests);
+	queue_push(new_queue,requests);
 	pthread_mutex_unlock(&s_newq);
 
 	sem_post(&s_hay_request);
@@ -327,6 +375,7 @@ void inicializar_semaforos() {
 	sem_init(&s_hay_request, 0, 0);
 	sem_init(&s_hay_new, 0, 0);
 	sem_init(&s_exec_request_inicial, 0, 0);
+	sem_init(&s_dispatcher, 0, 1);
 	pthread_mutex_init(&s_newq, NULL);
 	pthread_mutex_init(&s_readyq, NULL);
 }

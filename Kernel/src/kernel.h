@@ -39,10 +39,12 @@ t_queue* ready_queue = NULL; //queue_create();
 sem_t s_hay_request;
 sem_t s_hay_new;
 sem_t s_exec_request_inicial;
+sem_t s_dispatcher;
 //sem_init(&s_hay_request,0,0);
 pthread_mutex_t s_newq;// = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_readyq;
 pthread_mutex_t s_requestq;
 int CANT_THREADS_EXEC = 2; //TODO: Debe salir del archivo de config
+int QUANTUM_SIZE = 2; //TODO: Debe salir del archivo de config
 
 #endif /*KERNEL_H_*/
