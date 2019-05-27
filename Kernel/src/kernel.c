@@ -129,7 +129,7 @@ void *exec(void * numero_exec) {
 
 		}
 
-		queue_destroy(next_request->request_queue);
+		//queue_destroy(next_request->request_queue);
 
 	}
 
@@ -142,7 +142,7 @@ void *agregar_a_ready() {
 
 		pthread_mutex_lock(&s_newq);
 
-		void *requests = queue_pop((void *) new_queue);
+		void *requests = queue_pop(new_queue);
 
 		pthread_mutex_unlock(&s_newq);
 
@@ -188,21 +188,12 @@ t_queue* procesar_script(const char * script, t_queue* request_queue) {
 	pthread_mutex_lock(&s_requestq);
 
 	while ((read = getline(&line, &len, fid)) != -1) {
-		printf("Leido del script: %s", line);
-		char * line2 = line;
+		char * line2 = string_duplicate(line);
 		queue_push(request_queue, line2);
 	}
 
 	pthread_mutex_unlock(&s_requestq);
 
-	printf("**** Por ahora en la cola de requests hay:****\n");
-
-	while ((int) queue_size(request_queue) != 0) {
-		pthread_mutex_lock(&s_requestq);
-		char * algo = queue_pop(request_queue);
-		pthread_mutex_unlock(&s_requestq);
-		printf("%s", algo);
-	}
 	return request_queue;
 }
 
