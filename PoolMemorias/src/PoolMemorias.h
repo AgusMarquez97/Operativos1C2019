@@ -11,4 +11,6 @@
 #include <biblioteca/sockets.h>
 #include <commons/log.h>
 
+void consola();
+
 #endif /* POOLMEMORIAS_H_ */
