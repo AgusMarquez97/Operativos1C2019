@@ -72,39 +72,12 @@ int ejecutar(char * query) {
 	return 0;
 }
 
-void parse_script(const char * script) {
-	FILE * fid;
-	size_t len = 0;
-	ssize_t read;
-	char * line = NULL;
 
-	if ((fid = fopen(script, "r+")) == NULL) {
-		printf("Error al abrir el script: %s", script);
-		printf("Longitud del parametro ruta del archivo: %d",
-				string_length(script));
-		return;
-	}
-
-	while ((read = getline(&line, &len, fid)) != -1) {
-		printf("Leido del script: %s", line);
-	}
+int ejecutar_request(t_queue * request)
+{
+	printf("%s", (char *)request);
+	return -1; // Fines de prueba
 }
-
-void procesar_input(char * input) {
-	if (string_starts_with(input, "@")) {
-		parse_script(string_substring(input, 1, string_length(input) - 3));
-	}
-}
-/*
-t_request_struct crear_estructura_para_planificar(t_queue* requests) {
-	t_request_struct request_struct;
-	request_struct.request_queue = requests;
-	request_struct.request_cant = 1;
-	request_struct.request_left = 1;
-	return request_struct;
-
-}
-*/
 
 
 t_request_struct *crear_estructura_para_planificar(t_queue* requests) {
@@ -116,8 +89,22 @@ t_request_struct *crear_estructura_para_planificar(t_queue* requests) {
 
 }
 
+void agregar_request_ready(t_request_struct * request)
+{
+
+		pthread_mutex_lock(&s_readyq);
+
+		queue_push(ready_queue, request);
+
+		pthread_mutex_unlock(&s_readyq);
+
+		sem_post(&s_exec_request_inicial);
+
+}
+
 
 void *exec(void * numero_exec) {
+
 	int thread_n = (int) numero_exec;
 
 	printf("**** El hilo de ejecucion %d (thread_id %d) esta arriba ****\n",
@@ -133,55 +120,50 @@ void *exec(void * numero_exec) {
 
 		t_queue* requests = next_request->request_queue;
 		int quantum_utilizado = 1;
+		int fallo = 0;
 
-if ((int) queue_size(requests) > 1) { sleep(7);} //Retrasa la ejecucion y me da tiempo de meter otro request en el medio
+		if ((int) queue_size(requests) > 1) { sleep(7);} //Retrasa la ejecucion y me da tiempo de meter otro request en el medio
 
-		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0) ) {
+		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0) && (fallo == 0) ){
 
 			printf(
 					"**** El hilo de ejecucion %d va a ejecutar el siguiente request ****\n",
 					thread_n);
 
-			printf("%s", queue_pop(requests));
-
 			quantum_utilizado++;
+
+			if (ejecutar_request(queue_pop(requests)) < 0) {
+
+			  printf("Fallo request, abortando ejecucion de script\n");
+			  //agregar_a_estado_exit(next_request); En realidad se debe hacer esto
+			  return;
+
+			}
 
 		  }
 
 		if ((int) queue_size(requests) == 0) {  
 
 			queue_destroy(requests);
+			//agregar_a_estado_exit(next_request); En realidad se debe hacer esto
 			printf("Fin de proceso.\n\n\n\n");
 			printf("*********************************************\n\n\n\n");
-			}
 
-
-		 else {
+		} else {
 
 			printf("\n\n\n\n**** Se acabo el quantum, se vuelve a la ready queue ****\n\n\n\n");
 			agregar_request_ready(next_request);
-	}
+		}
 	
+	}
 
 }
 
-}
 
 
-void agregar_request_ready(t_request_struct * request)
-{
-
-		pthread_mutex_lock(&s_readyq);
-
-		queue_push(ready_queue, request);
-
-		pthread_mutex_unlock(&s_readyq);
-
-		sem_post(&s_exec_request_inicial);
-
-}
 
 void *agregar_a_ready() {
+
 	while (1) {
 
 		sem_wait(&s_hay_request);
@@ -196,15 +178,7 @@ void *agregar_a_ready() {
 				(t_queue*) requests);
 
 		agregar_request_ready(requests_struct);
-/*
-		pthread_mutex_lock(&s_readyq);
 
-		queue_push(ready_queue, &requests_struct);
-
-		pthread_mutex_unlock(&s_readyq);
-
-		sem_post(&s_exec_request_inicial);
-*/
 	}
 
 }
@@ -220,7 +194,7 @@ void agregar_a_new(t_queue* requests) {
 
 }
 
-t_queue* procesar_script(const char * script, t_queue* request_queue) {
+t_queue* procesar_script(char * script, t_queue* request_queue) {
 	FILE * fid;
 	size_t len = 0;
 	ssize_t read;
@@ -244,6 +218,7 @@ t_queue* procesar_script(const char * script, t_queue* request_queue) {
 
 	return request_queue;
 }
+
 
 t_queue* armar_request_queue(char * input) {
 	t_queue* request_queue = queue_create();
@@ -354,8 +329,6 @@ int procesar() {
 		exit(1);
 	}
 
-	//sem_init(&s_listensocket,0,1);
-
 	printf("Planificador iniciado. Escuchando...\n");
 
 	while (1) {
@@ -383,9 +356,7 @@ void inicializar_semaforos() {
 void inicializar_threads() {
 	pthread_t readythread_id;
 	pthread_t thread_id;
-	//pthread_t execthread_id;
 
-	//pthread_create(&thread_id, NULL, agregar_a_new,NULL);
 	pthread_create(&readythread_id, NULL, agregar_a_ready, NULL);
 	pthread_detach(readythread_id);
 
