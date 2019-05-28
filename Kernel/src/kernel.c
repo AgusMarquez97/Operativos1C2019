@@ -158,7 +158,7 @@ if ((int) queue_size(requests) > 1) { sleep(7);} //Retrasa la ejecucion y me da 
 
 		 else {
 
-			printf("**** Se acabo el quantum, se vuelve a la ready queue ****\n");
+			printf("\n\n\n\n**** Se acabo el quantum, se vuelve a la ready queue ****\n\n\n\n");
 			agregar_request_ready(next_request);
 	}
 	

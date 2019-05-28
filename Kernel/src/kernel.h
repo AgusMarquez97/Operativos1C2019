@@ -44,7 +44,7 @@ sem_t s_dispatcher;
 pthread_mutex_t s_newq;// = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_readyq;
 pthread_mutex_t s_requestq;
-int CANT_THREADS_EXEC = 2; //TODO: Debe salir del archivo de config
-int QUANTUM_SIZE = 2; //TODO: Debe salir del archivo de config
+int CANT_THREADS_EXEC = 5; //TODO: Debe salir del archivo de config
+int QUANTUM_SIZE = 3; //TODO: Debe salir del archivo de config
 
 #endif /*KERNEL_H_*/
