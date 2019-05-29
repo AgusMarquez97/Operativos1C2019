@@ -21,6 +21,8 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
+#include "logs.h"
+
 //#include "utils.h"
 
 //#define puerto "8080"

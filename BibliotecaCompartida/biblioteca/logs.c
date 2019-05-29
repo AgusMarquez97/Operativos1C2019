@@ -4,14 +4,10 @@ void iniciarLogConPath(char* path,char* nombre) {
 
 	logger = log_create(path, nombre, true, LOG_LEVEL_INFO);
 
-	loggearInfo("Logger iniciado!");
-
 }
 void iniciarLog(char* nombre) {
 
-	logger = log_create("Lissandra.log", nombre, true, LOG_LEVEL_INFO);
-
-	loggearInfo("Logger iniciado!");
+	logger = log_create("Lissandra.log", nombre, 0, LOG_LEVEL_INFO);
 
 }
 

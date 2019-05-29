@@ -49,6 +49,7 @@ void eliminarEstructuraConfig()
 {
 	config_destroy(config);
 }
+
 void guardarConfig()
 {
 	config_save(config);

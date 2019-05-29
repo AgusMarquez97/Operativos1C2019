@@ -10,7 +10,7 @@ int levantarCliente(char* servidorIP,char* servidorPuerto)
 
 		conectarConServidor(&socketCliente,servidorObjetivo);
 
-      	free(servidorObjetivo); //Ya estoy conectado, no necesito guardar mas esto
+      	free(servidorObjetivo); //Ya estoy conectado
 
         return socketCliente;
 
@@ -33,8 +33,9 @@ void instanciarConexion(char * direcIP,char * puertoDesc,estructuraConexion** es
 
       if(getaddrinfo(direcIP,puertoDesc,&estructuraInicial,estructuraFinal) != 0)
       {
-          //fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-          perror("Error, no se pudieron crear las estructuras");
+
+          //perror("Error, no se pudieron crear las estructuras");
+          loggearError("Error, no se pudieron crear las estructuras");
       }
 
 }
@@ -54,7 +55,8 @@ int crearSocket(estructuraConexion* estructura)
 		int socketResultado = socket(estructura->ai_family,estructura->ai_socktype,estructura->ai_protocol);
 	    if(socketResultado == -1)
 	    {
-	        perror("No se pudo asignar un socket");
+	        //perror("No se pudo asignar un socket");
+	        loggearError("Error al crear el socket");
 	        exit(1);
 	    }
 	    return socketResultado;
@@ -67,7 +69,8 @@ int conectarConServidor(int* socketCliente,estructuraConexion* estructuraServido
 	conexionAServidor = connect(*socketCliente, estructuraServidor->ai_addr, estructuraServidor->ai_addrlen);
     if(conexionAServidor==-1)
         {
-            perror("No se pudo realizar la conexion");
+            //perror("No se pudo realizar la conexion");
+            loggearError("No se pudo realizar la conexion");
             //close(socketCliente);
             exit(1);
         }
@@ -83,8 +86,23 @@ void imprimirDatosServidor(estructuraConexion* estructuraObjetivo)
     char serverIP[NI_MAXHOST]; 		//IP Server
     char serverPuerto[NI_MAXSERV];  //Puerto Servidor
 	getnameinfo(estructuraObjetivo->ai_addr, sizeof(*estructuraObjetivo->ai_addr), serverIP, sizeof(serverIP), serverPuerto, sizeof(serverPuerto), NI_NUMERICHOST|NI_NUMERICSERV);
-	printf("Servidor IP: %s\n",serverIP);
-	printf("Servidor Puerto:  %s\n",serverPuerto);
+
+	//printf("Servidor IP: %s\n",serverIP);
+	//printf("Servidor Puerto:  %s\n",serverPuerto);
+
+	char * ip = malloc(50);
+	strcpy(ip,"IP del servidor: ");
+	strcat(ip,serverIP);
+
+	char * puerto = malloc(50);
+	strcpy(puerto,"Puerto de escucha: ");
+	strcat(puerto,serverPuerto);
+
+	loggearInfo(ip);
+	loggearInfo(puerto);
+
+	free(ip);
+	free(puerto);
 
 }
 
@@ -96,14 +114,28 @@ void imprimirDatosCliente(estructuraConexionEntrante estructuraObjetivo,socklen_
     char clientePuerto[NI_MAXSERV];	//Puerto Cliente
 
 	getnameinfo((struct sockaddr *)&estructuraObjetivo, direc_tam, clienteIP, sizeof(clienteIP), clientePuerto, sizeof(clientePuerto), NI_NUMERICHOST|NI_NUMERICSERV);
-	printf("Cliente IP = %s\n",clienteIP);
-	printf("Cliente Puerto =  %s\n",clientePuerto);
 
+	//printf("Cliente IP = %s\n",clienteIP);
+	//printf("Cliente Puerto =  %s\n",clientePuerto);
+
+
+	char * ip = malloc(50);
+	strcpy(ip,"IP del cliente objetivo: ");
+	strcat(ip,clienteIP);
+
+	char * puerto = malloc(50);
+	strcpy(puerto,"Puerto de escucha: ");
+	strcat(puerto,clientePuerto);
+
+	free(ip);
+	free(puerto);
 }
 
 int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar){
 
 	int bytesTotales = 0;
+
+	loggearInfo("Enviando...");
 
 	while (tamanioAEnviar - bytesTotales > 0) {
 
@@ -111,11 +143,12 @@ int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar){
 
 		if(bytesEnviados < 0) {
 			//salirConError("No se pudieron enviar los datos al cliente", socketConexion);
+			loggearError("No se pudieron enviar los datos al cliente");
 		}
 		bytesTotales += bytesEnviados;
 	}
-
-	//loggearInfo("envio completo");
+		//Luego ver de usar itoa y  -> bytesEnviados
+	loggearInfo("Envio completo");
 
 	return bytesTotales; //los mando por si alguien lo necesita
 
@@ -123,19 +156,20 @@ int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar){
 
 int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 
+	loggearInfo("Recibiendo...");
 	int bytesTotales = recv(socketConexion, buffer, tamanioARecibir, MSG_WAITALL);
 
 	if(bytesTotales <= 0) {
 		if(bytesTotales < 0){
-			//salirConError("No se pudieron recibir los datos del cliente", socketConexion);
+			loggearError("No se pudieron recibir los datos del cliente");
 		}
 		else {
-			//salirConError("Se cerro la conexion", socketConexion);
+			loggearWarning("Se cerro la conexion con el cliente");
 		}
 	}
 
 	if(bytesTotales < tamanioARecibir){
-		//salirConError("Datos recibidos incompletos",socketConexion);
+		loggearError("No se puedo recibir todos los datos");
 	}
 
 	//loggearInfo("recibido completo");
@@ -162,7 +196,7 @@ void levantarServidor(char * servidorIP, char* servidorPuerto)
 	        //system("clear");
 			escuchar(&socketServidor);
 
-	        printf("Escuchando...\n");
+	        loggearInfo("Escuchando...\n");
 
 	        //Manejo sets
 	        LimpiarSet(&sockets);
@@ -198,7 +232,11 @@ void levantarServidor(char * servidorIP, char* servidorPuerto)
 	                        {
 	                            maximoSocket = socketRespuesta;
 	                        }
-	                    printf("Nueva conexion asignada al socket: %d\n\n",socketRespuesta);// Guardo la conexion
+	                    char * info = malloc(70);
+	                    strcpy(info,"Nueva conexion asignada al socket: ");
+	                    strcat(info,socketRespuesta);
+	                    //printf("Nueva conexion asignada al socket: %d\n\n",socketRespuesta);// Guardo la conexion
+	                    loggearInfo(info);
 	                    }
 	                    else
 	                    {
@@ -207,7 +245,6 @@ void levantarServidor(char * servidorIP, char* servidorPuerto)
 
 	                    	if(datosRecibidos==0)
 	                    	{
-	                    		printf("Se cerro la conexion con el socket: %d\n",i);
 	                    		close(i);
 	                    		EliminarDeSet(i,&sockets);
 	                    	}
@@ -230,7 +267,7 @@ void asociarPuerto(int *socketServidor,estructuraConexion* estructuraServidor)
 
     if(bind(*socketServidor,estructuraServidor->ai_addr,estructuraServidor->ai_addrlen)==-1)
         {
-            perror("No se pudo asociar el socket al puerto");
+            loggearError("No se pudo asociar el socket al puerto");
             exit(1);
         }
 }
@@ -239,7 +276,7 @@ void escuchar(int * socketServidor)
 {
     if(listen(*socketServidor,backlog) == -1)
     {
-        perror("Fallo al escuchar");
+    	loggearError("Fallo al escuchar");
         exit(1);
     }
 }
@@ -256,13 +293,13 @@ int aceptarConexion(int socketServidor)
 
 	    if(socketCliente == -1)
 	    {
-	        perror("Fallo al aceptar conexion ");
+	    	loggearError("Fallo al aceptar conexion ");
 	        exit(1);
 	    }
 
-	    printf("\n-----------------Se acepta al cliente: ------------------- \n\n");
+	    loggearInfo("\n-----------------Se acepta al cliente: ------------------- \n\n");
 	    imprimirDatosCliente(conexionEntrante,direc_tam);	//printf("Se crea el socket: %d\n",socketCliente);
-	    printf("\n");
+
 	    return socketCliente; // Retorna el socket asociado a un cliente que quiere conectarse al servidor
 }
 
@@ -273,11 +310,11 @@ void ejecutarSelect(int maxSocket,fd_set *clientes, tiempoEspera* tiempo) //Pasa
         retornoSelect  = select(maxSocket+1,clientes,NULL,NULL,tiempo);
 
          if (retornoSelect == -1) {
-            perror("Error al ejecutar el select: ");
+        	loggearError("Error al ejecutar el select: ");
             exit(4);
         }
 		 if (retornoSelect == 0) {
-            printf("Se termino el tiempo de espera del servidor...");
+			loggearError("Se termino el tiempo de espera del servidor...");
             exit(4);
         }
 

@@ -30,7 +30,7 @@ t_log * logger;
  */
 
 void iniciarLog(char* nombre);
-void iniciarLogConPath(char* path,char* nombre);
+void iniciarLogConPath(char* path,char* nombre); //Tambien imprime por pantalla
 
 /*
  * loggearInfo(mensajeALoggear): Loggear normalmente, todo OK -> Color blanco (en consola) / negro
