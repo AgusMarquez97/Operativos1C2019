@@ -12,5 +12,6 @@
 #include <commons/log.h>
 
 void consola();
+void leerArchivoConfiguracion();
 
 #endif /* POOLMEMORIAS_H_ */

@@ -13,6 +13,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+#include <biblioteca/levantarConfig.h>
+#include <biblioteca/logs.h>
+
+#define PATH "configuraciones/memoria.cfg"
+
 
 int main(void) {
 
@@ -25,7 +32,7 @@ int main(void) {
 	printf("%d\n",*(int*)buffer2);
 
 	*/
-
+	leerArchivoConfiguracion();
 	pthread_t hilo_consola;
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 	pthread_join(hilo_consola,NULL);
@@ -33,20 +40,46 @@ int main(void) {
 	return 1;
 
 }
-
 //Esta funcion limpia la consola y lee una linea y si no es exit, la imprime por pantalla
 void consola(){
-
+	printf("Aca va la consola =)");
 	system("clear");
 	puts("Bienvenido a la consola de la memoria");
+	char* comando;
 	while(1){
-		char* comando = readline(">");
+		comando = readline("$");
 		if(comando == "exit"){
-			return;
+		return;
 		}else{
 			printf("El comando ingresado fue %s\n",comando);
 		}
 	}
+	free(comando);
+
 	return;
 
 }
+//Leemos arcchivo configuracion
+void leerArchivoConfiguracion(){
+	t_config* config;
+	config = crearConfig(PATH);
+	iniciarLogConPath("Log memorias.log","Log Pool Memorias");
+
+	int puertoEscucha = obtenerInt("PUERTO");
+	char* ip_FS = obtenerString("IP_FS");
+	int puerto_FS = obtenerInt("PUERTO_FS");
+	char ** ip_Seeds = obtenerArray("IP_SEEDS");
+	char ** puerto_Seeds = obtenerArray("PUERTO_SEEDS");
+	int retardo_mem = obtenerInt("RETARDO_MEM");
+	int retardo_FS = obtenerInt("RETARDO_FS");
+	int tam_mem = obtenerInt("TAM_MEM");
+	int retardo_journal = obtenerInt("RETARDO_JOURNAL");
+	int retardo_gossiping = obtenerInt("RETARDO_GOSSIPING");
+	int mem_number= obtenerInt("MEMORY_NUMBER");
+
+	printf("el puerto es:%d?n",puertoEscucha);
+
+}
+
+
+
