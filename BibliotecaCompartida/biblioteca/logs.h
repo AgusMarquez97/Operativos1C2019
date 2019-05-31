@@ -41,6 +41,7 @@ void iniciarLogConPath(char* path,char* nombre); //Tambien imprime por pantalla
 void loggearInfo(char* mensaje);
 void loggearWarning(char* mensaje);
 void loggearError(char* mensaje);
+void loggearInfoConComentario(char* comentario, char* mensaje);
 
 
 

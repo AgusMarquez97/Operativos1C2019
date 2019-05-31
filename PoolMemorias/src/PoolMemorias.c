@@ -14,6 +14,7 @@ int main(void) {
 
 	iniciarLog("Memoria");
 	leerArchivoConfiguracion();
+	loggearInfoConcatenandoDosMensajes("El IP del FS es: ", (char*) configuracionMemoria->IP_FS);
 	pthread_t hilo_consola;
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 	pthread_join(hilo_consola,NULL);
