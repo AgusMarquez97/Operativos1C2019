@@ -49,25 +49,23 @@ void consola(){
 //Leemos arcchivo configuracion
 void leerArchivoConfiguracion(){
 
-		//crearConfig(PATHCONFIG);
-		t_config* config;
-		config = config_create(PATHCONFIG);
-		configuracion *configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
-		configuracionMemoria->IP_FS = (char*) malloc(20);
-		char* IP_FS= config_get_string_value(config, "IP_FS");
-		//char* IP_FS = obtenerString("IP_FS");
-		strcpy(configuracionMemoria->IP_FS, IP_FS);
-		printf("%s", configuracionMemoria->IP_FS);
+		crearConfig(PATHCONFIG);
+
+		configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
+
+		configuracionMemoria->IP_FS = obtenerString("IP_FS");
+		configuracionMemoria->IP_SEEDS = obtenerArray("IP_SEEDS");
+		configuracionMemoria->PUERTO_FS = obtenerInt("PUERTO_FS");
+		configuracionMemoria->PUERTO_SEEDS = (int*) obtenerArray("PUERTO_SEEDS");
+		configuracionMemoria->PUERTO = obtenerInt("PUERTO");
+		configuracionMemoria->MEMORY_NUMBER = obtenerInt("MEMORY_NUMBER");
+		configuracionMemoria->RETARDO_FS = obtenerInt("RETARDO_FS");
+		configuracionMemoria->RETARDO_GOSSIPING = obtenerDouble("RETARDO_GOSSIPING");
+		configuracionMemoria->RETARDO_JOURNAL = obtenerDouble("RETARDO_JOURNAL");
+		configuracionMemoria->RETARDO_MEM = obtenerInt("RETARDO_MEM");
+		configuracionMemoria->TAM_MEM = obtenerInt("TAM_MEM");
 
 		free(configuracionMemoria);
-		/*char* IP_FS;
-		strcpy(IP_FS,obtenerString("IP_FS"));
-		(*configuracionMemoria).IP_FS = (char*) malloc(sizeof(IP_FS)+1);
-		strcpy(configuracionMemoria->IP_FS, IP_FS);
-		(*configuracionMemoria).MEMORY_NUMBER = obtenerInt("MEMORY_NUMBER");
-
-		printf("%d, %s, %d", (*configuracionMemoria).PUERTO,(*configuracionMemoria).IP_FS,(*configuracionMemoria).MEMORY_NUMBER);
-*/
 }
 
 

@@ -29,7 +29,7 @@
 
 #define PATHCONFIG "configuraciones/memoria.cfg"
 
-/*
+
 typedef struct {
 	int32_t PUERTO;
 	char* IP_FS;
@@ -43,21 +43,8 @@ typedef struct {
 	int64_t RETARDO_GOSSIPING;
 	int32_t MEMORY_NUMBER;
 } configuracion;
-*/
 
-typedef struct {
-	int PUERTO;
-	char* IP_FS;
-	int PUERTO_FS;
-	char** IP_SEEDS;
-	int* PUERTO_SEEDS;
-	int RETARDO_MEM;
-	int RETARDO_FS;
-	double TAM_MEM;
-	double RETARDO_JOURNAL;
-	double RETARDO_GOSSIPING;
-	int MEMORY_NUMBER;
-} configuracion;
+configuracion *configuracionMemoria;
 
 void consola();
 void leerArchivoConfiguracion();
