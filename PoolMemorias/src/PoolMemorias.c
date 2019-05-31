@@ -9,29 +9,10 @@
  */
 
 #include "PoolMemorias.h"
-#include <biblioteca/mensajes.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <readline/readline.h>
-#include <readline/history.h>
-#include <biblioteca/levantarConfig.h>
-#include <biblioteca/logs.h>
-
-#define PATH "configuraciones/memoria.cfg"
-
 
 int main(void) {
 
-		/*
-	int32_t nroEnviar = 13;
-	int clienteObj;
-	void * buffer2 = malloc(sizeof(int));
-	//clienteObj = levantarCliente("127.0.0.7","8080");
-
-	printf("%d\n",*(int*)buffer2);
-
-	*/
+	iniciarLog("Memoria");
 	leerArchivoConfiguracion();
 	pthread_t hilo_consola;
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
@@ -42,14 +23,20 @@ int main(void) {
 }
 //Esta funcion limpia la consola y lee una linea y si no es exit, la imprime por pantalla
 void consola(){
-	printf("Aca va la consola =)");
+	printf("Inicializando consola...");
+	sleep(2);
 	system("clear");
-	puts("Bienvenido a la consola de la memoria");
+	puts("Bienvenido a la consola de la memoria...");
 	char* comando;
 	while(1){
-		comando = readline("$");
-		if(comando == "exit"){
-		return;
+		comando = readline(">");
+		if(strncmp(comando,"exit",4) == 0){
+			break;
+		}
+		add_history(comando);
+
+		if (strncmp(comando,"clear",5) == 0) {
+			system("clear");
 		}else{
 			printf("El comando ingresado fue %s\n",comando);
 		}
@@ -61,24 +48,26 @@ void consola(){
 }
 //Leemos arcchivo configuracion
 void leerArchivoConfiguracion(){
-	t_config* config;
-	config = crearConfig(PATH);
-	iniciarLogConPath("Log memorias.log","Log Pool Memorias");
 
-	int puertoEscucha = obtenerInt("PUERTO");
-	char* ip_FS = obtenerString("IP_FS");
-	int puerto_FS = obtenerInt("PUERTO_FS");
-	char ** ip_Seeds = obtenerArray("IP_SEEDS");
-	char ** puerto_Seeds = obtenerArray("PUERTO_SEEDS");
-	int retardo_mem = obtenerInt("RETARDO_MEM");
-	int retardo_FS = obtenerInt("RETARDO_FS");
-	int tam_mem = obtenerInt("TAM_MEM");
-	int retardo_journal = obtenerInt("RETARDO_JOURNAL");
-	int retardo_gossiping = obtenerInt("RETARDO_GOSSIPING");
-	int mem_number= obtenerInt("MEMORY_NUMBER");
+		//crearConfig(PATHCONFIG);
+		t_config* config;
+		config = config_create(PATHCONFIG);
+		configuracion *configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
+		configuracionMemoria->IP_FS = (char*) malloc(20);
+		char* IP_FS= config_get_string_value(config, "IP_FS");
+		//char* IP_FS = obtenerString("IP_FS");
+		strcpy(configuracionMemoria->IP_FS, IP_FS);
+		printf("%s", configuracionMemoria->IP_FS);
 
-	printf("el puerto es:%d?n",puertoEscucha);
+		free(configuracionMemoria);
+		/*char* IP_FS;
+		strcpy(IP_FS,obtenerString("IP_FS"));
+		(*configuracionMemoria).IP_FS = (char*) malloc(sizeof(IP_FS)+1);
+		strcpy(configuracionMemoria->IP_FS, IP_FS);
+		(*configuracionMemoria).MEMORY_NUMBER = obtenerInt("MEMORY_NUMBER");
 
+		printf("%d, %s, %d", (*configuracionMemoria).PUERTO,(*configuracionMemoria).IP_FS,(*configuracionMemoria).MEMORY_NUMBER);
+*/
 }
 
 
