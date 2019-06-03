@@ -31,3 +31,11 @@ void loggearError(char* mensaje) {
 	log_error(logger, "Error de errno: %s", strerror(errno));
 
 }
+
+void loggearInfoConcatenandoDosMensajes(char* mensaje1, char* mensaje2){
+	char *result = malloc(strlen(mensaje1) + strlen(mensaje2) + 1);
+	strcpy(result, mensaje1);
+	strcat(result, mensaje2);
+	log_info(logger, result);
+	free(result);
+}
