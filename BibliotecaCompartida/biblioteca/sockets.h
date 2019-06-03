@@ -22,6 +22,8 @@
 #include <sys/time.h>
 
 #include "logs.h"
+#include "mensajes.h"
+
 
 //#include "utils.h"
 

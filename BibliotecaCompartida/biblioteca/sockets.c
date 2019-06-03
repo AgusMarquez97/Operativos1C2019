@@ -8,9 +8,25 @@ int levantarCliente(char* servidorIP,char* servidorPuerto)
 
 		socketCliente = levantarSocketGenerico(servidorIP,servidorPuerto,&servidorObjetivo);
 
+		char * mensaje = malloc(50);
+	    strcpy(mensaje,"Se creo el socket: ");
+		char * aux = malloc(10);
+		snprintf(aux,10,"%d",socketCliente);
+		strcat(mensaje,aux);
+
+		loggearInfo(mensaje);
+
 		conectarConServidor(&socketCliente,servidorObjetivo);
 
+		strcpy(mensaje,"El socket ");
+		strcat(mensaje,aux);
+		strcat(mensaje," se conecto al servidor");
+
+		loggearInfo(mensaje);
+
       	free(servidorObjetivo); //Ya estoy conectado
+      	free(mensaje);
+      	free(aux);
 
         return socketCliente;
 
@@ -19,6 +35,7 @@ int levantarCliente(char* servidorIP,char* servidorPuerto)
 
 int levantarSocketGenerico(char* servidorIP,char* servidorPuerto,estructuraConexion** servidor)
 {
+	loggearInfo("Creando estructuras para la conexion...");
 			instanciarConexion(servidorIP,servidorPuerto,servidor);
 			//imprimirDatosServidor(*servidor);
 			return crearSocket(*servidor);
@@ -118,7 +135,10 @@ void imprimirDatosCliente(estructuraConexionEntrante estructuraObjetivo,socklen_
 	//printf("Cliente IP = %s\n",clienteIP);
 	//printf("Cliente Puerto =  %s\n",clientePuerto);
 
-
+	loggearInfo("Datos del cliente: ");
+	loggearInfo(clienteIP);
+	loggearInfo(clientePuerto);
+	/*
 	char * ip = malloc(50);
 	strcpy(ip,"IP del cliente objetivo: ");
 	strcat(ip,clienteIP);
@@ -129,6 +149,7 @@ void imprimirDatosCliente(estructuraConexionEntrante estructuraObjetivo,socklen_
 
 	free(ip);
 	free(puerto);
+	*/
 }
 
 int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar){
@@ -147,8 +168,21 @@ int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar){
 		}
 		bytesTotales += bytesEnviados;
 	}
+
+
+	char * mensaje = malloc(50);
+	strcpy(mensaje,"Se enviaron: ");
+	char * aux = malloc(10);
+	snprintf(aux,10,"%d",bytesTotales);
+	strcat(mensaje,aux);
+	strcat(mensaje," bytes");
+
+
 		//Luego ver de usar itoa y  -> bytesEnviados
-	loggearInfo("Envio completo");
+	loggearInfo(mensaje);
+
+	free(mensaje);
+	free(aux);
 
 	return bytesTotales; //los mando por si alguien lo necesita
 
@@ -156,23 +190,66 @@ int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar){
 
 int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 
-	loggearInfo("Recibiendo...");
+	 char * info = malloc(200);
+	 char * aux = malloc(50);
+
+	strcpy(info,"Recibiendo info del socket ");
+	snprintf(aux,10,"%d",socketConexion);
+	strcat(info,aux);
+
+
+
+	loggearInfo(info);
+
 	int bytesTotales = recv(socketConexion, buffer, tamanioARecibir, MSG_WAITALL);
 
-	if(bytesTotales <= 0) {
+	if(bytesTotales < tamanioARecibir || bytesTotales <= 0) {
 		if(bytesTotales < 0){
-			loggearError("No se pudieron recibir los datos del cliente");
+			strcpy(info,"No se pudieron recibir los datos del cliente ");
+			snprintf(aux,10,"%d",socketConexion);
+			strcat(info,aux);
+			strcat(info,"\n");
+			loggearError(info);
 		}
-		else {
-			loggearWarning("Se cerro la conexion con el cliente");
+		else if(bytesTotales == 0) {
+			strcpy(info,"Se cerro la conexion con el cliente ");
+			snprintf(aux,10,"%d",socketConexion);
+			strcat(info,aux);
+			strcat(info,"\n");
+			loggearWarning(info);
+
+		}else
+		{
+			strcpy(info,"Error con el cliente ");
+			snprintf(aux,10,"%d",socketConexion);
+			strcat(info,aux);
+			strcat(info,", se recibieron ");
+			snprintf(aux,10,"%d",bytesTotales);
+			strcat(info,aux);
+			strcat(info," bytes");
+			strcat(info," de ");
+			snprintf(aux,10,"%d",tamanioARecibir);
+			strcat(info,aux);
+			strcat(info,"\n");
+			loggearWarning(info);
 		}
+		free(info);
+		free(aux);
+
+		return 0;
 	}
 
-	if(bytesTotales < tamanioARecibir){
-		loggearError("No se puedo recibir todos los datos");
-	}
 
-	//loggearInfo("recibido completo");
+	strcpy(info,"Se recibieron: ");
+	snprintf(aux,10,"%d",bytesTotales);
+	strcat(info,aux);
+	strcat(info," bytes");
+
+	loggearInfo(info);
+
+	free(info);
+	free(aux);
+
 
 	return bytesTotales; //los mando por si alguien lo necesita
 }
@@ -182,11 +259,15 @@ int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 
 void levantarServidor(char * servidorIP, char* servidorPuerto)
 {
-			void * buffer;
+			query* myQuery = malloc(sizeof(query));
+			//void * buffer;
 	  	  	int socketServidor, socketRespuesta, maximoSocket;
-	  	  	int datosRecibidos;
+	  	  	int datosRecibidos = -1;
 			estructuraConexion* servidorObjetivo;
 	        fd_set sockets, clientes;
+
+	        char * info;
+	        char * aux;
 
 			socketServidor = levantarSocketGenerico(servidorIP,servidorPuerto,&servidorObjetivo);
 			asociarPuerto(&socketServidor,servidorObjetivo);
@@ -232,22 +313,42 @@ void levantarServidor(char * servidorIP, char* servidorPuerto)
 	                        {
 	                            maximoSocket = socketRespuesta;
 	                        }
-	                    char * info = malloc(70);
+
+	                    info = malloc(200);
+	                    aux = malloc(10);
 	                    strcpy(info,"Nueva conexion asignada al socket: ");
-	                    strcat(info,socketRespuesta);
+						snprintf(aux,10,"%d",socketRespuesta);
+	                    strcat(info,aux);
+	                    strcat(info,"\n");
 	                    //printf("Nueva conexion asignada al socket: %d\n\n",socketRespuesta);// Guardo la conexion
 	                    loggearInfo(info);
+	                    free(info);
+	                    free(aux);
 	                    }
 	                    else
 	                    {
-	                    	int tam;
-	                    	datosRecibidos = recibirInt(i,&tam); // Recibo de ese cliente
+
+	                    	aux = malloc(10);
+	                    	info = malloc(200);
+
+	                    	datosRecibidos = recibirQuery(i,myQuery);
+
 
 	                    	if(datosRecibidos==0)
 	                    	{
 	                    		close(i);
 	                    		EliminarDeSet(i,&sockets);
+	                    	}else  {
+	                    		strcpy(info,"Se recibieron en total: ");
+	                    		snprintf(aux,10,"%d",datosRecibidos);
+	                    		strcat(info,aux);
+	                    		strcat(info," bytes\n");
+	                    		loggearInfo(aux);
+
+	                    		free(aux);
+	                    		free(info);
 	                    	}
+
 	                    }
 	                	/*else   //1-2 - Tengo un cliente que quiere leer y es distinto del server
 	                	{

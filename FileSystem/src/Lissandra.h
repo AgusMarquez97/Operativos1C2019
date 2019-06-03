@@ -26,6 +26,9 @@
 
 #include <time.h>
 
+#include <readline/readline.h>
+#include <readline/history.h>
+
 
 pthread_mutex_t mutex_Mem_Table;
 

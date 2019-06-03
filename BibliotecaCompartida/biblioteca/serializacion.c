@@ -54,16 +54,17 @@ void deserializarChar(void* buffer,char* caracter,int* desplazamiento){
 
 }
 
-void deserializarString(void* buffer,char* cadena,int* desplazamiento){
+void deserializarString(void* buffer,char** cadena,int* desplazamiento){
 
 	int32_t tamanioCadena = 0;
 
 	deserializarInt(buffer,&tamanioCadena, desplazamiento);
 
-	cadena = malloc(tamanioCadena);
+	*cadena = malloc(tamanioCadena);
 
-	memcpy(cadena,buffer + *desplazamiento, tamanioCadena);
-	*desplazamiento += strlen(cadena) + 1;
+	memcpy(*cadena,buffer + *desplazamiento, tamanioCadena);
+
+	*desplazamiento += strlen(*cadena) + 1;
 
 }
 
@@ -93,14 +94,14 @@ void serializarInsert(void* buffer, char* tabla, int32_t key, char* value, int64
 }
 
 
-void deserializarSelect(char* tabla, int32_t* key, void* buffer, int* desplazamiento) {
+void deserializarSelect(char** tabla, int32_t* key, void* buffer, int* desplazamiento) {
 
 	deserializarString(buffer,tabla,desplazamiento);
 	deserializarInt(buffer,key, desplazamiento);
 
 }
 
-void deserializarInsert(char* tabla, int32_t* key, char* value, int64_t* timestamp, void* buffer, int* desplazamiento) {
+void deserializarInsert(char** tabla, int32_t* key, char** value, int64_t* timestamp, void* buffer, int* desplazamiento) {
 
 	deserializarString(buffer,tabla, desplazamiento);
 	deserializarInt(buffer,key,desplazamiento);

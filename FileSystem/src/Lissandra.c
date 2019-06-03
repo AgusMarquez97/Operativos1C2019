@@ -2,6 +2,7 @@
 
 void iniciarLFS()
 {
+	remove("Lissandra.log");
 	iniciarLog("FileSystem");
 	inicializarSemaforos();
 
@@ -13,11 +14,11 @@ void iniciarLFS()
 	 * Por ahora no se crean hilos on demand x cada request
 	 */
 
-	hiloConsola = crearHilo(consola,NULL);
+	//hiloConsola = crearHilo(consola,NULL);
 	hiloServidor = crearHilo(iniciarServidor,NULL);
 	//hiloMemTable = crearHiloDetachable(procesarQuery,NULL);
 
-	esperarHilo(hiloConsola);
+	//esperarHilo(hiloConsola);
 	esperarHilo(hiloServidor);
 
 }
@@ -54,18 +55,22 @@ void iniciarServidor()
 
 	crearConfig("../configuraciones/configuracion.txt");
 
+	char * iPServer = obtenerString("DIRECCION_IP");
+	char * puertoServer = obtenerString("PUERTO_ESCUCHA");
+
 	char * ip = malloc(50);
 	strcpy(ip,"IP del servidor: ");
-	strcat(ip,obtenerString("DIRECCION_IP"));
+	strcat(ip,iPServer);
 
 	char * puerto = malloc(50);
 	strcpy(puerto,"Puerto de escucha: ");
-	strcat(puerto,obtenerString("PUERTO_ESCUCHA"));
+	strcat(puerto,puertoServer);
 
 
 
 	loggearInfo(ip);
 	loggearInfo(puerto);
+
 
 	/*
 	 * Minimamente dos hilos:
@@ -74,14 +79,14 @@ void iniciarServidor()
 	 * los demas Hilos / Procesos podrian gestionar el pasaje de LFS a FS (dumping) y los cambios del compactador
 	 */
 
-	//levantarServidor(ip,puerto);
+	levantarServidor(iPServer,puertoServer);
 
 	/*
 	 * ¿IniciarHilos, semaforos y procesos?
 	 */
 
-	free(ip);
-	free(puerto);
+	free(iPServer);
+	free(puertoServer);
 
 }
 
@@ -118,7 +123,7 @@ void procesarInsert(query * unaQuery)
 	 * FE DE ERRATA DEL TP:
 	 * Al pedo obtener la metadata de la tabla -> La memtable no tiene particiones
 	 */
-	if(unaQuery->timestamp == NULL)
+	if(unaQuery->timestamp == -1)
 	{
 		unaQuery->timestamp = (double)time(NULL);//ObtenerTimeStamp();
 	}
@@ -159,3 +164,6 @@ bool existeTabla(char * nombre)
 {
 	return true;//list_find()
 }
+
+
+
