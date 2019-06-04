@@ -61,22 +61,43 @@ int agregar_memorias_a_criterios() {
 	printf("Agregando memorias a los distintos criterios...\n");
 	return 0;
 }
-
+/*
 int parsear(char * query) {
 	printf("Esto por ahora no hace nada, pero se viene se viene...\n");
 	return 0;
 }
 
-int ejecutar(char * query) {
+int ejecutar_request(char * query) {
 	printf("Query ejecutado (?)\n");
 	return 0;
 }
+*/
 
-
-int ejecutar_request(t_queue * request)
+int ejecutar_request(/*t_queue */void * request)
 {
-	printf("%s", (char *)request);
-	return -1; // Fines de prueba
+	query query_struct;// = malloc(sizeof(query));
+	request = (char *) request;
+	int resultado_ejecucion_request = 0;
+	printf("%s",request);
+	request = string_substring(request, 0, string_length(request) - 2);
+	int codigo_request = parsear(request,&query_struct);
+	if ( !codigo_request )
+	{
+	  return -1;
+	}
+
+	switch (codigo_request) {
+
+	  case (SELECT): resultado_ejecucion_request = ejecutar_select(query_struct);
+			 break;
+
+	  default: printf("No es un select, se deriva el request...");
+		   break;
+
+	}
+
+	return resultado_ejecucion_request;
+
 }
 
 
@@ -114,8 +135,7 @@ void *exec(void * numero_exec) {
 		sem_wait(&s_exec_request_inicial);
 
 		pthread_mutex_lock(&s_readyq);
-		t_request_struct * next_request = (t_request_struct *) queue_pop(
-				ready_queue);
+		t_request_struct * next_request = (t_request_struct *) queue_pop(ready_queue);
 		pthread_mutex_unlock(&s_readyq);
 
 		t_queue* requests = next_request->request_queue;
@@ -132,13 +152,17 @@ void *exec(void * numero_exec) {
 
 			quantum_utilizado++;
 
-			if (ejecutar_request(queue_pop(requests)) < 0) {
+			int codigo_ejecucion = ejecutar_request(queue_pop(requests));
+
+			if (codigo_ejecucion < 0) {
 
 			  printf("Fallo request, abortando ejecucion de script\n");
 			  //agregar_a_estado_exit(next_request); En realidad se debe hacer esto
 			  return;
 
 			}
+
+			printf("El codigo de request es: %d\n",codigo_ejecucion);
 
 		  }
 

@@ -1,7 +1,7 @@
 #include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/parser.h>
 
 
-int parsear(char * string_query,query* struct_query)
+int parsear(char * string_query,query *struct_query)
 {
 
 	char ** query_split = string_split(string_query, " ");
@@ -11,16 +11,23 @@ int parsear(char * string_query,query* struct_query)
 	printf("La cantidad de palabras es: %d\n",string_size(query_split));
 */
 	int query_cant_palabras = string_size(query_split);
+	printf("Llegaron al parser %d palabras\n",query_cant_palabras);
 
 	if (!strcasecmp(query_split[0],"select")) {
 
-	  if ((nombre_tabla_valido(query_split[1])) && (valor_solo_numerico(query_split[2])) && (query_cant_palabras == 3))
+	  if ( (query_cant_palabras != 3) )
+	  {
+		printf("El select es INcorrecto\n");
+		return 0;
+	  }
+
+	  if ( (nombre_tabla_valido(query_split[1])) && (valor_solo_numerico(query_split[2])) )
 	  {
 		printf("El select es correcto\n");
-
+		string_to_upper(query_split[1]);
 		struct_query->requestType = 1;
-		struct_query->tabla = string_to_upper(query_split[1]);
-		struct_query->key = query_split[2];
+		struct_query->tabla = query_split[1];
+		struct_query->key = (int) query_split[2];
 		struct_query->value = NULL;
 		struct_query->timestamp = NULL;
 
@@ -60,9 +67,9 @@ int parsear(char * string_query,query* struct_query)
 		}
 
 		printf("El insert es correcto\n");
-
+		string_to_upper(query_split[1]);
 		struct_query->requestType = 2;
-		struct_query->tabla = string_to_upper(query_split[1]);
+		struct_query->tabla = query_split[1];
 		struct_query->key = query_split[2];
 		struct_query->value = query_split[3];
 
@@ -78,17 +85,22 @@ int parsear(char * string_query,query* struct_query)
 
 	if (!strcasecmp(query_split[0],"create")) {
 
+	  if ( (query_cant_palabras != 5) )
+	  {
+		printf("El create es INcorrecto\n");
+		return 0;
+	  }
+
 	  if (	(nombre_tabla_valido(query_split[1])) 	   &&
 		(tipo_consistencia_valido(query_split[2])) &&
 		(valor_solo_numerico(query_split[3]))	   &&
-		(valor_solo_numerico(query_split[4]))	   &&
-		(query_cant_palabras == 5)
+		(valor_solo_numerico(query_split[4]))
 	     )
 	  {
 		printf("El create es correcto\n");
-
+		string_to_upper(query_split[1]);
 		struct_query->requestType = 4;
-		struct_query->tabla = string_to_upper(query_split[1]);
+		struct_query->tabla = query_split[1];
 		struct_query->key = query_split[3];
 		struct_query->value = query_split[4];
 		struct_query->timestamp = NULL;
@@ -105,19 +117,24 @@ int parsear(char * string_query,query* struct_query)
 
 	if (!strcasecmp(query_split[0],"drop")) {
 
-	  if (	(nombre_tabla_valido(query_split[1])) 	   &&
-		(query_cant_palabras == 2)
+	  if ( (query_cant_palabras != 2) )
+	  {
+		printf("El create es INcorrecto\n");
+		return 0;
+	  }
+
+	  if (	(nombre_tabla_valido(query_split[1]))
 	     )
 	  {
 		printf("El drop es correcto\n");
-
+		string_to_upper(query_split[1]);
 		struct_query->requestType = 5;
-		struct_query->tabla = string_to_upper(query_split[1]);
+		struct_query->tabla = query_split[1];
 		struct_query->key = NULL;
 		struct_query->value = NULL;
 		struct_query->timestamp = NULL;
 
-		return 5;
+		return DROP;
 
 	  } else { printf("El drop es INcorrecto\n");
 		   return 0;
