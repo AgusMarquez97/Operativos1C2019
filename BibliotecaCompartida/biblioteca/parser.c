@@ -31,7 +31,7 @@ int parsear(char * string_query,query *struct_query)
 		struct_query->value = NULL;
 		struct_query->timestamp = NULL;
 
-		return 1;
+		return SELECT;
 
 	  } else { printf("El select es INcorrecto\n");
 		   return 0;
@@ -73,7 +73,7 @@ int parsear(char * string_query,query *struct_query)
 		struct_query->key = query_split[2];
 		struct_query->value = query_split[3];
 
-		return 2;
+		return INSERT;
 
 	  } else { printf("El insert es INcorrecto\n");
 		   return 0;
@@ -105,7 +105,7 @@ int parsear(char * string_query,query *struct_query)
 		struct_query->value = query_split[4];
 		struct_query->timestamp = NULL;
 
-		return 4;
+		return CREATE;
 
 	  } else { printf("El create es INcorrecto\n");
 		   return 0;
