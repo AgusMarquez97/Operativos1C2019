@@ -13,6 +13,11 @@ int parsear(char * string_query,query *struct_query)
 	int query_cant_palabras = string_size(query_split);
 	printf("Llegaron al parser %d palabras\n",query_cant_palabras);
 
+	if ( !query_cant_palabras)
+	{
+		return 0;
+	}
+
 	if (!strcasecmp(query_split[0],"select")) {
 
 	  if ( (query_cant_palabras != 3) )
@@ -83,6 +88,39 @@ int parsear(char * string_query,query *struct_query)
 	}
 
 
+	if (!strcasecmp(query_split[0],"describe")) {
+
+	  
+          struct_query->requestType = 3;
+	  struct_query->key = NULL;
+	  struct_query->value = NULL;
+	  struct_query->timestamp = NULL;
+
+	  if ( (query_cant_palabras == 1) )
+	  {
+		printf("El describe es correcto\n");
+		struct_query->tabla = NULL;
+
+		return DESCRIBE;
+	  }
+
+	  if (	(query_cant_palabras == 2) && (nombre_tabla_valido(query_split[1]))
+	     )
+	  {
+		printf("El describe es correcto\n");
+		string_to_upper(query_split[1]);
+		struct_query->tabla = query_split[1];
+
+		return DESCRIBE;
+
+	  } else { printf("El describe es INcorrecto\n");
+		   return 0;
+		 }
+		
+
+	}
+
+
 	if (!strcasecmp(query_split[0],"create")) {
 
 	  if ( (query_cant_palabras != 5) )
@@ -143,13 +181,70 @@ int parsear(char * string_query,query *struct_query)
 
 	}
 
+
+
+	if (!strcasecmp(query_split[0],"journal")) {
+
+	  if ( (query_cant_palabras != 1) )
+	  {
+		printf("El journal es INcorrecto\n");
+		return 0;
+	  } else {
+			printf("El journal es correcto\n");
+			string_to_upper(query_split[1]);
+			struct_query->requestType = 6;
+			struct_query->tabla = NULL;
+			struct_query->key = NULL;
+			struct_query->value = NULL;
+			struct_query->timestamp = NULL;
+
+			return JOURNAL;
+		}
+		
+
+	}
+
+
+/*
+	if (!strcasecmp(query_split[0],"run")) {
+
+	  if ( (query_cant_palabras != 2) )
+	  {
+		printf("El run es INcorrecto\n");
+		return 0;
+	  } else { printf("El run es correcto\n"); return RUN; }
+*/
+/*
+	  if (	(nombre_tabla_valido(query_split[1]))
+	     )
+	  {
+		printf("El run es correcto\n");
+		string_to_upper(query_split[1]);
+		struct_query->requestType = 8;
+		struct_query->tabla = NULL;
+		struct_query->key = NULL;
+		struct_query->value = NULL;
+		struct_query->timestamp = NULL;
+
+		return RUN;
+
+	  } else { printf("El run es INcorrecto\n");
+		   return 0;
+		 }
+*/		
+
+//	}
+
+	printf("Comando desconocido.\n\n");
+	return 0;
+
 }
 
 
 int string_size(char ** text)
 {
 	int i= 0;
-	//char ** text = string_split(string_vector, " ");
+
 	printf("%s\n",text[i]);
 
 	while ((text[i]) != '\0')

@@ -77,10 +77,10 @@ int ejecutar_request(/*t_queue */void * request)
 {
 	query query_struct;// = malloc(sizeof(query));
 	request = (char *) request;
-	int resultado_ejecucion_request = 0;
+	int resultado_ejecucion_request,codigo_request = 0;
 	printf("%s",request);
-	request = string_substring(request, 0, string_length(request) - 2);
-	int codigo_request = parsear(request,&query_struct);
+	//request = string_substring(request, 0, string_length(request) - 2);
+	codigo_request = parsear(request,&query_struct);
 	if ( !codigo_request )
 	{
 	  return -1;
@@ -147,8 +147,8 @@ void *exec(void * numero_exec) {
 		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0) && (fallo == 0) ){
 
 			printf(
-					"**** El hilo de ejecucion %d va a ejecutar el siguiente request ****\n",
-					thread_n);
+					"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %s ****\n",
+					thread_n,queue_peek(requests));
 
 			quantum_utilizado++;
 
@@ -225,10 +225,11 @@ t_queue* procesar_script(char * script, t_queue* request_queue) {
 	char * line = NULL;
 
 	if ((fid = fopen(script, "r+")) == NULL) {
-		printf("Error al abrir el script: %s", script);
-		printf("Longitud del parametro ruta del archivo: %d",
+		printf("Error al abrir el script: %s\n", script);
+		printf("Longitud del parametro ruta del archivo: %d\n",
 				string_length(script));
-		exit(-1);
+		return request_queue;
+//		exit(-1);
 	}
 
 	pthread_mutex_lock(&s_requestq);
@@ -246,15 +247,33 @@ t_queue* procesar_script(char * script, t_queue* request_queue) {
 
 t_queue* armar_request_queue(char * input) {
 	t_queue* request_queue = queue_create();
+	char ** query_split = string_split(input, " ");
+	int query_cant_palabras = string_size(query_split);
+	printf("Cantidad de palabras ingresadas: %d\n",query_cant_palabras);
 
+	if (!strcasecmp(query_split[0],"run")) {
+
+	  if ( (query_cant_palabras != 2) )
+	  {
+		printf("El run es INcorrecto\n");
+		return request_queue;
+	  } else { printf("El run es correcto\n");
+		   //procesar_script(query_split[1],request_queue);
+		   procesar_script(string_substring(query_split[1], 0, string_length(query_split[1]) - 2),request_queue);
+		   return request_queue;
+		 }
+
+/*
 	if (string_starts_with(input, "@")) {
 		procesar_script(string_substring(input, 1, string_length(input) - 3),
 				request_queue);
 		return request_queue;
 	}
+*/
 
+	return request_queue;
+	}
 	queue_push(request_queue, (void *) input);
-
 	return request_queue;
 
 }
@@ -278,10 +297,28 @@ void * atender_conexion(void * new_fd) {
 
 	printf("client: received %s", buf);
 	buf[numbytes] = '\0';
+	input=string_substring(buf, 0, string_length(buf) - 2);
 
-	while (strncmp("SALIR", buf, strlen("SALIR")) != 0) {
+	while ( strcasecmp(input,"salir") )/*(strncmp("SALIR", buf, strlen("SALIR")) != 0)*/ {
 
-		t_queue* request_queue = armar_request_queue(buf);
+		printf("Hasta aca llega1...");
+
+		printf("Hasta aca llega2...");
+		query query_struct;
+		if ( !parsear(input,&query_struct) )
+		{
+			if ((numbytes = recv(listening_socket, buf, MAXDATASIZE - 1, 0))
+				== -1) {
+			perror("recv");
+			exit(1);
+			}
+			printf("client: received %s", buf);
+			buf[numbytes] = '\0';
+			input=string_substring(buf, 0, string_length(buf) - 2);
+			continue;
+		}
+
+		t_queue* request_queue = armar_request_queue(input);
 
 		agregar_a_new(request_queue);
 
@@ -293,6 +330,7 @@ void * atender_conexion(void * new_fd) {
 
 		printf("client: received %s", buf);
 		buf[numbytes] = '\0';
+		input=string_substring(buf, 0, string_length(buf) - 2);
 
 	};
 
