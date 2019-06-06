@@ -73,25 +73,26 @@ int ejecutar_request(char * query) {
 }
 */
 
-int ejecutar_request(/*t_queue */void * request)
+int ejecutar_request(/*t_queue *//*void * request*/ query * query_struct)
 {
-	query query_struct;// = malloc(sizeof(query));
-	request = (char *) request;
-	int resultado_ejecucion_request,codigo_request = 0;
-	printf("%s",request);
+	//query query_struct;// = malloc(sizeof(query));
+	//request = (char *) request;
+	int resultado_ejecucion_request = 0;
+	int codigo_request = query_struct->requestType;
+	//printf("%s",request);
 	//request = string_substring(request, 0, string_length(request) - 2);
-	codigo_request = parsear(request,&query_struct);
-	if ( !codigo_request )
+	//codigo_request = parsear(request,&query_struct);
+	if ( codigo_request == 0 )
 	{
 	  return -1;
 	}
 
 	switch (codigo_request) {
 
-	  case (SELECT): resultado_ejecucion_request = ejecutar_select(query_struct);
+	  case (SELECT): //resultado_ejecucion_request = ejecutar_select(query_struct);
 			 break;
 
-	  default: printf("No es un select, se deriva el request...");
+	  default: printf("No es un select, se deriva el request...\n");
 		   break;
 
 	}
@@ -141,18 +142,21 @@ void *exec(void * numero_exec) {
 		t_queue* requests = next_request->request_queue;
 		int quantum_utilizado = 1;
 		int fallo = 0;
+		query *next_query = (query *) queue_peek(requests);
 
 		if ((int) queue_size(requests) > 1) { sleep(7);} //Retrasa la ejecucion y me da tiempo de meter otro request en el medio
 
 		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0) && (fallo == 0) ){
 
 			printf(
-					"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %s ****\n",
-					thread_n,queue_peek(requests));
+					"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %d ****\n",
+					thread_n,/*queue_peek(requests)*/ next_query->requestType);
 
 			quantum_utilizado++;
 
-			int codigo_ejecucion = ejecutar_request(queue_pop(requests));
+			next_query = (query *) queue_pop(requests);
+			//int codigo_ejecucion = ejecutar_request(queue_pop(requests));
+			int codigo_ejecucion = ejecutar_request(next_query);
 
 			if (codigo_ejecucion < 0) {
 
@@ -162,7 +166,7 @@ void *exec(void * numero_exec) {
 
 			}
 
-			printf("El codigo de request es: %d\n",codigo_ejecucion);
+			printf("El codigo de resultado de ejecucion de request es: %d\n",codigo_ejecucion);
 
 		  }
 
@@ -244,7 +248,7 @@ t_queue* procesar_script(char * script, t_queue* request_queue) {
 	return request_queue;
 }
 
-
+/*
 t_queue* armar_request_queue(char * input) {
 	t_queue* request_queue = queue_create();
 	char ** query_split = string_split(input, " ");
@@ -263,20 +267,50 @@ t_queue* armar_request_queue(char * input) {
 		   return request_queue;
 		 }
 
-/*
-	if (string_starts_with(input, "@")) {
-		procesar_script(string_substring(input, 1, string_length(input) - 3),
-				request_queue);
-		return request_queue;
-	}
-*/
-
 	return request_queue;
 	}
 	queue_push(request_queue, (void *) input);
 	return request_queue;
 
 }
+*/
+
+/*
+ * Nueva version de armar_request_queue() que recibe un struct query en vez de un char *
+ *
+*/
+
+t_queue* armar_request_queue(query * query_struct) {
+	t_queue* request_queue = queue_create();
+/*
+	if ( query_struct.requestType == RUN )
+	{
+	  procesar_script(query_split[1],request_queue);
+	  return request_queue;
+	}
+
+	if (!strcasecmp(query_split[0],"run")) {
+
+	  if ( (query_cant_palabras != 2) )
+	  {
+		printf("El run es INcorrecto\n");
+		return request_queue;
+	  } else { printf("El run es correcto\n");
+		   //procesar_script(query_split[1],request_queue);
+		   procesar_script(string_substring(query_split[1], 0, string_length(query_split[1]) - 2),request_queue);
+		   return request_queue;
+		 }
+
+	return request_queue;
+	}
+*/
+	printf("En armar_request_queue el numero de request es: %d\n",query_struct->requestType);
+	queue_push(request_queue,query_struct);
+	return request_queue;
+
+}
+
+
 
 void * atender_conexion(void * new_fd) {
 	char buf[MAXDATASIZE];
@@ -286,6 +320,8 @@ void * atender_conexion(void * new_fd) {
 	char *msj = "*** Conectado a Lissandra ***\n";
 	char * input;
 	int len, bytes_sent;
+	//query query_struct;
+	query * query_struct = malloc(sizeof(query));
 
 	len = strlen(msj);
 	bytes_sent = send(listening_socket, msj, len, 0);
@@ -299,13 +335,8 @@ void * atender_conexion(void * new_fd) {
 	buf[numbytes] = '\0';
 	input=string_substring(buf, 0, string_length(buf) - 2);
 
-	while ( strcasecmp(input,"salir") )/*(strncmp("SALIR", buf, strlen("SALIR")) != 0)*/ {
-
-		printf("Hasta aca llega1...");
-
-		printf("Hasta aca llega2...");
-		query query_struct;
-		if ( !parsear(input,&query_struct) )
+	while ( strcasecmp(input,"salir") ) {
+		if ( !parsear(input,query_struct) ) // Se le saca el &, volver a poner si algo male sal
 		{
 			if ((numbytes = recv(listening_socket, buf, MAXDATASIZE - 1, 0))
 				== -1) {
@@ -318,7 +349,8 @@ void * atender_conexion(void * new_fd) {
 			continue;
 		}
 
-		t_queue* request_queue = armar_request_queue(input);
+		//t_queue* request_queue = armar_request_queue(input);
+		t_queue* request_queue = armar_request_queue(query_struct);
 
 		agregar_a_new(request_queue);
 
