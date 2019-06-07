@@ -36,6 +36,7 @@ sem_t s_listensocket;
 //t_queue* new_queue = queue_create();
 t_queue* new_queue = NULL;
 t_queue* ready_queue = NULL; //queue_create();
+t_queue* exit_queue = NULL;
 
 //sem_t s_newq;
 sem_t s_hay_request;
@@ -46,6 +47,7 @@ sem_t s_dispatcher;
 pthread_mutex_t s_newq;// = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_readyq;
 pthread_mutex_t s_requestq;
+pthread_mutex_t s_exitq;
 int CANT_THREADS_EXEC = 5; //TODO: Debe salir del archivo de config
 int QUANTUM_SIZE = 2; //TODO: Debe salir del archivo de config
 

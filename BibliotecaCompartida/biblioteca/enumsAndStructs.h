@@ -7,6 +7,16 @@ typedef enum {
 
 } queryType;
 
+
+typedef enum {
+
+	SC  =  1, /*	Strong Consistency	*/
+	SHC =  2, /*	Strong Hash Consistency	*/
+	EC  =  3  /*	Eventual Consistency	*/
+
+} consistencyType;
+
+
 typedef struct {
 
 	int32_t requestType;
@@ -14,6 +24,9 @@ typedef struct {
 	int32_t key;
 	char* value;
 	int64_t timestamp;
+	int32_t consistencyType;
+	char * script
+	
 } query;
 
 //Faltarian los parametros de create -> Ver de hacer una estructura por cada request
