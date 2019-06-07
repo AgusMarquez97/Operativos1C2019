@@ -221,7 +221,7 @@ void agregar_a_new(t_queue* requests) {
 	return;
 
 }
-
+/*
 t_queue* procesar_script(char * script, t_queue* request_queue) {
 	FILE * fid;
 	size_t len = 0;
@@ -247,6 +247,45 @@ t_queue* procesar_script(char * script, t_queue* request_queue) {
 
 	return request_queue;
 }
+*/
+
+t_queue* procesar_script(query * query_struct) {
+	FILE * fid;
+	size_t len = 0;
+	ssize_t read;
+	char * line = NULL;
+	char * script = query_struct->script;
+
+	t_queue * request_queue = queue_create();
+
+	if ((fid = fopen(script, "r+")) == NULL) {
+		printf("Error al abrir el script: %s\n", script);
+		printf("Longitud del parametro ruta del archivo: %d\n",
+				string_length(script));
+		return NULL;//request_queue;
+//		exit(-1);
+	}
+
+	//pthread_mutex_lock(&s_requestq);
+
+	while ((read = getline(&line, &len, fid)) != -1) {
+		char * line2 = string_duplicate(line);
+
+		if ( parsear(line2,query_struct) != 0 )
+		{
+		  queue_push(request_queue, query_struct);
+		} else
+		  {
+			queue_destroy(request_queue);
+			return NULL;
+		  }
+	}
+
+	//pthread_mutex_unlock(&s_requestq);
+
+	return request_queue;
+}
+
 
 /*
 t_queue* armar_request_queue(char * input) {
