@@ -1,4 +1,4 @@
-#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/parser.h>
+#include "parser.h"
 
 
 int parsear(char * string_query,query *struct_query)

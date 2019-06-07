@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 //#include "utils.h"
-#include "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/enumsAndStructs.h"
+#include "enumsAndStructs.h"
 //#include "serializacion.h"
 //#include "sockets.h"
 
