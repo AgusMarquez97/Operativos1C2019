@@ -33,3 +33,12 @@ int ejecutar_run(query * query_struct)
 	return -1;
 
 }
+
+
+int derivar_request(query * query_struct)
+{
+
+	printf("El tipo de consistencia es: %s\n",query_struct->consistencyType);
+	return 0;
+
+}

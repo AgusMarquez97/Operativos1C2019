@@ -100,11 +100,21 @@ int ejecutar_request(/*t_queue *//*void * request*/ query * query_struct)
 
 	switch (codigo_request) {
 
-	  case (RUN): resultado_ejecucion_request = ejecutar_run(query_struct);
-			 break;
+	  case (JOURNAL): 	printf("Se recibio un JOURNAL...\n");
+				//resultado_ejecucion_request = ejecutar_journal(query_struct);
+			 	break;
 
-	  default: printf("No es un select, se deriva el request...\n");
-		   break;
+	  case (ADD): 		printf("Se recibio un ADD...\n");
+				//resultado_ejecucion_request = ejecutar_add(query_struct);
+			 	break;
+
+	  case (RUN): 		printf("Se recibio un RUN...\n");
+				//resultado_ejecucion_request = ejecutar_run(query_struct);
+			 	break;
+
+	  default: 		printf("No es un select, se deriva el request...\n");
+				resultado_ejecucion_request = derivar_request(query_struct);
+		   		break;
 
 	}
 
@@ -391,7 +401,8 @@ void * atender_conexion(void * new_fd) {
 
 	printf("client: received %s", buf);
 	buf[numbytes] = '\0';
-	input=string_substring(buf, 0, string_length(buf) - 2);
+	input=string_substring(buf, 0, numbytes-1);
+	//strncpy(input,&buf,numbytes);
 
 	while ( strcasecmp(input,"salir") ) {
 		if ( parsear(input,query_struct) < 0 ) // Se le saca el &, volver a poner si algo male sal
@@ -404,7 +415,8 @@ void * atender_conexion(void * new_fd) {
 			}
 			printf("client: received %s", buf);
 			buf[numbytes] = '\0';
-			input=string_substring(buf, 0, string_length(buf) - 2);
+			input=string_substring(buf, 0, numbytes-2);
+			//strncpy(input,buf,numbytes);
 			continue;
 		}
 

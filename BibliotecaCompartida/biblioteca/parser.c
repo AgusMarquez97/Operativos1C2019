@@ -30,7 +30,7 @@ int parsear(char * string_query,query *struct_query)
 	  {
 		printf("El select es correcto\n");
 		string_to_upper(query_split[1]);
-		struct_query->requestType = 1;
+		struct_query->requestType = SELECT;
 		struct_query->tabla = query_split[1];
 		struct_query->key = (int) query_split[2];
 		struct_query->value = NULL;
@@ -73,7 +73,7 @@ int parsear(char * string_query,query *struct_query)
 
 		printf("El insert es correcto\n");
 		string_to_upper(query_split[1]);
-		struct_query->requestType = 2;
+		struct_query->requestType = INSERT;
 		struct_query->tabla = query_split[1];
 		struct_query->key = query_split[2];
 		struct_query->value = query_split[3];
@@ -91,7 +91,7 @@ int parsear(char * string_query,query *struct_query)
 	if (!strcasecmp(query_split[0],"describe")) {
 
 	  
-          struct_query->requestType = 3;
+          struct_query->requestType = DESCRIBE;
 	  struct_query->key = NULL;
 	  struct_query->value = NULL;
 	  struct_query->timestamp = NULL;
@@ -137,8 +137,9 @@ int parsear(char * string_query,query *struct_query)
 	  {
 		printf("El create es correcto\n");
 		string_to_upper(query_split[1]);
-		struct_query->requestType = 4;
+		struct_query->requestType = CREATE;
 		struct_query->tabla = query_split[1];
+		struct_query->consistencyType = query_split[2];
 		struct_query->key = query_split[3];
 		struct_query->value = query_split[4];
 		struct_query->timestamp = NULL;
@@ -166,7 +167,7 @@ int parsear(char * string_query,query *struct_query)
 	  {
 		printf("El drop es correcto\n");
 		string_to_upper(query_split[1]);
-		struct_query->requestType = 5;
+		struct_query->requestType = DROP;
 		struct_query->tabla = query_split[1];
 		struct_query->key = NULL;
 		struct_query->value = NULL;
@@ -192,7 +193,7 @@ int parsear(char * string_query,query *struct_query)
 	  } else {
 			printf("El journal es correcto\n");
 			string_to_upper(query_split[1]);
-			struct_query->requestType = 6;
+			struct_query->requestType = JOURNAL;
 			struct_query->tabla = NULL;
 			struct_query->key = NULL;
 			struct_query->value = NULL;
