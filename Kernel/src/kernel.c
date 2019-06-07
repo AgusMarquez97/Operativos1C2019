@@ -73,6 +73,17 @@ int ejecutar_request(char * query) {
 }
 */
 
+
+agregar_a_estado_exit(t_request_struct * next_request)
+{
+	pthread_mutex_lock(&s_exitq);
+	queue_push(exit_queue, next_request);
+	pthread_mutex_unlock(&s_exitq);
+	
+}
+
+
+
 int ejecutar_request(/*t_queue *//*void * request*/ query * query_struct)
 {
 	//query query_struct;// = malloc(sizeof(query));
@@ -89,7 +100,7 @@ int ejecutar_request(/*t_queue *//*void * request*/ query * query_struct)
 
 	switch (codigo_request) {
 
-	  case (SELECT): //resultado_ejecucion_request = ejecutar_select(query_struct);
+	  case (RUN): resultado_ejecucion_request = ejecutar_run(query_struct);
 			 break;
 
 	  default: printf("No es un select, se deriva el request...\n");
@@ -128,6 +139,7 @@ void agregar_request_ready(t_request_struct * request)
 void *exec(void * numero_exec) {
 
 	int thread_n = (int) numero_exec;
+	query *next_query = malloc(sizeof(query));
 
 	printf("**** El hilo de ejecucion %d (thread_id %d) esta arriba ****\n",
 			thread_n, pthread_self());
@@ -136,17 +148,24 @@ void *exec(void * numero_exec) {
 		sem_wait(&s_exec_request_inicial);
 
 		pthread_mutex_lock(&s_readyq);
-		t_request_struct * next_request = (t_request_struct *) queue_pop(ready_queue);
+
+		/*
+		 * De la ready queue se extrae la proxima request queue
+		*/
+		t_request_struct * next_request = (t_request_struct *) queue_pop(ready_queue); // 
+		
 		pthread_mutex_unlock(&s_readyq);
 
-		t_queue* requests = next_request->request_queue;
+		t_queue* requests = next_request->request_queue; // Se extrae la lita de requests propiamente dicha
 		int quantum_utilizado = 1;
-		int fallo = 0;
-		query *next_query = (query *) queue_peek(requests);
+//		int fallo = 0;
+//		query *next_query = (query *) queue_peek(requests);
 
 		if ((int) queue_size(requests) > 1) { sleep(7);} //Retrasa la ejecucion y me da tiempo de meter otro request en el medio
 
-		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0) && (fallo == 0) ){
+		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0)/* && (fallo == 0) */){
+
+			next_query = (query *) queue_pop(requests);		
 
 			printf(
 					"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %d ****\n",
@@ -154,14 +173,14 @@ void *exec(void * numero_exec) {
 
 			quantum_utilizado++;
 
-			next_query = (query *) queue_pop(requests);
+
 			//int codigo_ejecucion = ejecutar_request(queue_pop(requests));
 			int codigo_ejecucion = ejecutar_request(next_query);
 
 			if (codigo_ejecucion < 0) {
 
-			  printf("Fallo request, abortando ejecucion de script\n");
-			  //agregar_a_estado_exit(next_request); En realidad se debe hacer esto
+			  printf("Error en la ejecucion del request.\n");
+			  agregar_a_estado_exit(next_request);// En realidad se debe hacer esto
 			  return;
 
 			}
@@ -173,7 +192,7 @@ void *exec(void * numero_exec) {
 		if ((int) queue_size(requests) == 0) {  
 
 			queue_destroy(requests);
-			//agregar_a_estado_exit(next_request); En realidad se debe hacer esto
+			agregar_a_estado_exit(next_request);// En realidad se debe hacer esto
 			printf("Fin de proceso.\n\n\n\n");
 			printf("*********************************************\n\n\n\n");
 
@@ -375,8 +394,9 @@ void * atender_conexion(void * new_fd) {
 	input=string_substring(buf, 0, string_length(buf) - 2);
 
 	while ( strcasecmp(input,"salir") ) {
-		if ( !parsear(input,query_struct) ) // Se le saca el &, volver a poner si algo male sal
+		if ( parsear(input,query_struct) < 0 ) // Se le saca el &, volver a poner si algo male sal
 		{
+			printf("Error en parseo de query, no se planifica.\n");
 			if ((numbytes = recv(listening_socket, buf, MAXDATASIZE - 1, 0))
 				== -1) {
 			perror("recv");
@@ -484,6 +504,7 @@ void inicializar_semaforos() {
 	sem_init(&s_dispatcher, 0, 1);
 	pthread_mutex_init(&s_newq, NULL);
 	pthread_mutex_init(&s_readyq, NULL);
+	pthread_mutex_init(&s_exitq, NULL);
 }
 
 void inicializar_threads() {
@@ -502,6 +523,7 @@ void inicializar_threads() {
 void inicializar_colas() {
 	new_queue = queue_create();
 	ready_queue = queue_create();
+	exit_queue = queue_create();
 }
 
 void iniciar_estructuras() {

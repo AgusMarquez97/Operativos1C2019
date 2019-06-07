@@ -25,3 +25,11 @@ int ejecutar_select(query query_struct)
 
 }
 
+
+int ejecutar_run(query * query_struct)
+{
+
+	printf("Se ejecuta el request desde la API. El script a ejecutar es: %s\n",query_struct->script);
+	return -1;
+
+}

@@ -12,7 +12,7 @@
 //#include "serializacion.h"
 //#include "sockets.h"
 
-
+int ERROR = -1;
 
 
 #endif /* PARSER_H_ */

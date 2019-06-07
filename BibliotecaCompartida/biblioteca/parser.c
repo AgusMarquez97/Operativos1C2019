@@ -15,7 +15,7 @@ int parsear(char * string_query,query *struct_query)
 
 	if ( !query_cant_palabras)
 	{
-		return 0;
+		return ERROR;
 	}
 
 	if (!strcasecmp(query_split[0],"select")) {
@@ -23,7 +23,7 @@ int parsear(char * string_query,query *struct_query)
 	  if ( (query_cant_palabras != 3) )
 	  {
 		printf("El select es INcorrecto\n");
-		return 0;
+		return ERROR;
 	  }
 
 	  if ( (nombre_tabla_valido(query_split[1])) && (valor_solo_numerico(query_split[2])) )
@@ -39,7 +39,7 @@ int parsear(char * string_query,query *struct_query)
 		return SELECT;
 
 	  } else { printf("El select es INcorrecto\n");
-		   return 0;
+		   return ERROR;
 		 }
 		
 
@@ -59,7 +59,7 @@ int parsear(char * string_query,query *struct_query)
 
 			case (5): if (!valor_solo_numerico(query_split[4])) {
 					printf("El insert es INcorrecto\n");
-					return 0;
+					return ERROR;
 					break;}
 				  else {
 					struct_query->timestamp = query_split[4];
@@ -67,7 +67,7 @@ int parsear(char * string_query,query *struct_query)
 				  }
 				  
 			default: printf("El insert es INcorrectoAAA\n");
-				 return 0;
+				 return ERROR;
 				 break;
 		}
 
@@ -81,7 +81,7 @@ int parsear(char * string_query,query *struct_query)
 		return INSERT;
 
 	  } else { printf("El insert es INcorrecto\n");
-		   return 0;
+		   return ERROR;
 		 }
 		
 
@@ -114,7 +114,7 @@ int parsear(char * string_query,query *struct_query)
 		return DESCRIBE;
 
 	  } else { printf("El describe es INcorrecto\n");
-		   return 0;
+		   return ERROR;
 		 }
 		
 
@@ -126,7 +126,7 @@ int parsear(char * string_query,query *struct_query)
 	  if ( (query_cant_palabras != 5) )
 	  {
 		printf("El create es INcorrecto\n");
-		return 0;
+		return ERROR;
 	  }
 
 	  if (	(nombre_tabla_valido(query_split[1])) 	   &&
@@ -146,7 +146,7 @@ int parsear(char * string_query,query *struct_query)
 		return CREATE;
 
 	  } else { printf("El create es INcorrecto\n");
-		   return 0;
+		   return ERROR;
 		 }
 		
 
@@ -158,7 +158,7 @@ int parsear(char * string_query,query *struct_query)
 	  if ( (query_cant_palabras != 2) )
 	  {
 		printf("El create es INcorrecto\n");
-		return 0;
+		return ERROR;
 	  }
 
 	  if (	(nombre_tabla_valido(query_split[1]))
@@ -175,7 +175,7 @@ int parsear(char * string_query,query *struct_query)
 		return DROP;
 
 	  } else { printf("El drop es INcorrecto\n");
-		   return 0;
+		   return ERROR;
 		 }
 		
 
@@ -188,7 +188,7 @@ int parsear(char * string_query,query *struct_query)
 	  if ( (query_cant_palabras != 1) )
 	  {
 		printf("El journal es INcorrecto\n");
-		return 0;
+		return ERROR;
 	  } else {
 			printf("El journal es correcto\n");
 			string_to_upper(query_split[1]);
@@ -205,15 +205,21 @@ int parsear(char * string_query,query *struct_query)
 	}
 
 
-/*
+
 	if (!strcasecmp(query_split[0],"run")) {
 
 	  if ( (query_cant_palabras != 2) )
 	  {
 		printf("El run es INcorrecto\n");
-		return 0;
-	  } else { printf("El run es correcto\n"); return RUN; }
-*/
+		return ERROR;
+	  } else {
+			printf("El run es correcto\n");
+			struct_query->requestType = RUN;
+			struct_query->script = query_split[1];
+			return RUN;
+		 }
+	}
+
 /*
 	  if (	(nombre_tabla_valido(query_split[1]))
 	     )
@@ -236,7 +242,7 @@ int parsear(char * string_query,query *struct_query)
 //	}
 
 	printf("Comando desconocido.\n\n");
-	return 0;
+	return ERROR;
 
 }
 
