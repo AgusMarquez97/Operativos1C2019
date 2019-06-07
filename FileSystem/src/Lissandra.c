@@ -30,6 +30,91 @@ void inicializarSemaforos()
 	pthread_mutex_init(&mutex_Mem_Table,NULL);
 }
 
+
+void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
+{
+			//void * buffer;
+	  	  	int socketRespuesta, maximoSocket;
+	  	  	int datosRecibidos = -1;
+			fd_set sockets, clientes;
+
+	        char * info;char * aux;
+
+	        int socketServidor = levantarServer(servidorIP,servidorPuerto);
+
+	        LimpiarSet(&sockets);
+	        LimpiarSet(&clientes);
+
+	        agregarASet(socketServidor,&sockets);
+	        maximoSocket = socketServidor;
+
+	        tiempoEspera esperaMaxima;
+	        definirEsperaServidor(&esperaMaxima,300);
+
+		while(1) // Loop para escuchar conexiones entrantes
+			{
+	        clientes = sockets;
+
+	        ejecutarSelect(maximoSocket,&clientes,&esperaMaxima); //pasarle null si no importa
+
+	        for(int i = 0;i<=maximoSocket;i++) //Itero hasta el ultimo socket
+	        	{
+	        		if (estaEnSet(i, &clientes)) //1 - Tengo un cliente nuevo que quiere leer!
+	        		{
+	                    if (i == socketServidor) //1-1 - Ese Cliente es el mismo servidor -> Acepto nuevas conexiones
+	                    {
+
+	                    socketRespuesta = aceptarConexion(socketServidor);
+
+	                    agregarASet(socketRespuesta,&sockets); //añado a sockets al nuevo cliente
+
+	                        if (socketRespuesta > maximoSocket) // Trackeo el maximo socket
+	                        {
+	                            maximoSocket = socketRespuesta;
+	                        }
+
+	                    info = malloc(200);
+	                    aux = malloc(10);
+	                    strcpy(info,"Nueva conexion asignada al socket: ");
+						snprintf(aux,10,"%d",socketRespuesta);
+	                    strcat(info,aux);
+	                    strcat(info,"\n");
+	                    //printf("Nueva conexion asignada al socket: %d\n\n",socketRespuesta);// Guardo la conexion
+	                    loggearInfo(info);
+	                    free(info);
+	                    free(aux);
+	                    }
+	                    else
+	                    {
+
+	                    	aux = malloc(10);
+	                    	info = malloc(200);
+
+	                    	datosRecibidos = recibirQuery(i,myQuery);
+
+
+	                    	if(datosRecibidos==0)
+	                    	{
+	                    		close(i);
+	                    		EliminarDeSet(i,&sockets);
+	                    	}else  {
+	                    		strcpy(info,"Se recibieron en total: ");
+	                    		snprintf(aux,10,"%d",datosRecibidos);
+	                    		strcat(info,aux);
+	                    		strcat(info," bytes\n");
+	                    		loggearInfo(aux);
+
+	                    		free(aux);
+	                    		free(info);
+	                    	}
+
+	                    }
+	        		}
+	        	}
+			}
+}
+
+
 void consola()
 {
 	 char * linea;
@@ -76,7 +161,7 @@ void iniciarServidor()
 
 	loggearInfoServidor(IP,Puerto);
 
-	levantarServidor(IP,Puerto);
+	levantarServidorLFS(IP,Puerto);
 
 	free(IP);
 	free(Puerto);

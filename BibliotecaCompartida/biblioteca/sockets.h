@@ -37,7 +37,7 @@ typedef struct timeval tiempoEspera;
 
 
 int32_t levantarCliente(char* servidorIP,char* servidorPuerto);
-void levantarServidor(char * servidorIP, char* servidorPuerto);
+int levantarServidor(char * servidorIP, char* servidorPuerto);
 
                         //Estructuras
 void limpiarEstructuraInicial(estructuraConexion* estructuraInicial);
@@ -76,6 +76,12 @@ void LimpiarSet(fd_set* setSockets);
                         //Impresion de datos
 void imprimirDatosServidor(estructuraConexion* estructuraObjetivo);
 void imprimirDatosCliente(estructuraConexionEntrante estructuraObjetivo,socklen_t direc_tam);
+
+/*
+ * Define espera maxima del servidor
+ */
+void definirEsperaServidor(tiempoEspera * esperaMaxima, int segundos);
+
 
 
 #endif /* SOCKETS_H_ */
