@@ -29,51 +29,101 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+/*
+ * En LFS se piensa en 2 hilos permanentes (server + consola) + Los hilos on demand que se vayan creando para atender las requests
+ * Se recibirán requests por consola y por el servidor
+ */
 
+pthread_t hiloConsola,hiloServidor;
 pthread_mutex_t mutex_Mem_Table;
 
-//Formato en que se guardarán los registros: NO SE HACE REFERENCIA CRUZADA CON EL NOMBRE DE LA TABLA
+/*
+ * El diccionario tendra como key al nombre de la tabla
+ * Cada nombre de diccionario tendra una lista de registros definidos abajo
+ * Una sola MemTable que tendrá los registros y una segunda para cuando la primera esta en dumping!
+ */
+
+t_dictionary * memTable;
+t_dictionary * memTableBackUp;
+
+/*
+ * Se define el registro de la siguiente forma
+ */
 typedef struct {
-	int key;
+	int32_t key;
 	char * value;
-	double timestamp;
+	int64_t timestamp;
 }registro;
 
-//Apunta a una Key de tabla + una diccionario. Habrá muchas tablas y cada tabla tendra una lista de registros
-
-typedef struct {
-	char ** nombresTablas;
-	registro * registros;
-	int indice;
-	//size_t tam;
-}baseTemporal;
-
-//Habrá una sola memTable + 1 copia para evitar bloqueos(al recibir request) cuando se esta haciendo dumping
-baseTemporal memTable;
-baseTemporal memTableSecundaria;
-
-//En principio se piensa en 3 hilos
-pthread_t hiloConsola,hiloMemTable,hiloServidor;
-
-
 void iniciarLFS();
-
-void consola();
-void iniciarServidor();
-
 void inicializarSemaforos();
 
+/*
+ * Funciones que tendrán los hilos de consola y server.
+ */
+void consola();
+void iniciarServidor();
+void loggearInfoServidor(char * IP, char * Puerto);
+
+
+/*
+ * Funcion que se encargará de procesar la query mediante el hilo creado on demand
+ */
+
 void procesarQuery(query * unaQuery);
+
+/*
+ * Garantiza la mutua exclusion
+ * Las validaciones sobre si existe o no la tabla se hacen a la hora de agregarMemTable
+ */
+
 void procesarInsert(query * unaQuery);
-void agregarUnRegistroMemTable(char * nombreTabla,int key, char * value, double timestamp);
+
+/*
+ * NO garantiza mutua exclusion. Permite lecturas sucias
+ */
 void procesarSelect(query * unaQuery);
 
-//Por ahora recibe de una query a la vez!
 
-bool existeTabla(char * nombreTabla);
+/*
+ * Por desarrollar
+ */
+void procesarCreate(query * unaQuery);
+void procesarDescribe(query * unaQuery);
+void procesarDrop(query * unaQuery);
 
-size_t tamanioRegistro(registro * nombreTabla);
+//Para pruebas
+query * crearInsert(char * nombreTabla,int32_t key,char * value,int64_t timestamp);
+void liberarInsert(query * unQuery);
 
+/*
+ * Para controlar la MemTable:
+ */
+registro * crearRegistro(int32_t key,char * value,int64_t timestamp);
+void liberarRegistro(registro * unRegistro);
+void imprimirListaRegistros(t_list * unaLista);
+void agregarRegistro(t_list * unaLista, registro* unRegistro);
+void agregarListaRegistros(t_list * lista,t_list * listaAgregar);
+registro * obtenerRegistro(t_list * lista, int posicionLista);
+void agregarUnRegistroMemTable(query * unaQuery);
+void agregarAMemTable(t_dictionary * memTable, query * unaQuery);
+void liberarMemTable(t_dictionary ** memTable);
+
+/*
+ * Para casteos query -> registro
+ */
+
+registro * castearRegistroQuery(query * unaQuery);
+char * castearRegistroString(registro * unRegistro);
+
+/*
+ * Para logs y prints
+ */
+
+void loggearListaRegistros(t_list * unaLista);
+void warningTablaNoCreada(char * tabla);
+void imprimirMemTable(t_dictionary * memTable);
+void loggearMemTable(t_dictionary * memTable);
 
 
 

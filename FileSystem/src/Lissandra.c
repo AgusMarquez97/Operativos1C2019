@@ -6,21 +6,28 @@ void iniciarLFS()
 	iniciarLog("FileSystem");
 	inicializarSemaforos();
 
+	memTable = dictionary_create();
+	memTableBackUp = dictionary_create();
+
 	/*
-	 * 3 Hilos iniciales para LFS:
+	 * 2 Hilos iniciales para LFS:
 	 * 1° -> Valida y gestiona la consola (Puede recibir Querys)
 	 * 2° -> Gestiona el servidor (Puede recibir Querys)
-	 * 3° -> Gestiona la MemTable -> Inserta cada registro que le envia el servidor o la consola
-	 * Por ahora no se crean hilos on demand x cada request
+	 * Luego se crean hilos on demand para gestionar requests
 	 */
 
-	//hiloConsola = crearHilo(consola,NULL);
-	hiloServidor = crearHilo(iniciarServidor,NULL);
-	//hiloMemTable = crearHiloDetachable(procesarQuery,NULL);
+	hiloConsola = crearHilo(consola,NULL);
+	//hiloServidor = crearHilo(iniciarServidor,NULL);
 
-	//esperarHilo(hiloConsola);
-	esperarHilo(hiloServidor);
+	esperarHilo(hiloConsola);
+	//esperarHilo(hiloServidor);
 
+}
+
+
+void inicializarSemaforos()
+{
+	pthread_mutex_init(&mutex_Mem_Table,NULL);
 }
 
 void consola()
@@ -53,46 +60,45 @@ void consola()
 void iniciarServidor()
 {
 
-	crearConfig("../configuraciones/configuracion.txt");
+	crearConfig("../configuraciones/configuracion.txt"); //Para correrlo en eclipse: "configuraciones/configuracion.txt"
 
-	char * iPServer = obtenerString("DIRECCION_IP");
-	char * puertoServer = obtenerString("PUERTO_ESCUCHA");
+	char * IP;
 
-	char * ip = malloc(50);
-	strcpy(ip,"IP del servidor: ");
-	strcat(ip,iPServer);
+	if(obtenerString("DIRECCION_IP"))
+	{
+			IP = strdup(obtenerString("DIRECCION_IP"));
+	}else
+	{
+			IP = strdup("127.0.0.1");
+	}
 
-	char * puerto = malloc(50);
-	strcpy(puerto,"Puerto de escucha: ");
-	strcat(puerto,puertoServer);
+	char * Puerto = strdup(obtenerString("PUERTO_ESCUCHA"));
 
+	loggearInfoServidor(IP,Puerto);
 
+	levantarServidor(IP,Puerto);
 
-	loggearInfo(ip);
-	loggearInfo(puerto);
-
-
-	/*
-	 * Minimamente dos hilos:
-	 * 1 hilo -> Controla y gestiona el Servidor
-	 * 1 hilo -> Controla y gestiona la Memtable
-	 * los demas Hilos / Procesos podrian gestionar el pasaje de LFS a FS (dumping) y los cambios del compactador
-	 */
-
-	levantarServidor(iPServer,puertoServer);
-
-	/*
-	 * ¿IniciarHilos, semaforos y procesos?
-	 */
-
-	free(iPServer);
-	free(puertoServer);
+	free(IP);
+	free(Puerto);
 
 }
 
-void inicializarSemaforos()
+void loggearInfoServidor(char * IP, char * Puerto)
 {
-	pthread_mutex_init(&mutex_Mem_Table,NULL);
+
+	char * ipServidor = malloc(strlen("IP del servidor: ") + strlen(IP) + 1);
+	strcpy(ipServidor,"IP del servidor: ");
+	strcat(ipServidor,IP);
+
+	char * puertoServidor = malloc(strlen("Puerto de escucha: ") + strlen(Puerto) + 1);
+	strcpy(puertoServidor,"Puerto de escucha: ");
+	strcat(puertoServidor,Puerto);
+
+	loggearInfo(ipServidor);
+	loggearInfo(puertoServidor);
+
+	free(ipServidor);
+	free(puertoServidor);
 }
 
 
@@ -107,40 +113,33 @@ void procesarQuery(query * unaQuery)
 		procesarInsert(unaQuery);
 		break;
 	default:
-		loggearWarning("Comando aun no disponible");
+		loggearWarning("Request aun no disponible");
 	}
 }
 
 void procesarInsert(query * unaQuery)
 {
-	if(existeTabla(unaQuery->tabla) == 0)
-	{
-		loggearError("Error: Tabla no existente en el FileSystem");
-		exit(-1);
-	}
 
-	/*
-	 * FE DE ERRATA DEL TP:
-	 * Al pedo obtener la metadata de la tabla -> La memtable no tiene particiones
-	 */
 	if(unaQuery->timestamp == -1)
 	{
-		unaQuery->timestamp = (double)time(NULL);//ObtenerTimeStamp();
+		unaQuery->timestamp = (double)time(NULL);//ObtenerTimeStamp(); -> VALIDAR ESTO!
 	}
-	agregarUnRegistroMemTable(unaQuery->tabla,unaQuery->key,unaQuery->value,unaQuery->timestamp);
+
+	agregarUnRegistroMemTable(unaQuery);
 }
 
 
-void agregarUnRegistroMemTable(char * nombreTabla,int key, char * value, double timestamp)
+void agregarUnRegistroMemTable(query * unaQuery)
 {
 	pthread_mutex_lock(&mutex_Mem_Table);
-	//Ver como agregar el registro -> Usar funcion de las commons
+	agregarAMemTable(memTable,unaQuery);
 	pthread_mutex_unlock(&mutex_Mem_Table);
 }
 
 
 void procesarSelect(query* unaQuery)
 {
+
 	/*
 	 * Para buscar:
 	 * 1° -> Buscar nombre Tabla
@@ -156,13 +155,216 @@ void procesarSelect(query* unaQuery)
 	 * --> Quedarse con el registro que posea el timestamp mayor
 	 */
 }
-
-/*
- * Luego cambiar esta logica
- */
-bool existeTabla(char * nombre)
+void agregarAMemTable(t_dictionary * memTable, query * unaQuery)
 {
-	return true;//list_find()
+	t_list * temp;
+	registro * reg = castearRegistroQuery(unaQuery);
+
+	if(dictionary_has_key(memTable,unaQuery->tabla))
+	{
+		temp = (t_list *)dictionary_remove(memTable,unaQuery->tabla);
+
+		if(list_size(temp) == 0 || temp == NULL)
+		{
+			temp = list_create();
+		}
+		agregarRegistro(temp,reg);
+		dictionary_put(memTable,unaQuery->tabla,temp);
+		loggearInfo("Registro insertado correctamente");
+
+	}
+	else
+	{
+		temp = list_create();
+		agregarRegistro(temp,reg);
+		dictionary_put(memTable,unaQuery->tabla,temp);
+
+		warningTablaNoCreada(unaQuery->tabla);
+		loggearInfo("Registro insertado correctamente");
+
+	}
+
+}
+
+void liberarMemTable(t_dictionary ** memTable)
+{
+	dictionary_clean_and_destroy_elements(*memTable,free);
+}
+
+registro * crearRegistro(int32_t key,char * value,int64_t timestamp)
+{
+
+	registro * unRegistro = malloc(sizeof(registro) + strlen(value) + 1);
+
+	unRegistro->key = key;
+	unRegistro->value = strdup(value);
+	unRegistro->timestamp = timestamp;
+
+	return unRegistro;
+}
+
+void liberarRegistro(registro * unRegistro)
+{
+	free(unRegistro->value);
+	free(unRegistro);
+}
+
+
+void imprimirListaRegistros(t_list * unaLista)
+{
+	void imprimirRegistro(void * valor)
+		{
+			printf("{%d %s %lli}\n",((registro*)valor)->key,((registro*)valor)->value,((registro*)valor)->timestamp);
+		}
+	list_iterate(unaLista,(void*)imprimirRegistro);
+}
+
+void agregarRegistro(t_list * unaLista, registro* unRegistro)
+{
+	list_add(unaLista,(void*)unRegistro);
+}
+
+void agregarListaRegistros(t_list * lista,t_list * listaAgregar)
+{
+	list_add_all(lista,listaAgregar);
+}
+
+registro * obtenerRegistro(t_list * lista, int posicionLista)
+{
+	return (registro*)list_get(lista,posicionLista);
+}
+
+
+registro * castearRegistroQuery(query * unaQuery)
+{
+	return crearRegistro(unaQuery->key,unaQuery->value,unaQuery->timestamp);
+
+}
+
+char * castearRegistroString(registro * unRegistro)
+{
+	int longitud = strlen((char*)unRegistro->value) + 1;
+
+	char * registroFinal = malloc(40 + 40 + longitud + 2);
+
+	char * auxK = malloc(40);
+	char * auxV = malloc(longitud);
+	char * auxD = malloc(40);
+
+	snprintf(auxK,40,"%d",unRegistro->key);
+	snprintf(auxD,40,"%lli",unRegistro->timestamp);
+	strcpy(auxV,unRegistro->value);
+
+	strcpy(registroFinal,auxK);
+	strcat(registroFinal," ");
+	strcat(registroFinal,auxV);
+	strcat(registroFinal," ");
+	strcat(registroFinal,auxD);
+
+	free(auxK);
+	free(auxV);
+	free(auxD);
+
+	return registroFinal;
+}
+
+
+void loggearListaRegistros(t_list * unaLista)
+{
+
+	void loggearRegistro(void * valor)
+	{
+
+	char * aux = strdup(castearRegistroString((registro*)valor));
+	char * mensajeALoggear = malloc(strlen(aux) + strlen("Se logea el registro: {") + 2);
+
+	strcpy(mensajeALoggear,"Se logea el registro: {");
+	strcat(mensajeALoggear,aux);
+	strcat(mensajeALoggear,"}");
+
+	loggearInfo(mensajeALoggear);
+
+	free(aux);
+	free(mensajeALoggear);
+	}
+		list_iterate(unaLista,(void*)loggearRegistro);
+
+}
+
+void warningTablaNoCreada(char * tabla)
+{
+		char * wrg = malloc(strlen(tabla) + 1 + 100);
+
+		strcpy(wrg,"Tabla: ");
+		strcat(wrg,"'");
+		strcat(wrg,tabla);
+		strcat(wrg,"'");
+		strcat(wrg," no creada previamente");
+
+		loggearWarning(wrg);
+		free(wrg);
+}
+
+
+
+
+void imprimirMemTable(t_dictionary * memTable)
+{
+	void imprimirLista(char * nombreTabla, void * registros)
+	{
+		printf("Tabla: %s \n", nombreTabla);
+		imprimirListaRegistros((t_list*)registros);
+	}
+	dictionary_iterator(memTable,(void*)imprimirLista);
+}
+
+
+
+void loggearMemTable(t_dictionary * memTable)
+{
+	loggearInfo("Comenzando el log de la MemTable...");
+
+	void loggearTabla(char * nombreTabla, void * registros)
+	{
+		char * nomT = strdup(nombreTabla);
+		char * aux = malloc(strlen("Logs de tabla: '") + strlen(nomT) + 2);
+		strcpy(aux,"Logs de tabla: '");
+		strcat(aux,nomT);
+		strcat(aux,"'");
+		loggearInfo(aux);
+
+		loggearListaRegistros((t_list*)registros);
+
+		free(nomT);
+		free(aux);
+	}
+	dictionary_iterator(memTable,(void*)loggearTabla);
+}
+
+
+query * crearInsert(char * nombreTabla,int32_t key,char * value,int64_t timestamp)
+{
+	char * aux = malloc(strlen(value) + 3);
+
+	strcpy(aux,"'");
+	strcat(aux,value);
+	strcat(aux,"'");
+
+	query * unaQuery = malloc(sizeof(query) + strlen(aux) + strlen(nombreTabla));
+
+	unaQuery->tabla = strdup(nombreTabla);
+	unaQuery->key = key;
+	unaQuery->value = strdup(aux);
+	unaQuery->timestamp = timestamp;
+
+	return unaQuery;
+}
+
+void liberarInsert(query * unQuery)
+{
+	free(unQuery->tabla);
+	free(unQuery->value);
+	free(unQuery);
 }
 
 
