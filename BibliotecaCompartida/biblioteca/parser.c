@@ -216,7 +216,7 @@ int parsear(char * string_query,query *struct_query)
 	  } else {
 			printf("El run es correcto\n");
 			struct_query->requestType = RUN;
-			struct_query->script = query_split[1];
+			//struct_query->script = query_split[1];
 			return RUN;
 		 }
 	}
