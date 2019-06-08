@@ -15,9 +15,16 @@ int main(void) {
 	crearConfig(PATHCONFIG);
 	configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
 	leerArchivoConfiguracion();
+	reservarMemoriaPrincipal();
 
-	pthread_t hilo_consola;
+	pthread_t hilo_consola, hilo_conexionKernel, hilo_conexionFS;
+
+	pthread_create(&hilo_conexionFS, NULL, (void*) conexionFS, NULL);
+	pthread_create(&hilo_conexionKernel, NULL, (void*) conexionKernel, NULL);
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
+
+	pthread_join(hilo_conexionFS,NULL);
+	pthread_join(hilo_conexionKernel,NULL);
 	pthread_join(hilo_consola,NULL);
 
 	free(configuracionMemoria);
@@ -196,6 +203,27 @@ void EscribirArchivoLog(){
 					loggearInfoConcatenandoDosMensajes("El tamaño de Memoria es: ", tammem);
 					free(tammem);
 }
+void reservarMemoriaPrincipal(){
+	// Reservamos la memoria
+		g_TamanioMemoria = configuracionMemoria->TAM_MEM;
+		g_BaseMemoria = (char*) malloc(g_TamanioMemoria);
+	// Rellenamos con ceros.
+		memset(g_BaseMemoria, '0', g_TamanioMemoria * sizeof(char));
+
+	// si no podemos salimos y cerramos el programa.
+		if (g_BaseMemoria == NULL )
+		{
+			loggearInfo("No se pudo reservar la memoria.");
+		}
+		else
+		{
+
+			char* tammem= malloc(7*sizeof(char));
+			sprintf(tammem,"%d",g_TamanioMemoria);
+			loggearInfoConcatenandoDosMensajes("MEMORIA RESERVADA. Tamaño de la memoria ", tammem);
+			free(tammem);
+		}
+}
 
 /*
 char* procesarSelect(query selectQuery){
@@ -206,5 +234,14 @@ char* procesarSelect(query selectQuery){
 char* procesarInsert(query insertQuery){
 	return
 }*/
+
+void conexionFS(){
+	printf("Conectandose al FS");
+}
+
+void conexionKernel(){
+	printf("Esperando conexion del Kernel");
+}
+
 
 

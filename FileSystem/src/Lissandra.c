@@ -16,11 +16,11 @@ void iniciarLFS()
 	 * Luego se crean hilos on demand para gestionar requests
 	 */
 
-	hiloConsola = crearHilo(consola,NULL);
-	//hiloServidor = crearHilo(iniciarServidor,NULL);
+	//hiloConsola = crearHilo(consola,NULL);
+	hiloServidor = crearHilo(iniciarServidor,NULL);
 
-	esperarHilo(hiloConsola);
-	//esperarHilo(hiloServidor);
+	//esperarHilo(hiloConsola);
+	esperarHilo(hiloServidor);
 
 }
 
@@ -30,17 +30,47 @@ void inicializarSemaforos()
 	pthread_mutex_init(&mutex_Mem_Table,NULL);
 }
 
+void loggearNuevaConexion(int socket)
+{
+	  char * info = malloc(strlen("Nueva conexion asignada al socket: ") + 10 + 4);
+	  char * aux = malloc(10);
+
+	  strcpy(info,"Nueva conexion asignada al socket: ");
+	  snprintf(aux,10,"%d",socket);
+	  strcat(info,aux);
+	  strcat(info,"\n");
+
+	  loggearInfo(info);
+
+	  free(info);
+      free(aux);
+}
+void loggearDatosRecibidos(int socket, int datosRecibidos)
+{
+		  char * info = malloc(strlen("Se recibieron  bytes del socket  ") + 30 + 5);
+		  char * aux = malloc(30);
+
+		  strcpy(info,"Se recibieron  ");
+		  snprintf(aux,30,"%d",datosRecibidos);
+		  strcat(info," bytes del socket ");
+		  snprintf(aux,30,"%d",socket);
+		  strcat(info,aux);
+		  strcat(info,"\n");
+
+		  loggearInfo(info);
+
+		  free(info);
+	      free(aux);
+}
 
 void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 {
-			//void * buffer;
+			query * myQuery;
 	  	  	int socketRespuesta, maximoSocket;
 	  	  	int datosRecibidos = -1;
 			fd_set sockets, clientes;
 
-	        char * info;char * aux;
-
-	        int socketServidor = levantarServer(servidorIP,servidorPuerto);
+	        int socketServidor = levantarServidor(servidorIP,servidorPuerto);
 
 	        LimpiarSet(&sockets);
 	        LimpiarSet(&clientes);
@@ -51,10 +81,9 @@ void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 	        tiempoEspera esperaMaxima;
 	        definirEsperaServidor(&esperaMaxima,300);
 
-		while(1) // Loop para escuchar conexiones entrantes
+	        while(1) // Loop para escuchar conexiones entrantes
 			{
 	        clientes = sockets;
-
 	        ejecutarSelect(maximoSocket,&clientes,&esperaMaxima); //pasarle null si no importa
 
 	        for(int i = 0;i<=maximoSocket;i++) //Itero hasta el ultimo socket
@@ -66,46 +95,25 @@ void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 
 	                    socketRespuesta = aceptarConexion(socketServidor);
 
-	                    agregarASet(socketRespuesta,&sockets); //añado a sockets al nuevo cliente
+	                    agregarASet(socketRespuesta,&sockets); //añado a set de sockets al nuevo cliente
 
 	                        if (socketRespuesta > maximoSocket) // Trackeo el maximo socket
 	                        {
 	                            maximoSocket = socketRespuesta;
 	                        }
 
-	                    info = malloc(200);
-	                    aux = malloc(10);
-	                    strcpy(info,"Nueva conexion asignada al socket: ");
-						snprintf(aux,10,"%d",socketRespuesta);
-	                    strcat(info,aux);
-	                    strcat(info,"\n");
-	                    //printf("Nueva conexion asignada al socket: %d\n\n",socketRespuesta);// Guardo la conexion
-	                    loggearInfo(info);
-	                    free(info);
-	                    free(aux);
+	                    loggearNuevaConexion(socketRespuesta);
+
 	                    }
 	                    else
 	                    {
-
-	                    	aux = malloc(10);
-	                    	info = malloc(200);
-
 	                    	datosRecibidos = recibirQuery(i,myQuery);
-
-
 	                    	if(datosRecibidos==0)
 	                    	{
 	                    		close(i);
 	                    		EliminarDeSet(i,&sockets);
 	                    	}else  {
-	                    		strcpy(info,"Se recibieron en total: ");
-	                    		snprintf(aux,10,"%d",datosRecibidos);
-	                    		strcat(info,aux);
-	                    		strcat(info," bytes\n");
-	                    		loggearInfo(aux);
-
-	                    		free(aux);
-	                    		free(info);
+	                    		loggearDatosRecibidos(i,datosRecibidos);
 	                    	}
 
 	                    }

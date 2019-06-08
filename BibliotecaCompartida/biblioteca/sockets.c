@@ -190,14 +190,12 @@ int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar){
 
 int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 
-	 char * info = malloc(200);
+	 char * info = malloc(300);
 	 char * aux = malloc(50);
 
 	strcpy(info,"Recibiendo info del socket ");
 	snprintf(aux,10,"%d",socketConexion);
 	strcat(info,aux);
-
-
 
 	loggearInfo(info);
 
@@ -233,8 +231,6 @@ int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 			strcat(info,"\n");
 			loggearWarning(info);
 		}
-		free(info);
-		free(aux);
 
 		return 0;
 	}

@@ -12,6 +12,9 @@
 
 //Enviar y recibir datos primitivos:
 
+void loggearSelect(char * tabla, int32_t key);
+void loggearInsert(char * tabla, int32_t key, char * value, int64_t timestamp);
+
 void enviarInt(int socketReceptor, int32_t entero);
 void enviarChar(int socketReceptor, char caracter);
 void enviarString(int socketReceptor, char* cadena);

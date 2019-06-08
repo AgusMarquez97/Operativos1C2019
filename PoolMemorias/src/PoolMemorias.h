@@ -44,9 +44,20 @@ typedef struct {
 	int32_t MEMORY_NUMBER;
 } configuracion;
 
+// - Puntero para la lectura de los campos del archivo de configuracion
 configuracion *configuracionMemoria;
+
+// - Base de la memoria
+char* g_BaseMemoria;
+
+// Tamaño de la memoria
+int g_TamanioMemoria;
 
 void consola();
 void leerArchivoConfiguracion();
+void EscribirArchivoLog();
+void reservarMemoriaPrincipal();
+void conexionKernel();
+void conexionFS();
 
 #endif /* POOLMEMORIAS_H_ */
