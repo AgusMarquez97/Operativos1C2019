@@ -10,9 +10,18 @@
 
 #include "PoolMemorias.h"
 
+// - Base de la memoria
+char* g_BaseMemoria;
+
+// Tamaño de la memoria
+int g_TamanioMemoria;
+
 int main(void) {
 	leerArchivoConfiguracion();
-	pthread_t hilo_consola;
+	reservarMemoriaPrincipal();
+	pthread_t hilo_consola, hilo_conexionKernel, hilo_conexionFS;
+	//pthread_create(&hilo_conexionFS, NULL, (void*) conexionFS, NULL);
+	pthread_create(&hilo_conexionKernel, NULL, (void*) conexionKernel, NULL);
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 	pthread_join(hilo_consola,NULL);
 
@@ -154,7 +163,34 @@ void EscribirArchivoLog(){
 					loggearInfoConcatenandoDosMensajes("El tamaño de Memoria es: ", tammem);
 					free(tammem);
 }
+void reservarMemoriaPrincipal(){
+	// Reservamos la memoria
+		g_TamanioMemoria = configuracionMemoria->TAM_MEM;
+		g_BaseMemoria = (char*) malloc(g_TamanioMemoria);
+	// Rellenamos con ceros.
+		memset(g_BaseMemoria, '0', g_TamanioMemoria * sizeof(char));
 
+	// si no podemos salimos y cerramos el programa.
+		if (g_BaseMemoria == NULL )
+		{
+			loggearInfo("No se pudo reservar la memoria.");
+		}
+		else
+		{
 
+			char* tammem= malloc(7*sizeof(char));
+			sprintf(tammem,"%d",g_TamanioMemoria);
+			loggearInfoConcatenandoDosMensajes("MEMORIA RESERVADA. Tamaño de la memoria ", tammem);
+			free(tammem);
+		}
+
+	}
+void conexionFS(){
+	printf("Conectandose al FS");
+}
+
+void conexionKernel(){
+	printf("Esperando conexion del Kernel");
+}
 
 

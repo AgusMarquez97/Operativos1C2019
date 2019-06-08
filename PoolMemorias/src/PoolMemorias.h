@@ -48,5 +48,8 @@ configuracion *configuracionMemoria;
 
 void consola();
 void leerArchivoConfiguracion();
+void EscribirArchivoLog();
+void reservarMemoriaPrincipal();
+void conexionKernel();
 
 #endif /* POOLMEMORIAS_H_ */
