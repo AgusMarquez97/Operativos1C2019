@@ -11,10 +11,16 @@
 #include "PoolMemorias.h"
 
 int main(void) {
+
+	crearConfig(PATHCONFIG);
+	configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
 	leerArchivoConfiguracion();
+
 	pthread_t hilo_consola;
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 	pthread_join(hilo_consola,NULL);
+
+	free(configuracionMemoria);
 
 	return 1;
 
@@ -25,8 +31,9 @@ void consola(){
 	sleep(2);
 	system("clear");
 	puts("Bienvenido a la consola de la memoria...");
-	char* comando;
+	query* query= malloc(sizeof(query));
 	while(1){
+		char* comando = malloc(50);
 		comando = readline(">");
 		if(strncmp(comando,"exit",4) == 0){
 			break;
@@ -36,10 +43,37 @@ void consola(){
 		if (strncmp(comando,"clear",5) == 0) {
 			system("clear");
 		}else{
-			printf("El comando ingresado fue %s\n",comando);
+			int tipoDeComando = parsear(comando,query);
+			switch(tipoDeComando){
+			case 1:
+				;
+				char* comandoEnChar = malloc(sizeof(char));
+				sprintf(comandoEnChar,"%d",tipoDeComando);
+				loggearInfoConcatenandoDosMensajes("El numero comando ingresado fue: ", comandoEnChar);
+				loggearInfo("El comando ingresado fue SELECT");
+				loggearInfoConcatenandoDosMensajes("La tabla del select fue:", query->tabla);
+				//procesarSelect(query);
+				free(comandoEnChar);
+				break;
+			case 2:
+				;
+				char* comandoEnChar2 = malloc(sizeof(char));
+				sprintf(comandoEnChar,"%d",tipoDeComando);
+				loggearInfoConcatenandoDosMensajes("El numero comando ingresado fue: ", comandoEnChar);
+				loggearInfo("El comando ingresado fue INSERT");
+				loggearInfoConcatenandoDosMensajes("La tabla al que se realizara el insert es:", query->tabla);
+				//procesarInsert(query);
+				free(comandoEnChar2);
+			break;
+			default:
+				break;
+			}
+			system("clear");
+
 		}
+		free(comando);
 	}
-	free(comando);
+
 
 	return;
 
@@ -47,9 +81,7 @@ void consola(){
 //Leemos arcchivo configuracion
 void leerArchivoConfiguracion(){
 
-		crearConfig(PATHCONFIG);
 
-		configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
 
 		configuracionMemoria->IP_FS = obtenerString("IP_FS");
 		configuracionMemoria->IP_SEEDS = obtenerArray("IP_SEEDS");
@@ -64,7 +96,7 @@ void leerArchivoConfiguracion(){
 		configuracionMemoria->TAM_MEM = obtenerInt("TAM_MEM");
 
 		EscribirArchivoLog();
-		free(configuracionMemoria);
+
 
 }
 void EscribirArchivoLog(){
@@ -88,28 +120,38 @@ void EscribirArchivoLog(){
 			aux2 = malloc(longitud+20);
 			strcpy(aux2,"Direcciones de IP de Seeds:");
 			while((*(aux+i)) != NULL){
-			 strcat(aux2,(*(aux+i)));
+				/*if(i ==0){
+					strcat(aux2,(char*) (*(aux+i)));
+				}
+				else{
+					strcat(aux2, ",");
+					strcat(aux2,(char*) (*(aux+i)));
+				}*/
+				strcat(aux2,(char*) (*(aux+i)));
 			 i++;
 			}
 			loggearInfo(aux2);
+			free(aux2);
 
 					int j =0;
 					char* aux4;
 					int* aux3=configuracionMemoria->PUERTO_SEEDS;
 					int cantidad_puertos= sizeof(configuracionMemoria->PUERTO_SEEDS);
-					aux4= malloc(20+cantidad_puertos*sizeof(int));
+					aux4= (char*) malloc(25+(cantidad_puertos*sizeof(int)));
 					strcpy(aux4,"Puertos de Seeds:");
 					while((*(aux3+j)) != NULL){
 						if(j ==0){
-							strcat(aux4,(char*) (*(aux3+j))),
-							strcat(aux4, ", ");
+							strcat(aux4,(char*) (*(aux3+j)));
+							//strcat(aux4, ", ");
 						}
 						else{
+							strcat(aux4, ",");
 					 strcat(aux4,(char*) (*(aux3+j)));
 						}
 					 j++;
 					}
-					loggearInfo(aux4);
+					log_info(logger,aux4);
+					free(aux4);
 
 					int nropuerto = configuracionMemoria->PUERTO;
 					char* puerto = malloc(4*sizeof(char));
@@ -155,6 +197,14 @@ void EscribirArchivoLog(){
 					free(tammem);
 }
 
+/*
+char* procesarSelect(query selectQuery){
+	return
+}*/
 
+/*
+char* procesarInsert(query insertQuery){
+	return
+}*/
 
 

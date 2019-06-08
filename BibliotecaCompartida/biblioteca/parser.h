@@ -14,5 +14,14 @@
 
 int ERROR = -1;
 
+int parsear(char * string_query,query *struct_query);
+
+int string_size(char ** text);
+
+int nombre_tabla_valido(char * text);
+
+int valor_solo_numerico(char * text);
+
+int tipo_consistencia_valido(char * texto);
 
 #endif /* PARSER_H_ */
