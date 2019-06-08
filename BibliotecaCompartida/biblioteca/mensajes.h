@@ -64,7 +64,7 @@ void enviarInsert(int socketReceptor, char* tabla, int32_t key, char* value, int
  * 3° -> N BYTES -> BUFFER
  */
 
-int recibirQuery(int socketEmisor, query* myQuery);
+int recibirQuery(int socketEmisor, query ** myQuery);
 
 
 

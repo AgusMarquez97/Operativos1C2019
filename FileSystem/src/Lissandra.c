@@ -1,8 +1,28 @@
 #include "Lissandra.h"
 
+
+query * crearQuery(int32_t tipoRequest, char * nombreTabla, int32_t key, char * value, int64_t timestamp)
+{
+	query * unaQuery = malloc(sizeof(query));
+
+	unaQuery->requestType = tipoRequest;
+	unaQuery->tabla = strdup(nombreTabla);
+	unaQuery->key = key;
+
+	if(tipoRequest == INSERT)
+	{
+	unaQuery->value = strdup(value);
+	unaQuery->timestamp = timestamp;
+	}
+
+	return unaQuery;
+}
+
 void iniciarLFS()
 {
+	remove("Memtable.log");
 	remove("Lissandra.log");
+
 	iniciarLog("FileSystem");
 	inicializarSemaforos();
 
@@ -16,12 +36,11 @@ void iniciarLFS()
 	 * Luego se crean hilos on demand para gestionar requests
 	 */
 
-	//hiloConsola = crearHilo(consola,NULL);
+	hiloConsola = crearHilo(consola,NULL);
 	hiloServidor = crearHilo(iniciarServidor,NULL);
 
-	//esperarHilo(hiloConsola);
+	esperarHilo(hiloConsola);
 	esperarHilo(hiloServidor);
-
 }
 
 
@@ -65,7 +84,7 @@ void loggearDatosRecibidos(int socket, int datosRecibidos)
 
 void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 {
-			query * myQuery;
+			query * myQuery = NULL;
 	  	  	int socketRespuesta, maximoSocket;
 	  	  	int datosRecibidos = -1;
 			fd_set sockets, clientes;
@@ -79,7 +98,7 @@ void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 	        maximoSocket = socketServidor;
 
 	        tiempoEspera esperaMaxima;
-	        definirEsperaServidor(&esperaMaxima,300);
+	        definirEsperaServidor(&esperaMaxima,30);
 
 	        while(1) // Loop para escuchar conexiones entrantes
 			{
@@ -107,14 +126,21 @@ void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 	                    }
 	                    else
 	                    {
-	                    	datosRecibidos = recibirQuery(i,myQuery);
+	                    	datosRecibidos = recibirQuery(i,&myQuery);
 	                    	if(datosRecibidos==0)
 	                    	{
 	                    		close(i);
 	                    		EliminarDeSet(i,&sockets);
+	                    		loggearMemTable(memTable);
 	                    	}else  {
-	                    		loggearDatosRecibidos(i,datosRecibidos);
+
+	                    		//crearHiloDetachable(procesarQuery,myQuery);
+	                    		pthread_t h1 = crearHilo(procesarQuery,myQuery);
+	                    		esperarHilo(h1);
+	                    		//free(myQuery)-> rompe como arbolito de navidad
+	                    		//loggearDatosRecibidos(i,datosRecibidos);
 	                    	}
+
 
 	                    }
 	        		}
@@ -197,6 +223,7 @@ void loggearInfoServidor(char * IP, char * Puerto)
 
 void procesarQuery(query * unaQuery)
 {
+	logMemTable = retornarLogConPath("Memtable.log","Memtable");
 	switch(unaQuery->requestType)
 	{
 	case SELECT:
@@ -206,7 +233,7 @@ void procesarQuery(query * unaQuery)
 		procesarInsert(unaQuery);
 		break;
 	default:
-		loggearWarning("Request aun no disponible");
+		loggearWarningEnLog(logMemTable,"Request aun no disponible");
 	}
 }
 
@@ -215,7 +242,7 @@ void procesarInsert(query * unaQuery)
 
 	if(unaQuery->timestamp == -1)
 	{
-		unaQuery->timestamp = (double)time(NULL);//ObtenerTimeStamp(); -> VALIDAR ESTO!
+		unaQuery->timestamp = 1;//(double)time(NULL);//ObtenerTimeStamp(); -> VALIDAR ESTO!
 	}
 
 	agregarUnRegistroMemTable(unaQuery);
@@ -229,10 +256,27 @@ void agregarUnRegistroMemTable(query * unaQuery)
 	pthread_mutex_unlock(&mutex_Mem_Table);
 }
 
+void loggearSelectMemT(query* unaQuery)
+{
+		char * key = malloc(50);
+		char * req = malloc(strlen("Se recibio: {SELECT } ") + strlen(unaQuery->tabla) + 2);
+
+		strcpy(req,"Se recibio: {SELECT ");
+		strcat(req,unaQuery->tabla);
+		strcat(req," ");
+		snprintf(key,40,"%d",unaQuery->key);
+		strcat(req,key);
+		strcat(req,"}");
+
+		loggearInfoEnLog(logMemTable,req);
+
+		free(key);
+		free(req);
+}
 
 void procesarSelect(query* unaQuery)
 {
-
+	loggearSelectMemT(unaQuery);
 	/*
 	 * Para buscar:
 	 * 1° -> Buscar nombre Tabla
@@ -247,6 +291,47 @@ void procesarSelect(query* unaQuery)
 	 *
 	 * --> Quedarse con el registro que posea el timestamp mayor
 	 */
+
+	/*
+	 * Por ahora solo busca en la MemTable
+	 */
+	char * aux;
+	t_list * temp;
+	void * condicionVerdadera;
+
+	if(dictionary_has_key(memTable,unaQuery->tabla))
+	{
+		temp = (t_list *)dictionary_get(memTable,unaQuery->tabla);
+
+		bool condicion(void * elementoLista)
+		{
+			return ((registro*)elementoLista)->key == unaQuery->key;
+		}
+
+		condicionVerdadera = (registro*)list_find(temp,(void*)condicion);
+
+		if(condicionVerdadera)
+		{
+		aux = malloc(strlen("Se encontro el registro buscado: {") + strlen(castearRegistroString(condicionVerdadera)) + 2);
+		strcpy(aux,"Se encontro el registro buscado: {");
+		strcat(aux,castearRegistroString(condicionVerdadera));
+		strcat(aux,"}");
+		loggearInfoEnLog(logMemTable,aux);
+		free(aux);
+
+		}else{
+		loggearInfoEnLog(logMemTable,"No se encontro la key buscada");
+		}
+	}	else
+	{
+		aux = malloc(strlen("No existe la tabla {}") + strlen(unaQuery->tabla) + 2);
+		strcpy(aux,"No existe la tabla en {SELECT ");
+		strcat(aux,unaQuery->tabla);
+		strcat(aux,"}");
+		loggearInfoEnLog(logMemTable,aux);
+		free(aux);
+	}
+
 }
 void agregarAMemTable(t_dictionary * memTable, query * unaQuery)
 {
@@ -263,7 +348,7 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery)
 		}
 		agregarRegistro(temp,reg);
 		dictionary_put(memTable,unaQuery->tabla,temp);
-		loggearInfo("Registro insertado correctamente");
+		loggearInfoEnLog(logMemTable,"Se inserto un registro correctamente");
 
 	}
 	else
@@ -273,7 +358,7 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery)
 		dictionary_put(memTable,unaQuery->tabla,temp);
 
 		warningTablaNoCreada(unaQuery->tabla);
-		loggearInfo("Registro insertado correctamente");
+		loggearInfoEnLog(logMemTable,"Se inserto un registro correctamente");
 
 	}
 
@@ -375,7 +460,7 @@ void loggearListaRegistros(t_list * unaLista)
 	strcat(mensajeALoggear,aux);
 	strcat(mensajeALoggear,"}");
 
-	loggearInfo(mensajeALoggear);
+	loggearInfoEnLog(logMemTable,mensajeALoggear);
 
 	free(aux);
 	free(mensajeALoggear);
@@ -388,13 +473,11 @@ void warningTablaNoCreada(char * tabla)
 {
 		char * wrg = malloc(strlen(tabla) + 1 + 100);
 
-		strcpy(wrg,"Tabla: ");
-		strcat(wrg,"'");
+		strcpy(wrg,"Tabla: '");
 		strcat(wrg,tabla);
-		strcat(wrg,"'");
-		strcat(wrg," no creada previamente");
+		strcat(wrg,"' no creada previamente");
 
-		loggearWarning(wrg);
+		loggearWarningEnLog(logMemTable,wrg);
 		free(wrg);
 }
 
@@ -415,7 +498,7 @@ void imprimirMemTable(t_dictionary * memTable)
 
 void loggearMemTable(t_dictionary * memTable)
 {
-	loggearInfo("Comenzando el log de la MemTable...");
+	loggearInfoEnLog(logMemTable,"Comenzando la lectura de la MemTable...");
 
 	void loggearTabla(char * nombreTabla, void * registros)
 	{
@@ -424,7 +507,7 @@ void loggearMemTable(t_dictionary * memTable)
 		strcpy(aux,"Logs de tabla: '");
 		strcat(aux,nomT);
 		strcat(aux,"'");
-		loggearInfo(aux);
+		loggearInfoEnLog(logMemTable,aux);
 
 		loggearListaRegistros((t_list*)registros);
 

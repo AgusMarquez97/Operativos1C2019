@@ -43,6 +43,15 @@ void loggearWarning(char* mensaje);
 void loggearError(char* mensaje);
 void loggearInfoConComentario(char* comentario, char* mensaje);
 
+/*
+ * Para gestion de logs no Globales
+ */
+
+t_log * retornarLogConPath(char* path,char* nombre); //Tambien imprime por pantalla
+
+void loggearInfoEnLog(t_log * unLog,char* mensaje);
+void loggearErrorEnLog(t_log * unLog,char* mensaje);
+void loggearWarningEnLog(t_log * unLog,char* mensaje);
 
 
 #endif /* LOGS_H_ */

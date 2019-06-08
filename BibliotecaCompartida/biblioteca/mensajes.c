@@ -159,7 +159,7 @@ int recibirString(int socketEmisor, char** cadena)
 
 
 //RECIBIR QUERY
-int recibirQuery(int socketEmisor, query* myQuery) {
+int recibirQuery(int socketEmisor, query ** myQuery) {
 
 	int cantidadRecibida;
 	int desplazamiento = 0;
@@ -181,19 +181,23 @@ int recibirQuery(int socketEmisor, query* myQuery) {
 
 	cantidadRecibida += recibir(socketEmisor,buffer,tamanioBuffer);
 
+	*myQuery = realloc(*myQuery,tamanioQuery);
+
 	switch(tipoQuery) {
 		case(SELECT):
-		deserializarSelect(&myQuery->tabla, &myQuery->key, buffer, &desplazamiento);
-		loggearSelect(myQuery->tabla,myQuery->key);
+		((*myQuery))->requestType = SELECT;
+		deserializarSelect(&(*myQuery)->tabla, &(*myQuery)->key, buffer, &desplazamiento);
+		loggearSelect((*myQuery)->tabla,(*myQuery)->key);
 			break;
 		case(INSERT):
-		deserializarInsert(&myQuery->tabla, &myQuery->key, &myQuery->value, &myQuery->timestamp, buffer, &desplazamiento);
-		loggearInsert(myQuery->tabla,myQuery->key,myQuery->value,myQuery->timestamp);
+		(*myQuery)->requestType = INSERT;
+		deserializarInsert(&(*myQuery)->tabla, &(*myQuery)->key, &(*myQuery)->value, &(*myQuery)->timestamp, buffer, &desplazamiento);
+		loggearInsert((*myQuery)->tabla,(*myQuery)->key,(*myQuery)->value,(*myQuery)->timestamp);
 		break;
 		default:
 			loggearInfo("Request aun no disponible");
 	}
-
+	//free(*myQuery);
 	return cantidadRecibida;
 }
 
@@ -201,7 +205,7 @@ int recibirQuery(int socketEmisor, query* myQuery) {
 void loggearSelect(char * tabla, int32_t key)
 {
 	char * aux = malloc(30);
-	char * log = malloc(strlen("Se recibio la siguiente query: {SELECT ") + 8 + 30);
+	char * log = malloc(strlen("Se recibio la siguiente query: {SELECT ") + strlen(tabla) + 8 + 30);
 	strcpy(log,"Se recibio la siguiente query: {SELECT ");
 	strcat(log,tabla);
 	strcat(log," ");
@@ -217,18 +221,18 @@ void loggearSelect(char * tabla, int32_t key)
 }
 void loggearInsert(char * tabla, int32_t key, char * value, int64_t timestamp)
 {
-	char * aux = malloc(30);
-	char * log = malloc(strlen("Se recibio la siguiente query: {INSERT ") + 20 + 30);
+	char * aux = malloc(100);
+	char * log = malloc(strlen("Se recibio la siguiente query: {INSERT ") + strlen(tabla) + strlen(value) + 100);
 
 	strcpy(log,"Se recibio la siguiente query: {INSERT ");
 	strcat(log,tabla);
 	strcat(log," ");
-	snprintf(aux,30,"%d",key);
+	snprintf(aux,100,"%d",key);
 	strcat(log,aux);
 	strcat(log," '");
 	strcat(log,value);
 	strcat(log,"' ");
-	snprintf(aux,30,"%lli",timestamp);
+	snprintf(aux,100,"%lli",timestamp);
 	strcat(log,aux);
 	strcat(log,"}");
 

@@ -25,9 +25,9 @@ typedef struct {
 	char* value;
 	int64_t timestamp;
 	int32_t consistencyType;
-	char * script
+	char * script;
 	
-} query;
+}query;
 
 //Faltarian los parametros de create -> Ver de hacer una estructura por cada request
 

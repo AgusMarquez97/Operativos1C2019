@@ -29,6 +29,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+t_log * logMemTable;
+
 /*
  * En LFS se piensa en 2 hilos permanentes (server + consola) + Los hilos on demand que se vayan creando para atender las requests
  * Se recibirán requests por consola y por el servidor
@@ -93,6 +95,7 @@ void procesarDescribe(query * unaQuery);
 void procesarDrop(query * unaQuery);
 
 //Para pruebas
+query * crearQuery(int32_t tipoRequest, char * nombreTabla, int32_t key, char * value, int64_t timestamp);
 query * crearInsert(char * nombreTabla,int32_t key,char * value,int64_t timestamp);
 void liberarInsert(query * unQuery);
 
@@ -124,6 +127,7 @@ void loggearListaRegistros(t_list * unaLista);
 void warningTablaNoCreada(char * tabla);
 void imprimirMemTable(t_dictionary * memTable);
 void loggearMemTable(t_dictionary * memTable);
+void loggearSelectMemT(query* unaQuery);
 
 
 

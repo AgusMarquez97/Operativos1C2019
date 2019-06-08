@@ -2,7 +2,7 @@
 
 void iniciarLogConPath(char* path,char* nombre) {
 
-	logger = log_create(path, nombre, true, LOG_LEVEL_INFO);
+	logger = log_create(path, nombre, 0, LOG_LEVEL_INFO);
 
 }
 void iniciarLog(char* nombre) {
@@ -10,7 +10,6 @@ void iniciarLog(char* nombre) {
 	logger = log_create("Lissandra.log", nombre, 0, LOG_LEVEL_INFO);
 
 }
-
 
 
 void loggearInfo(char* mensaje) {
@@ -38,4 +37,24 @@ void loggearInfoConcatenandoDosMensajes(char* mensaje1, char* mensaje2){
 	strcat(result, mensaje2);
 	log_info(logger, result);
 	free(result);
+}
+
+
+t_log * retornarLogConPath(char* path,char* nombre)
+{
+	return log_create(path, nombre, 0, LOG_LEVEL_INFO);
+}
+
+void loggearInfoEnLog(t_log * unLog,char* mensaje)
+{
+	log_info(unLog, mensaje);
+}
+void loggearWarningEnLog(t_log * unLog,char* mensaje)
+{
+	log_warning(unLog, mensaje);
+}
+void loggearErrorEnLog(t_log * unLog,char* mensaje)
+{
+	log_error(unLog, mensaje);
+	log_error(unLog, "Error de errno: %s", strerror(errno));
 }
