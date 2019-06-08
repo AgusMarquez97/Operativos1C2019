@@ -11,7 +11,7 @@
 #include "PoolMemorias.h"
 
 int main(void) {
-
+	remove("Lissandra.log");
 	crearConfig(PATHCONFIG);
 	configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
 	leerArchivoConfiguracion();
@@ -54,6 +54,7 @@ void consola(){
 			switch(tipoDeComando){
 			case 1:
 				;
+				loggearSelect(query->tabla,query->key);
 				char* comandoEnChar = malloc(sizeof(char));
 				sprintf(comandoEnChar,"%d",tipoDeComando);
 				loggearInfoConcatenandoDosMensajes("El numero comando ingresado fue: ", comandoEnChar);
@@ -64,6 +65,7 @@ void consola(){
 				break;
 			case 2:
 				;
+				loggearInsert(query->tabla,query->key,query->value,query->timestamp);
 				char* comandoEnChar2 = malloc(sizeof(char));
 				sprintf(comandoEnChar,"%d",tipoDeComando);
 				loggearInfoConcatenandoDosMensajes("El numero comando ingresado fue: ", comandoEnChar);
@@ -87,8 +89,6 @@ void consola(){
 }
 //Leemos arcchivo configuracion
 void leerArchivoConfiguracion(){
-
-
 
 		configuracionMemoria->IP_FS = obtenerString("IP_FS");
 		configuracionMemoria->IP_SEEDS = obtenerArray("IP_SEEDS");
@@ -236,12 +236,159 @@ char* procesarInsert(query insertQuery){
 }*/
 
 void conexionFS(){
-	printf("Conectandose al FS");
+
+		char * IP = strdup(obtenerString("IP_FS"));
+		char * Puerto = strdup(obtenerString("PUERTO_FS"));
+		loggearInfoCliente(IP,Puerto);
+
+		//int cliente = levantarCliente(IP,Puerto);
+
+		free(IP);
+		free(Puerto);
 }
 
 void conexionKernel(){
-	printf("Esperando conexion del Kernel");
+	char * IP;
+
+	if(obtenerString("IP"))
+	{
+			IP = strdup(obtenerString("DIRECCION_IP"));
+	}else
+	{
+			IP = strdup("127.0.0.1");
+	}
+		char * Puerto = strdup(obtenerString("PUERTO"));
+		loggearInfoServidor(IP,Puerto);
+
+		levantarServidorMemoria(IP,Puerto);
+
+		free(IP);
+		free(Puerto);
+}
+void loggearInfoServidor(char * IP, char * Puerto)
+{
+
+	char * ipServidor = malloc(strlen("IP del servidor: ") + strlen(IP) + 1);
+	strcpy(ipServidor,"IP del servidor: ");
+	strcat(ipServidor,IP);
+
+	char * puertoServidor = malloc(strlen("Puerto de escucha: ") + strlen(Puerto) + 1);
+	strcpy(puertoServidor,"Puerto de escucha: ");
+	strcat(puertoServidor,Puerto);
+
+	loggearInfo(ipServidor);
+	loggearInfo(puertoServidor);
+
+	free(ipServidor);
+	free(puertoServidor);
 }
 
+void loggearInfoCliente(char * IP, char * Puerto)
+{
 
+	char * ipServidor = malloc(strlen("IP del Servidor de FS es: ") + strlen(IP) + 1);
+	strcpy(ipServidor,"IP del Servidor de FS es: ");
+	strcat(ipServidor,IP);
 
+	char * puertoServidor = malloc(strlen("Puerto del FS es: ") + strlen(Puerto) + 1);
+	strcpy(puertoServidor,"Puerto del FS es: ");
+	strcat(puertoServidor,Puerto);
+
+	loggearInfo(ipServidor);
+	loggearInfo(puertoServidor);
+
+	free(ipServidor);
+	free(puertoServidor);
+}
+void levantarServidorMemoria(char * servidorIP, char* servidorPuerto)
+{
+			query * myQuery;
+	  	  	int socketRespuesta, maximoSocket;
+	  	  	int datosRecibidos = -1;
+			fd_set sockets, clientes;
+
+	        int socketServidor = levantarServidor(servidorIP,servidorPuerto);
+
+	        LimpiarSet(&sockets);
+	        LimpiarSet(&clientes);
+
+	        agregarASet(socketServidor,&sockets);
+	        maximoSocket = socketServidor;
+
+	        tiempoEspera esperaMaxima;
+	        definirEsperaServidor(&esperaMaxima,300);
+
+	        while(1) // Loop para escuchar conexiones entrantes
+			{
+	        clientes = sockets;
+	        ejecutarSelect(maximoSocket,&clientes,&esperaMaxima); //pasarle null si no importa
+
+	        for(int i = 0;i<=maximoSocket;i++) //Itero hasta el ultimo socket
+	        	{
+	        		if (estaEnSet(i, &clientes)) //1 - Tengo un cliente nuevo que quiere leer!
+	        		{
+	                    if (i == socketServidor) //1-1 - Ese Cliente es el mismo servidor -> Acepto nuevas conexiones
+	                    {
+
+	                    socketRespuesta = aceptarConexion(socketServidor);
+
+	                    agregarASet(socketRespuesta,&sockets); //añado a set de sockets al nuevo cliente
+
+	                        if (socketRespuesta > maximoSocket) // Trackeo el maximo socket
+	                        {
+	                            maximoSocket = socketRespuesta;
+	                        }
+
+	                    loggearNuevaConexion(socketRespuesta);
+
+	                    }
+	                    else
+	                    {
+	                    	datosRecibidos = recibirQuery(i,myQuery);
+	                    	if(datosRecibidos==0)
+	                    	{
+	                    		close(i);
+	                    		EliminarDeSet(i,&sockets);
+	                    	}else  {
+	                    		loggearDatosRecibidos(i,datosRecibidos);
+	                    	}
+
+	                    }
+	        		}
+	        	}
+			}
+}
+
+void loggearNuevaConexion(int socket)
+{
+	  char * info = malloc(strlen("Nueva conexion asignada al socket: ") + 10 + 4);
+	  char * aux = malloc(10);
+
+	  strcpy(info,"Nueva conexion asignada al socket: ");
+	  snprintf(aux,10,"%d",socket);
+	  strcat(info,aux);
+	  strcat(info,"\n");
+
+	  loggearInfo(info);
+
+	  free(info);
+      free(aux);
+}
+
+void loggearDatosRecibidos(int socket, int datosRecibidos)
+{
+		  char * info = malloc(strlen("Se recibieron bytes del socket  ") + 30 + 5);
+		  char * aux = malloc(30);
+
+		  strcpy(info,"Se recibieron:  ");
+		  snprintf(aux,30,"%d",datosRecibidos);
+		  strcat(info," bytes del socket ");
+		  snprintf(aux,30,"%d",socket);
+		  strcat(info,aux);
+		  strcat(info,"\n");
+
+		  loggearInfo(info);
+
+		  free(info);
+	      free(aux);
+}

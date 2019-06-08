@@ -59,5 +59,10 @@ void EscribirArchivoLog();
 void reservarMemoriaPrincipal();
 void conexionKernel();
 void conexionFS();
+void loggearInfoServidor(char * IP, char * Puerto);
+void loggearInfoCliente(char * IP, char * Puerto);
+void levantarServidorMemoria(char * servidorIP, char* servidorPuerto);
+void loggearNuevaConexion(int socket);
+void loggearDatosRecibidos(int socket, int datosRecibidos);
 
 #endif /* POOLMEMORIAS_H_ */
