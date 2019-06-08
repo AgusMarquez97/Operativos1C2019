@@ -159,7 +159,6 @@ int recibirString(int socketEmisor, char** cadena)
 
 
 //RECIBIR QUERY
-
 int recibirQuery(int socketEmisor, query* myQuery) {
 
 	int cantidadRecibida;
@@ -168,8 +167,6 @@ int recibirQuery(int socketEmisor, query* myQuery) {
 	int32_t tamanioQuery = 0;
 	int32_t tipoQuery;
 	int32_t tamanioBuffer = 0;
-	char * aux = malloc(30);
-	char * log = malloc(400);
 
 	cantidadRecibida = recibirInt(socketEmisor, &tamanioQuery); //Se recibe el tam del buffer
 
@@ -187,41 +184,60 @@ int recibirQuery(int socketEmisor, query* myQuery) {
 	switch(tipoQuery) {
 		case(SELECT):
 		deserializarSelect(&myQuery->tabla, &myQuery->key, buffer, &desplazamiento);
-
-		strcpy(log,"Se recibio la siguiente query: {SELECT ");
-		strcat(log,myQuery->tabla);
-		snprintf(aux,10,"%d",myQuery->key);
-		strcat(log," ");
-		strcat(log,aux);
-		strcat(log,"}");
-		loggearInfo(log);
-
+		loggearSelect(myQuery->tabla,myQuery->key);
 			break;
 		case(INSERT):
 		deserializarInsert(&myQuery->tabla, &myQuery->key, &myQuery->value, &myQuery->timestamp, buffer, &desplazamiento);
-
-		strcpy(log,"Se recibio la siguiente query: {INSERT ");
-		strcat(log,myQuery->tabla);
-		snprintf(aux,30,"%d",myQuery->key);
-		strcat(log," ");
-		strcat(log,aux);
-		strcat(log," '");
-		strcat(log,myQuery->value);
-		strcat(log,"' ");
-		snprintf(aux,30,"%lli",myQuery->timestamp);
-		strcat(log,aux);
-		strcat(log,"}");
-
-		loggearInfo(log);
-
-			break;
+		loggearInsert(myQuery->tabla,myQuery->key,myQuery->value,myQuery->timestamp);
+		break;
+		default:
+			loggearInfo("Request aun no disponible");
 	}
+
+	return cantidadRecibida;
+}
+
+
+void loggearSelect(char * tabla, int32_t key)
+{
+	char * aux = malloc(30);
+	char * log = malloc(strlen("Se recibio la siguiente query: {SELECT ") + 8 + 30);
+	strcpy(log,"Se recibio la siguiente query: {SELECT ");
+	strcat(log,tabla);
+	strcat(log," ");
+	snprintf(aux,10,"%d",key);
+	strcat(log,aux);
+	strcat(log,"}");
+
+	loggearInfo(log);
 
 	free(aux);
 	free(log);
 
-	return cantidadRecibida;
 }
+void loggearInsert(char * tabla, int32_t key, char * value, int64_t timestamp)
+{
+	char * aux = malloc(30);
+	char * log = malloc(strlen("Se recibio la siguiente query: {INSERT ") + 20 + 30);
+
+	strcpy(log,"Se recibio la siguiente query: {INSERT ");
+	strcat(log,tabla);
+	strcat(log," ");
+	snprintf(aux,30,"%d",key);
+	strcat(log,aux);
+	strcat(log," '");
+	strcat(log,value);
+	strcat(log,"' ");
+	snprintf(aux,30,"%lli",timestamp);
+	strcat(log,aux);
+	strcat(log,"}");
+
+	loggearInfo(log);
+
+	free(aux);
+	free(log);
+}
+
 
 
 
