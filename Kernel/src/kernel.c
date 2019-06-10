@@ -278,14 +278,16 @@ t_queue* procesar_script(char * script, t_queue* request_queue) {
 }
 */
 
-t_queue* procesar_script(query * query_struct) {
+//t_queue* procesar_script(query * query_struct) {
+t_queue* procesar_script(char * script) {
 	FILE * fid;
 	size_t len = 0;
 	ssize_t read;
 	char * line = NULL;
-	char * script = query_struct->script;
+//	char * script = query_struct->script;
 
 	t_queue * request_queue = queue_create();
+	  printf("Se ejecut el script: %s\n",script);//query_struct->script);
 
 	if ((fid = fopen(script, "r+")) == NULL) {
 		printf("Error al abrir el script: %s\n", script);
@@ -299,12 +301,13 @@ t_queue* procesar_script(query * query_struct) {
 
 	while ((read = getline(&line, &len, fid)) != -1) {
 		char * line2 = string_duplicate(line);
-
-		if ( parsear(line2,query_struct) != 0 )
+		query * query_struct = malloc(sizeof(query));
+		if ( parsear(line2,query_struct) > 0 )
 		{
 		  queue_push(request_queue, query_struct);
 		} else
 		  {
+			printf("Uno de los requests fallo, se cancela la ejecucion del script");
 			queue_destroy(request_queue);
 			return NULL;
 		  }
@@ -349,14 +352,15 @@ t_queue* armar_request_queue(char * input) {
 */
 
 t_queue* armar_request_queue(query * query_struct) {
-	t_queue* request_queue = queue_create();
-/*
-	if ( query_struct.requestType == RUN )
+//	t_queue* request_queue = queue_create();
+
+	if ( query_struct->requestType == RUN )
 	{
-	  procesar_script(query_split[1],request_queue);
+//	  printf("Se ejecut el script: %s\n",query_struct->script);
+	  t_queue* request_queue = procesar_script(query_struct->script);//query_split[1],request_queue);
 	  return request_queue;
 	}
-
+/*
 	if (!strcasecmp(query_split[0],"run")) {
 
 	  if ( (query_cant_palabras != 2) )
@@ -372,6 +376,7 @@ t_queue* armar_request_queue(query * query_struct) {
 	return request_queue;
 	}
 */
+	t_queue* request_queue = queue_create();
 	printf("En armar_request_queue el numero de request es: %d\n",query_struct->requestType);
 	queue_push(request_queue,query_struct);
 	return request_queue;
@@ -401,7 +406,7 @@ void * atender_conexion(void * new_fd) {
 
 	printf("client: received %s", buf);
 	buf[numbytes] = '\0';
-	input=string_substring(buf, 0, numbytes-1);
+	input=string_substring(buf, 0, numbytes-2);
 	//strncpy(input,&buf,numbytes);
 
 	while ( strcasecmp(input,"salir") ) {
@@ -419,11 +424,14 @@ void * atender_conexion(void * new_fd) {
 			//strncpy(input,buf,numbytes);
 			continue;
 		}
-
+//		t_queue* request_queue = NULL;
 		//t_queue* request_queue = armar_request_queue(input);
 		t_queue* request_queue = armar_request_queue(query_struct);
 
-		agregar_a_new(request_queue);
+		if (request_queue != NULL)
+		{
+		  agregar_a_new(request_queue);
+		}
 
 		if ((numbytes = recv(listening_socket, buf, MAXDATASIZE - 1, 0))
 				== -1) {

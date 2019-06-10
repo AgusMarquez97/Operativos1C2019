@@ -10,8 +10,10 @@ int parsear(char * string_query,query *struct_query)
 	printf("La tercera palabra es: %s\n",query_split[2]);
 	printf("La cantidad de palabras es: %d\n",string_size(query_split));
 */
+	//struct_query = malloc(sizeof(query));
 	int query_cant_palabras = string_size(query_split);
-	printf("Llegaron al parser %d palabras\n",query_cant_palabras);
+//	printf("Llegaron al parser %d palabras\n",query_cant_palabras);
+	printf("Request a parsear: %s\n",string_query);
 
 	if ( !query_cant_palabras)
 	{
@@ -32,7 +34,7 @@ int parsear(char * string_query,query *struct_query)
 		string_to_upper(query_split[1]);
 		struct_query->requestType = SELECT;
 		struct_query->tabla = query_split[1];
-		struct_query->key = (int) query_split[2];
+		struct_query->key = atoi(query_split[2]);
 		struct_query->value = NULL;
 		struct_query->timestamp = NULL;
 
@@ -75,7 +77,7 @@ int parsear(char * string_query,query *struct_query)
 		string_to_upper(query_split[1]);
 		struct_query->requestType = INSERT;
 		struct_query->tabla = query_split[1];
-		struct_query->key = query_split[2];
+		struct_query->key = atoi(query_split[2]);
 		struct_query->value = query_split[3];
 
 		return INSERT;
@@ -140,7 +142,7 @@ int parsear(char * string_query,query *struct_query)
 		struct_query->requestType = CREATE;
 		struct_query->tabla = query_split[1];
 		struct_query->consistencyType = query_split[2];
-		struct_query->key = query_split[3];
+		struct_query->key = atoi(query_split[3]);
 		struct_query->value = query_split[4];
 		struct_query->timestamp = NULL;
 
@@ -216,7 +218,7 @@ int parsear(char * string_query,query *struct_query)
 	  } else {
 			printf("El run es correcto\n");
 			struct_query->requestType = RUN;
-			//struct_query->script = query_split[1];
+			struct_query->script = query_split[1];
 			return RUN;
 		 }
 	}
@@ -252,11 +254,11 @@ int string_size(char ** text)
 {
 	int i= 0;
 
-	printf("%s\n",text[i]);
+//	printf("%s\n",text[i]);
 
 	while ((text[i]) != '\0')
 	{
-	printf("%d\n",i);
+//	printf("%d\n",i);
 	  i = i+1;
 	}
 
@@ -271,7 +273,7 @@ int nombre_tabla_valido(char * text)
 
 	regex_t regex;
 	int reti;
-	printf("%s\n",text);
+//	printf("%s\n",text);
 
 	reti = regcomp(&regex,"^[A-Z0-9]*$",0);
 
@@ -304,7 +306,7 @@ int valor_solo_numerico(char * text)
 
 	regex_t regex;
 	int reti;
-	printf("%s\n",text);
+//	printf("%s\n",text);
 
 	reti = regcomp(&regex,"^[0-9]*$",0);
 
