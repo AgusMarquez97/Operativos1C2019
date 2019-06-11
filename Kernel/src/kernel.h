@@ -16,8 +16,10 @@
 #include <commons/collections/node.h>	
 #include <semaphore.h>
 #include <pthread.h>
+#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/levantarConfig.c>
 #include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/parser.c>
 #include "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/enumsAndStructs.h"
+#include "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/logs.c"
 
 typedef struct request_element{
 		t_queue* request_queue;
@@ -48,7 +50,12 @@ pthread_mutex_t s_newq;// = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_readyq;
 pthread_mutex_t s_requestq;
 pthread_mutex_t s_exitq;
-int CANT_THREADS_EXEC = 5; //TODO: Debe salir del archivo de config
-int QUANTUM_SIZE = 2; //TODO: Debe salir del archivo de config
+int CANT_THREADS_EXEC;// = 5; //TODO: Debe salir del archivo de config
+int QUANTUM_SIZE;// = 2; //TODO: Debe salir del archivo de config
+
+char * sc_memory = "IP:PUERTO";
+t_queue* memorias_ec = NULL;
+
+t_log * kernel_log = NULL;
 
 #endif /*KERNEL_H_*/

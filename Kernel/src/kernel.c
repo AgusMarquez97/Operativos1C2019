@@ -59,19 +59,10 @@ int agregar_memorias_a_criterios() {
 	 */
 
 	printf("Agregando memorias a los distintos criterios...\n");
+	char * memoria = "111.222.333.444:1234";
+	queue_push(memorias_ec,memoria);
 	return 0;
 }
-/*
-int parsear(char * query) {
-	printf("Esto por ahora no hace nada, pero se viene se viene...\n");
-	return 0;
-}
-
-int ejecutar_request(char * query) {
-	printf("Query ejecutado (?)\n");
-	return 0;
-}
-*/
 
 
 agregar_a_estado_exit(t_request_struct * next_request)
@@ -84,15 +75,11 @@ agregar_a_estado_exit(t_request_struct * next_request)
 
 
 
-int ejecutar_request(/*t_queue *//*void * request*/ query * query_struct)
+int ejecutar_request(query * query_struct)
 {
-	//query query_struct;// = malloc(sizeof(query));
-	//request = (char *) request;
 	int resultado_ejecucion_request = 0;
 	int codigo_request = query_struct->requestType;
-	//printf("%s",request);
-	//request = string_substring(request, 0, string_length(request) - 2);
-	//codigo_request = parsear(request,&query_struct);
+
 	if ( codigo_request == 0 )
 	{
 	  return -1;
@@ -110,6 +97,10 @@ int ejecutar_request(/*t_queue *//*void * request*/ query * query_struct)
 
 	  case (RUN): 		printf("Se recibio un RUN...\n");
 				//resultado_ejecucion_request = ejecutar_run(query_struct);
+			 	break;
+
+	  case (SELECT): 	printf("Se recibio un SELECT...\n");
+				resultado_ejecucion_request = ejecutar_select(query_struct);
 			 	break;
 
 	  default: 		printf("No es un select, se deriva el request...\n");
@@ -151,8 +142,9 @@ void *exec(void * numero_exec) {
 	int thread_n = (int) numero_exec;
 	query *next_query = malloc(sizeof(query));
 
-	printf("**** El hilo de ejecucion %d (thread_id %d) esta arriba ****\n",
-			thread_n, pthread_self());
+	log_info(kernel_log,"**** El hilo de ejecucion %d (thread_id %d) esta arriba ****",thread_n, pthread_self());
+	//printf("**** El hilo de ejecucion %d (thread_id %d) esta arriba ****\n",
+	//		thread_n, pthread_self());
 
 	while (1) {
 		sem_wait(&s_exec_request_inicial);
@@ -168,28 +160,30 @@ void *exec(void * numero_exec) {
 
 		t_queue* requests = next_request->request_queue; // Se extrae la lita de requests propiamente dicha
 		int quantum_utilizado = 1;
-//		int fallo = 0;
-//		query *next_query = (query *) queue_peek(requests);
+
 
 		if ((int) queue_size(requests) > 1) { sleep(7);} //Retrasa la ejecucion y me da tiempo de meter otro request en el medio
 
-		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0)/* && (fallo == 0) */){
+		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0)){
 
 			next_query = (query *) queue_pop(requests);		
 
-			printf(
-					"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %d ****\n",
-					thread_n,/*queue_peek(requests)*/ next_query->requestType);
+			log_info(kernel_log,"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %d ****\n",thread_n,next_query->requestType);
+			//printf(
+			//		"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %d ****\n",
+			//		thread_n,next_query->requestType);
 
 			quantum_utilizado++;
 
 
-			//int codigo_ejecucion = ejecutar_request(queue_pop(requests));
 			int codigo_ejecucion = ejecutar_request(next_query);
 
 			if (codigo_ejecucion < 0) {
 
+			  log_error(kernel_log,"Error en la ejecucion del request.");
 			  printf("Error en la ejecucion del request.\n");
+			  printf("Fin de proceso.\n\n\n\n");
+			  printf("*********************************************\n\n\n\n");
 			  agregar_a_estado_exit(next_request);// En realidad se debe hacer esto
 			  return;
 
@@ -210,9 +204,9 @@ void *exec(void * numero_exec) {
 
 			printf("\n\n\n\n**** Se acabo el quantum, se vuelve a la ready queue ****\n\n\n\n");
 			agregar_request_ready(next_request);
-		}
+		} printf("En estado exit hay %d requests (Los scripts se cuentan como un solo request)\n",(int) queue_size(exit_queue));
 	
-	}
+	} 
 
 }
 
@@ -250,52 +244,24 @@ void agregar_a_new(t_queue* requests) {
 	return;
 
 }
-/*
-t_queue* procesar_script(char * script, t_queue* request_queue) {
-	FILE * fid;
-	size_t len = 0;
-	ssize_t read;
-	char * line = NULL;
 
-	if ((fid = fopen(script, "r+")) == NULL) {
-		printf("Error al abrir el script: %s\n", script);
-		printf("Longitud del parametro ruta del archivo: %d\n",
-				string_length(script));
-		return request_queue;
-//		exit(-1);
-	}
 
-	pthread_mutex_lock(&s_requestq);
-
-	while ((read = getline(&line, &len, fid)) != -1) {
-		char * line2 = string_duplicate(line);
-		queue_push(request_queue, line2);
-	}
-
-	pthread_mutex_unlock(&s_requestq);
-
-	return request_queue;
-}
-*/
-
-//t_queue* procesar_script(query * query_struct) {
 t_queue* procesar_script(char * script) {
 	FILE * fid;
 	size_t len = 0;
 	ssize_t read;
 	char * line = NULL;
-//	char * script = query_struct->script;
 
-	t_queue * request_queue = queue_create();
-	  printf("Se ejecut el script: %s\n",script);//query_struct->script);
+	printf("Se ejecut el script: %s\n",script);
 
 	if ((fid = fopen(script, "r+")) == NULL) {
 		printf("Error al abrir el script: %s\n", script);
 		printf("Longitud del parametro ruta del archivo: %d\n",
 				string_length(script));
-		return NULL;//request_queue;
-//		exit(-1);
+		return NULL;
 	}
+
+	t_queue * request_queue = queue_create();
 
 	//pthread_mutex_lock(&s_requestq);
 
@@ -307,7 +273,10 @@ t_queue* procesar_script(char * script) {
 		  queue_push(request_queue, query_struct);
 		} else
 		  {
-			printf("Uno de los requests fallo, se cancela la ejecucion del script");
+			log_error(kernel_log,"Uno de los requests fallo, se cancela la ejecucion del script.");
+			printf("Uno de los requests fallo, se cancela la ejecucion del script\n");
+			printf("Fin de proceso.\n\n\n\n");
+			printf("*********************************************\n\n\n\n");
 			queue_destroy(request_queue);
 			return NULL;
 		  }
@@ -320,64 +289,19 @@ t_queue* procesar_script(char * script) {
 
 
 /*
-t_queue* armar_request_queue(char * input) {
-	t_queue* request_queue = queue_create();
-	char ** query_split = string_split(input, " ");
-	int query_cant_palabras = string_size(query_split);
-	printf("Cantidad de palabras ingresadas: %d\n",query_cant_palabras);
-
-	if (!strcasecmp(query_split[0],"run")) {
-
-	  if ( (query_cant_palabras != 2) )
-	  {
-		printf("El run es INcorrecto\n");
-		return request_queue;
-	  } else { printf("El run es correcto\n");
-		   //procesar_script(query_split[1],request_queue);
-		   procesar_script(string_substring(query_split[1], 0, string_length(query_split[1]) - 2),request_queue);
-		   return request_queue;
-		 }
-
-	return request_queue;
-	}
-	queue_push(request_queue, (void *) input);
-	return request_queue;
-
-}
-*/
-
-/*
  * Nueva version de armar_request_queue() que recibe un struct query en vez de un char *
  *
 */
 
 t_queue* armar_request_queue(query * query_struct) {
-//	t_queue* request_queue = queue_create();
 
 	if ( query_struct->requestType == RUN )
 	{
-//	  printf("Se ejecut el script: %s\n",query_struct->script);
-	  t_queue* request_queue = procesar_script(query_struct->script);//query_split[1],request_queue);
+	  t_queue* request_queue = procesar_script(query_struct->script);
 	  return request_queue;
 	}
-/*
-	if (!strcasecmp(query_split[0],"run")) {
 
-	  if ( (query_cant_palabras != 2) )
-	  {
-		printf("El run es INcorrecto\n");
-		return request_queue;
-	  } else { printf("El run es correcto\n");
-		   //procesar_script(query_split[1],request_queue);
-		   procesar_script(string_substring(query_split[1], 0, string_length(query_split[1]) - 2),request_queue);
-		   return request_queue;
-		 }
-
-	return request_queue;
-	}
-*/
 	t_queue* request_queue = queue_create();
-	printf("En armar_request_queue el numero de request es: %d\n",query_struct->requestType);
 	queue_push(request_queue,query_struct);
 	return request_queue;
 
@@ -407,12 +331,17 @@ void * atender_conexion(void * new_fd) {
 	printf("client: received %s", buf);
 	buf[numbytes] = '\0';
 	input=string_substring(buf, 0, numbytes-2);
-	//strncpy(input,&buf,numbytes);
+//	memset(&buf, 0, sizeof buf[MAXDATASIZE]);
 
 	while ( strcasecmp(input,"salir") ) {
+
+//		if ( string_is_empty(input) ) { continue; }
 		if ( parsear(input,query_struct) < 0 ) // Se le saca el &, volver a poner si algo male sal
 		{
+			log_error(kernel_log,"Error en parseo de query, no se planifica.");
 			printf("Error en parseo de query, no se planifica.\n");
+			printf("Fin de proceso.\n\n\n\n");
+			printf("*********************************************\n\n\n\n");
 			if ((numbytes = recv(listening_socket, buf, MAXDATASIZE - 1, 0))
 				== -1) {
 			perror("recv");
@@ -421,11 +350,10 @@ void * atender_conexion(void * new_fd) {
 			printf("client: received %s", buf);
 			buf[numbytes] = '\0';
 			input=string_substring(buf, 0, numbytes-2);
-			//strncpy(input,buf,numbytes);
+
 			continue;
 		}
-//		t_queue* request_queue = NULL;
-		//t_queue* request_queue = armar_request_queue(input);
+
 		t_queue* request_queue = armar_request_queue(query_struct);
 
 		if (request_queue != NULL)
@@ -503,6 +431,7 @@ int procesar() {
 	}
 
 	printf("Planificador iniciado. Escuchando...\n");
+	log_info(kernel_log,"Planificador iniciado. Escuchando...");
 
 	while (1) {
 		addr_size = sizeof their_addr;
@@ -511,10 +440,18 @@ int procesar() {
 		inet_ntop(their_addr.ss_family,
 				get_in_addr((struct sockaddr *) &their_addr), ipstr,
 				sizeof ipstr);
-		printf("...nueva conexion desde: %s\n", ipstr);
+		log_info(kernel_log,"Nueva conexion desde: %s\n", ipstr);
+		//printf("...nueva conexion desde: %s\n", ipstr);
 		pthread_create(&thread_id, NULL, atender_conexion, (void *) new_fd);
 		pthread_detach(thread_id);
 	}
+}
+
+
+void inicializar_logs() {
+
+	kernel_log = log_create("/home/utnso/kernel.log", "kernel.log", 0, LOG_LEVEL_INFO);
+
 }
 
 void inicializar_semaforos() {
@@ -526,6 +463,21 @@ void inicializar_semaforos() {
 	pthread_mutex_init(&s_readyq, NULL);
 	pthread_mutex_init(&s_exitq, NULL);
 }
+
+
+void cargar_configuraciones() {
+
+	crearConfig("/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/config/kernel_config.cfg");
+
+	if(obtenerString("GRADO_MULTIPROCESAMIENTO"))
+	{
+	   CANT_THREADS_EXEC = atoi(strdup(obtenerString("GRADO_MULTIPROCESAMIENTO")));
+	} else { exit(-1); }
+
+	QUANTUM_SIZE = atoi(strdup(obtenerString("QUANTUM")));
+
+}
+
 
 void inicializar_threads() {
 	pthread_t readythread_id;
@@ -544,19 +496,27 @@ void inicializar_colas() {
 	new_queue = queue_create();
 	ready_queue = queue_create();
 	exit_queue = queue_create();
+	memorias_ec = queue_create();
 }
 
 void iniciar_estructuras() {
 
+	inicializar_logs();
 	inicializar_semaforos();
 	inicializar_threads();
 	inicializar_colas();
 
+
 }
+
 
 int main(int argc, char *argv[]) {
 
+	cargar_configuraciones();
 	iniciar_estructuras();
+	//iniciarLogConPath("","kernel.log");
+
+	//remove("Lissandra.log");
 	solicitar_memorias();
 	agregar_memorias_a_criterios();
 	procesar();

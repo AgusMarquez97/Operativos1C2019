@@ -13,7 +13,7 @@ int parsear(char * string_query,query *struct_query)
 	//struct_query = malloc(sizeof(query));
 	int query_cant_palabras = string_size(query_split);
 //	printf("Llegaron al parser %d palabras\n",query_cant_palabras);
-	printf("Request a parsear: %s\n",string_query);
+//	printf("Request a parsear: %s\n",string_query);
 
 	if ( !query_cant_palabras)
 	{
@@ -24,7 +24,8 @@ int parsear(char * string_query,query *struct_query)
 
 	  if ( (query_cant_palabras != 3) )
 	  {
-		printf("El select es INcorrecto\n");
+		printf("%s\n\n",MENSAJE_ERROR);
+		//printf("El select es INcorrecto\n");
 		return ERROR;
 	  }
 
@@ -40,7 +41,9 @@ int parsear(char * string_query,query *struct_query)
 
 		return SELECT;
 
-	  } else { printf("El select es INcorrecto\n");
+	  } else { 
+		   printf("%s\n\n",MENSAJE_ERROR);
+		   //printf("El select es INcorrecto\n");
 		   return ERROR;
 		 }
 		
@@ -60,7 +63,8 @@ int parsear(char * string_query,query *struct_query)
 				  break;
 
 			case (5): if (!valor_solo_numerico(query_split[4])) {
-					printf("El insert es INcorrecto\n");
+					printf("%s\n\n",MENSAJE_ERROR);
+					//printf("El insert es INcorrecto\n");
 					return ERROR;
 					break;}
 				  else {
@@ -68,7 +72,8 @@ int parsear(char * string_query,query *struct_query)
 					break;
 				  }
 				  
-			default: printf("El insert es INcorrectoAAA\n");
+			default: printf("%s\n\n",MENSAJE_ERROR);
+				 //printf("El insert es INcorrectoAAA\n");
 				 return ERROR;
 				 break;
 		}
@@ -82,7 +87,9 @@ int parsear(char * string_query,query *struct_query)
 
 		return INSERT;
 
-	  } else { printf("El insert es INcorrecto\n");
+	  } else {
+		   printf("%s\n\n",MENSAJE_ERROR);
+		   //printf("El insert es INcorrecto\n");
 		   return ERROR;
 		 }
 		
@@ -115,7 +122,9 @@ int parsear(char * string_query,query *struct_query)
 
 		return DESCRIBE;
 
-	  } else { printf("El describe es INcorrecto\n");
+	  } else { 
+		   printf("%s\n\n",MENSAJE_ERROR);
+		   //printf("El describe es INcorrecto\n");
 		   return ERROR;
 		 }
 		
@@ -127,7 +136,8 @@ int parsear(char * string_query,query *struct_query)
 
 	  if ( (query_cant_palabras != 5) )
 	  {
-		printf("El create es INcorrecto\n");
+		printf("%s\n\n",MENSAJE_ERROR);
+		//printf("El create es INcorrecto\n");
 		return ERROR;
 	  }
 
@@ -148,7 +158,9 @@ int parsear(char * string_query,query *struct_query)
 
 		return CREATE;
 
-	  } else { printf("El create es INcorrecto\n");
+	  } else {
+		   //printf("El create es INcorrecto\n");
+		   printf("%s\n\n",MENSAJE_ERROR);
 		   return ERROR;
 		 }
 		
@@ -160,14 +172,15 @@ int parsear(char * string_query,query *struct_query)
 
 	  if ( (query_cant_palabras != 2) )
 	  {
-		printf("El create es INcorrecto\n");
+		//printf("El drop es INcorrecto\n");
+		printf("%s\n\n",MENSAJE_ERROR);
 		return ERROR;
 	  }
 
 	  if (	(nombre_tabla_valido(query_split[1]))
 	     )
 	  {
-		printf("El drop es correcto\n");
+		//printf("El drop es correcto\n");
 		string_to_upper(query_split[1]);
 		struct_query->requestType = DROP;
 		struct_query->tabla = query_split[1];
@@ -177,7 +190,9 @@ int parsear(char * string_query,query *struct_query)
 
 		return DROP;
 
-	  } else { printf("El drop es INcorrecto\n");
+	  } else {
+		   //printf("El drop es INcorrecto\n");
+		   printf("%s\n\n",MENSAJE_ERROR);
 		   return ERROR;
 		 }
 		
@@ -190,7 +205,8 @@ int parsear(char * string_query,query *struct_query)
 
 	  if ( (query_cant_palabras != 1) )
 	  {
-		printf("El journal es INcorrecto\n");
+		//printf("El journal es INcorrecto\n");
+		printf("%s\n\n",MENSAJE_ERROR);
 		return ERROR;
 	  } else {
 			printf("El journal es correcto\n");
@@ -213,7 +229,8 @@ int parsear(char * string_query,query *struct_query)
 
 	  if ( (query_cant_palabras != 2) )
 	  {
-		printf("El run es INcorrecto\n");
+		//printf("El run es INcorrecto\n");
+		printf("%s\n\n",MENSAJE_ERROR);
 		return ERROR;
 	  } else {
 			printf("El run es correcto\n");
@@ -244,7 +261,8 @@ int parsear(char * string_query,query *struct_query)
 
 //	}
 
-	printf("Comando desconocido.\n\n");
+	//printf("Comando desconocido.\n\n");MENSAJE_ERROR
+	printf("%s\n\n",MENSAJE_ERROR);
 	return ERROR;
 
 }
@@ -273,7 +291,7 @@ int nombre_tabla_valido(char * text)
 
 	regex_t regex;
 	int reti;
-//	printf("%s\n",text);
+//		printf("%s\n",text);
 
 	reti = regcomp(&regex,"^[A-Z0-9]*$",0);
 

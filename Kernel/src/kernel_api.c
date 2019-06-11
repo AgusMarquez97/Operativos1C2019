@@ -5,6 +5,7 @@
 
 #include<stdio.h>
 #include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/enumsAndStructs.h>
+#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/src/kernel.h>
 /*
 void main(int argc, char *argv[])
 {
@@ -17,10 +18,15 @@ void journal_request()
 }
 
 
-int ejecutar_select(query query_struct)
+int ejecutar_select(query * query_struct)
 {
 
-	printf("Se ejecuta el request desde la API. La tabla es: %s\n",query_struct.tabla);
+	char * tabla = query_struct->tabla;
+	printf("Se ejecuta el request desde la API. La tabla es: %s\n",tabla);
+	//Se supone que deberia consultar en la metadata para conocer la consistencia de la tabla
+	char * proxima_memoria = (char *) queue_pop(memorias_ec); //Aca probablemente deberia ir un mutex
+	printf("La consistencia de la tabla es EC. Se envia a la memoria: %s\n",proxima_memoria);
+	queue_push(memorias_ec,proxima_memoria);
 	return 0;
 
 }
