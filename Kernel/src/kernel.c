@@ -288,7 +288,8 @@ t_queue* procesar_script(char * script) {
 			printf("Fin de proceso.\n\n\n\n");
 			printf("*********************************************\n\n\n\n");
 		  //free(query_struct); //sirve?
-			queue_destroy(request_queue);
+			//queue_destroy(request_queue);
+			//queue_destroy_and_destroy_elements(request_queue, free);
 			return NULL;
 		  }
 	}
