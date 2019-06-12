@@ -80,6 +80,8 @@ int ejecutar_request(query * query_struct)
 	int resultado_ejecucion_request = 0;
 	int codigo_request = query_struct->requestType;
 
+	printf("Nombre de tabla: %s\n",query_struct->tabla);
+
 	if ( codigo_request == 0 )
 	{
 	  return -1;
@@ -101,6 +103,10 @@ int ejecutar_request(query * query_struct)
 
 	  case (SELECT): 	printf("Se recibio un SELECT...\n");
 				resultado_ejecucion_request = ejecutar_select(query_struct);
+			 	break;
+
+	  case (DROP): 		printf("Se recibio un DROP...\n");
+				resultado_ejecucion_request = ejecutar_drop(query_struct);
 			 	break;
 
 	  default: 		printf("No es un select, se deriva el request...\n");
@@ -162,7 +168,7 @@ void *exec(void * numero_exec) {
 		int quantum_utilizado = 1;
 
 
-		if ((int) queue_size(requests) > 1) { sleep(7);} //Retrasa la ejecucion y me da tiempo de meter otro request en el medio
+		//if ((int) queue_size(requests) > 1) { sleep(7);} //Retrasa la ejecucion y me da tiempo de meter otro request en el medio
 
 		while ( (quantum_utilizado <= QUANTUM_SIZE) && ((int) queue_size(requests) > 0)){
 
@@ -190,12 +196,14 @@ void *exec(void * numero_exec) {
 			}
 
 			printf("El codigo de resultado de ejecucion de request es: %d\n",codigo_ejecucion);
+			//free(next_query);
 
 		  }
 
 		if ((int) queue_size(requests) == 0) {  
 
-			queue_destroy(requests);
+			//queue_destroy(requests);
+			//queue_clean_and_destroy_elements(requests, free);
 			agregar_a_estado_exit(next_request);// En realidad se debe hacer esto
 			printf("Fin de proceso.\n\n\n\n");
 			printf("*********************************************\n\n\n\n");
@@ -251,6 +259,7 @@ t_queue* procesar_script(char * script) {
 	size_t len = 0;
 	ssize_t read;
 	char * line = NULL;
+	char ** line3;
 
 	printf("Se ejecut el script: %s\n",script);
 
@@ -266,24 +275,27 @@ t_queue* procesar_script(char * script) {
 	//pthread_mutex_lock(&s_requestq);
 
 	while ((read = getline(&line, &len, fid)) != -1) {
-		char * line2 = string_duplicate(line);
+		//char * line2 = string_duplicate(line);
+		line3 = string_split(line,"\n");
 		query * query_struct = malloc(sizeof(query));
-		if ( parsear(line2,query_struct) > 0 )
+		if ( parsear(line3[0],query_struct) > 0 )
 		{
-		  queue_push(request_queue, query_struct);
+		  queue_push(request_queue, query_struct);//No va free(); -> NO LIBERA
 		} else
 		  {
 			log_error(kernel_log,"Uno de los requests fallo, se cancela la ejecucion del script.");
 			printf("Uno de los requests fallo, se cancela la ejecucion del script\n");
 			printf("Fin de proceso.\n\n\n\n");
 			printf("*********************************************\n\n\n\n");
+		  //free(query_struct); //sirve?
 			queue_destroy(request_queue);
 			return NULL;
 		  }
 	}
 
 	//pthread_mutex_unlock(&s_requestq);
-
+	//queue_destroy_and_destroy_elements(request_queue, free);
+	//return NULL;
 	return request_queue;
 }
 

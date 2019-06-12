@@ -3,6 +3,7 @@
 
 int parsear(char * string_query,query *struct_query)
 {
+	//string_append_with_format(&MENSAJE_ERROR,": %s",string_query);
 
 	char ** query_split = string_split(string_query, " ");
 /*	printf("La primera palabra es: %s\n",query_split[0]);
@@ -173,7 +174,7 @@ int parsear(char * string_query,query *struct_query)
 	  if ( (query_cant_palabras != 2) )
 	  {
 		//printf("El drop es INcorrecto\n");
-		printf("%s\n\n",MENSAJE_ERROR);
+		printf("%s: %s\n\n",string_query,MENSAJE_ERROR);
 		return ERROR;
 	  }
 
@@ -192,7 +193,8 @@ int parsear(char * string_query,query *struct_query)
 
 	  } else {
 		   //printf("El drop es INcorrecto\n");
-		   printf("%s\n\n",MENSAJE_ERROR);
+		   //printf("%s\n\n",MENSAJE_ERROR);
+			printf("%s: %s\n\n",string_query,MENSAJE_ERROR);
 		   return ERROR;
 		 }
 		
@@ -262,7 +264,7 @@ int parsear(char * string_query,query *struct_query)
 //	}
 
 	//printf("Comando desconocido.\n\n");MENSAJE_ERROR
-	printf("%s\n\n",MENSAJE_ERROR);
+	printf("%s: %s\n\n",string_query,MENSAJE_ERROR);
 	return ERROR;
 
 }
@@ -291,7 +293,7 @@ int nombre_tabla_valido(char * text)
 
 	regex_t regex;
 	int reti;
-//		printf("%s\n",text);
+		printf("%s\n",text);
 
 	reti = regcomp(&regex,"^[A-Z0-9]*$",0);
 
@@ -304,14 +306,17 @@ int nombre_tabla_valido(char * text)
 
 	if (!reti) {
 	   printf("Nombre de tabla correcto\n");
+	   regfree(&regex);
 	   return 1;
 	}
 	else if (reti == REG_NOMATCH) {
 		printf("Nombre de tabla incorrecto\n");
+		regfree(&regex);
 		return 0;
 	}
 	else {
 		fprintf(stderr,"Error en regex\n");
+		regfree(&regex);
 		exit (0);
 	}
 	
@@ -337,14 +342,17 @@ int valor_solo_numerico(char * text)
 
 	if (!reti) {
 	   printf("Valor numerico correcto\n");
+	   regfree(&regex);
 	   return 1;
 	}
 	else if (reti == REG_NOMATCH) {
 		printf("Valor numerico incorrecto\n");
+		regfree(&regex);
 		return 0;
 	}
 	else {
 		fprintf(stderr,"Error en regex\n");
+		regfree(&regex);
 		exit (0);
 	}
 	
