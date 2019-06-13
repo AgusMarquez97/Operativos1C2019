@@ -17,6 +17,7 @@
 #include <biblioteca/hilos.h>
 #include <biblioteca/levantarConfig.h>
 #include <biblioteca/utils.h>
+#include <biblioteca/parser.h>
 
 #include <commons/string.h>
 #include <commons/collections/list.h>

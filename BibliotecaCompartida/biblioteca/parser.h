@@ -12,11 +12,8 @@
 //#include "serializacion.h"
 //#include "sockets.h"
 
-int ERROR = -1;
 
-char * MENSAJE_ERROR="Sintaxis incorrecta o comando desconocido.";
-
-int parsear(char * string_query,query *struct_query);
+int parsear(char * string_query,query **struct_query);
 
 int string_size(char ** text);
 

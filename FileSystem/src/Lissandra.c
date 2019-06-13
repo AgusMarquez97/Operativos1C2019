@@ -1,6 +1,7 @@
 #include "Lissandra.h"
 
 
+
 query * crearQuery(int32_t tipoRequest, char * nombreTabla, int32_t key, char * value, int64_t timestamp)
 {
 	query * unaQuery = malloc(sizeof(query));
@@ -37,10 +38,10 @@ void iniciarLFS()
 	 */
 
 	hiloConsola = crearHilo(consola,NULL);
-	hiloServidor = crearHilo(iniciarServidor,NULL);
+	//hiloServidor = crearHilo(iniciarServidor,NULL);
 
 	esperarHilo(hiloConsola);
-	esperarHilo(hiloServidor);
+	//esperarHilo(hiloServidor);
 }
 
 
@@ -151,14 +152,17 @@ void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 
 void consola()
 {
+
 	 char * linea;
+	 query * myQuery;
+	 logMemTable = retornarLogConPath("Memtable.log","Memtable");
 	  while(1) {
+
 	    linea = readline(">");
 	    if (!linea)
 	      break;
 
 	    if (strncmp(linea,"exit",4) == 0) {
-	      free(linea);
 	      break;
 	    }
 
@@ -166,12 +170,24 @@ void consola()
 
 	    if (strncmp(linea,"clear",5) == 0) {
 	      system("clear");
-	    }
-	    else{
-	    printf("%s\n", linea);
-	    }
+	    }else{
 
-	    free(linea);
+	    switch(parsear(linea,&myQuery))
+	    {
+	    case SELECT:
+	    	procesarQuery(myQuery);
+	    	//loggearSelectMemT(myQuery);
+	    	break;
+	    case INSERT:
+	    	procesarQuery(myQuery);
+	    	break;
+	    default:
+	    	printf("Request no valida\n");
+	    	break;
+	    }
+	    //free(myQuery);
+
+	  }
 	  }
 	  exit(1);
 }
@@ -312,23 +328,25 @@ void procesarSelect(query* unaQuery)
 
 		if(condicionVerdadera)
 		{
-		aux = malloc(strlen("Se encontro el registro buscado: {") + strlen(castearRegistroString(condicionVerdadera)) + 2);
-		strcpy(aux,"Se encontro el registro buscado: {");
-		strcat(aux,castearRegistroString(condicionVerdadera));
+		aux = malloc(strlen("Se encontro el registro buscado: {") + strlen(((registro*)condicionVerdadera)->value) + 2);
+		strcpy(aux,"Se encontro el valor buscado: {");
+		strcat(aux,((registro*)condicionVerdadera)->value);
 		strcat(aux,"}");
 		loggearInfoEnLog(logMemTable,aux);
+		printf("%s\n",aux);
 		free(aux);
-
 		}else{
 		loggearInfoEnLog(logMemTable,"No se encontro la key buscada");
+		printf("No se encontro la key");
 		}
 	}	else
 	{
-		aux = malloc(strlen("No existe la tabla {}") + strlen(unaQuery->tabla) + 2);
-		strcpy(aux,"No existe la tabla en {SELECT ");
+		aux = malloc(strlen("No existe la tabla {}") + strlen(unaQuery->tabla) + 5);
+		strcpy(aux,"No existe la tabla {");
 		strcat(aux,unaQuery->tabla);
 		strcat(aux,"}");
 		loggearInfoEnLog(logMemTable,aux);
+		printf("%s\n",aux);
 		free(aux);
 	}
 
