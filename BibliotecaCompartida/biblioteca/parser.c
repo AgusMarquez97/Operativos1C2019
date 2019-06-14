@@ -87,6 +87,7 @@ int parsear(char * string_query,query **struct_query)
 		((*struct_query))->tabla = strdup(query_split[1]);
 		((*struct_query))->key = atoi(query_split[2]);
 		((*struct_query))->value = strdup(query_split[3]);
+		((*struct_query))->timestamp = -1; //Valor centinela para validar que no fue inicializado
 
 		return INSERT;
 

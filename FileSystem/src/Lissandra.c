@@ -212,7 +212,7 @@ void procesarInsert(query * unaQuery, int flagConsola)
 
 	if(unaQuery->timestamp == -1)
 	{
-		unaQuery->timestamp = 1;//(double)time(NULL);//ObtenerTimeStamp(); -> VALIDAR ESTO!
+		unaQuery->timestamp = (int64_t) (time(NULL))/1000;//Finalmente se agrega el epoch de linux
 	}
 
 	agregarUnRegistroMemTable(unaQuery,flagConsola);
