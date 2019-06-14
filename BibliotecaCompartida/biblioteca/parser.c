@@ -71,7 +71,7 @@ int parsear(char * string_query,query **struct_query)
 					return ERROR;
 					break;}
 				  else {
-					((*struct_query))->timestamp = query_split[4];
+					((*struct_query))->timestamp = atoi(query_split[4]);
 					break;
 				  }
 				  

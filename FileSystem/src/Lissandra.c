@@ -1,24 +1,6 @@
 #include "Lissandra.h"
 
 
-
-query * crearQuery(int32_t tipoRequest, char * nombreTabla, int32_t key, char * value, int64_t timestamp)
-{
-	query * unaQuery = malloc(sizeof(query));
-
-	unaQuery->requestType = tipoRequest;
-	unaQuery->tabla = strdup(nombreTabla);
-	unaQuery->key = key;
-
-	if(tipoRequest == INSERT)
-	{
-	unaQuery->value = strdup(value);
-	unaQuery->timestamp = timestamp;
-	}
-
-	return unaQuery;
-}
-
 void iniciarLFS()
 {
 	remove("Memtable.log");
@@ -50,41 +32,10 @@ void inicializarSemaforos()
 	pthread_mutex_init(&mutex_Mem_Table,NULL);
 }
 
-void loggearNuevaConexion(int socket)
-{
-	  char * info = malloc(strlen("Nueva conexion asignada al socket: ") + 10 + 4);
-	  char * aux = malloc(10);
-
-	  strcpy(info,"Nueva conexion asignada al socket: ");
-	  snprintf(aux,10,"%d",socket);
-	  strcat(info,aux);
-	  strcat(info,"\n");
-
-	  loggearInfo(info);
-
-	  free(info);
-      free(aux);
-}
-void loggearDatosRecibidos(int socket, int datosRecibidos)
-{
-		  char * info = malloc(strlen("Se recibieron  bytes del socket  ") + 30 + 5);
-		  char * aux = malloc(30);
-
-		  strcpy(info,"Se recibieron  ");
-		  snprintf(aux,30,"%d",datosRecibidos);
-		  strcat(info," bytes del socket ");
-		  snprintf(aux,30,"%d",socket);
-		  strcat(info,aux);
-		  strcat(info,"\n");
-
-		  loggearInfo(info);
-
-		  free(info);
-	      free(aux);
-}
 
 void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 {
+			argumentosQuery * args = NULL;
 			query * myQuery = NULL;
 	  	  	int socketRespuesta, maximoSocket;
 	  	  	int datosRecibidos = -1;
@@ -136,8 +87,13 @@ void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 	                    	}else  {
 
 	                    		//crearHiloDetachable(procesarQuery,myQuery);
-	                    		pthread_t h1 = crearHilo(procesarQuery,myQuery);
+	                    		args = malloc(sizeof(argumentosQuery));
+	                    		args->unaQuery = malloc(sizeof(query)); // Ver de eliminar
+	                    		args->unaQuery = myQuery;
+	                    		args->flag = 0;
+	                    		pthread_t h1 = crearHilo(procesarQuery,(void*)args);
 	                    		esperarHilo(h1);
+	                    		free(args);
 	                    		//free(myQuery)-> rompe como arbolito de navidad
 	                    		//loggearDatosRecibidos(i,datosRecibidos);
 	                    	}
@@ -155,31 +111,45 @@ void consola()
 
 	 char * linea;
 	 query * myQuery;
+	 argumentosQuery * args;
 	 logMemTable = retornarLogConPath("Memtable.log","Memtable");
+	 system("clear");
 	  while(1) {
-
 	    linea = readline(">");
 	    if (!linea)
 	      break;
 
-	    if (strncmp(linea,"exit",4) == 0) {
+	    if (!strncasecmp(linea,"exit",4)) {
 	      break;
 	    }
 
 	    add_history(linea);
 
-	    if (strncmp(linea,"clear",5) == 0) {
+	    if(!strncasecmp(linea,"imprimir",5))
+	    {
+	    	imprimirMemTable(memTable);
+	    }else if (!strncasecmp(linea,"clear",5)) {
 	      system("clear");
 	    }else{
 
 	    switch(parsear(linea,&myQuery))
 	    {
 	    case SELECT:
-	    	procesarQuery(myQuery);
+	    	args = malloc(sizeof(argumentosQuery));
+	    	args->unaQuery = malloc(sizeof(query));
+	    	args->unaQuery = myQuery;
+	    	args->flag = 1;
+	    	procesarQuery(args);
+	    	free(args);
 	    	//loggearSelectMemT(myQuery);
 	    	break;
 	    case INSERT:
-	    	procesarQuery(myQuery);
+	    	args = malloc(sizeof(argumentosQuery));
+	       	args->unaQuery = malloc(sizeof(query));
+	    	args->unaQuery = myQuery;
+	    	args->flag = 1;
+	    	procesarQuery(args);
+	    	free(args);
 	    	break;
 	    default:
 	    	printf("Request no valida\n");
@@ -218,42 +188,26 @@ void iniciarServidor()
 
 }
 
-void loggearInfoServidor(char * IP, char * Puerto)
+void procesarQuery(argumentosQuery * args)
 {
+	int flagConsola = args->flag;
 
-	char * ipServidor = malloc(strlen("IP del servidor: ") + strlen(IP) + 1);
-	strcpy(ipServidor,"IP del servidor: ");
-	strcat(ipServidor,IP);
-
-	char * puertoServidor = malloc(strlen("Puerto de escucha: ") + strlen(Puerto) + 1);
-	strcpy(puertoServidor,"Puerto de escucha: ");
-	strcat(puertoServidor,Puerto);
-
-	loggearInfo(ipServidor);
-	loggearInfo(puertoServidor);
-
-	free(ipServidor);
-	free(puertoServidor);
-}
-
-
-void procesarQuery(query * unaQuery)
-{
 	logMemTable = retornarLogConPath("Memtable.log","Memtable");
-	switch(unaQuery->requestType)
+
+	switch(args->unaQuery->requestType)
 	{
 	case SELECT:
-		procesarSelect(unaQuery);
+		procesarSelect(args->unaQuery,flagConsola);
 		break;
 	case INSERT:
-		procesarInsert(unaQuery);
+		procesarInsert(args->unaQuery,flagConsola);
 		break;
 	default:
 		loggearWarningEnLog(logMemTable,"Request aun no disponible");
 	}
 }
 
-void procesarInsert(query * unaQuery)
+void procesarInsert(query * unaQuery, int flagConsola)
 {
 
 	if(unaQuery->timestamp == -1)
@@ -261,36 +215,18 @@ void procesarInsert(query * unaQuery)
 		unaQuery->timestamp = 1;//(double)time(NULL);//ObtenerTimeStamp(); -> VALIDAR ESTO!
 	}
 
-	agregarUnRegistroMemTable(unaQuery);
+	agregarUnRegistroMemTable(unaQuery,flagConsola);
 }
 
 
-void agregarUnRegistroMemTable(query * unaQuery)
+void agregarUnRegistroMemTable(query * unaQuery, int flagConsola)
 {
 	pthread_mutex_lock(&mutex_Mem_Table);
-	agregarAMemTable(memTable,unaQuery);
+	agregarAMemTable(memTable,unaQuery,flagConsola);
 	pthread_mutex_unlock(&mutex_Mem_Table);
 }
 
-void loggearSelectMemT(query* unaQuery)
-{
-		char * key = malloc(50);
-		char * req = malloc(strlen("Se recibio: {SELECT } ") + strlen(unaQuery->tabla) + 2);
-
-		strcpy(req,"Se recibio: {SELECT ");
-		strcat(req,unaQuery->tabla);
-		strcat(req," ");
-		snprintf(key,40,"%d",unaQuery->key);
-		strcat(req,key);
-		strcat(req,"}");
-
-		loggearInfoEnLog(logMemTable,req);
-
-		free(key);
-		free(req);
-}
-
-void procesarSelect(query* unaQuery)
+void procesarSelect(query* unaQuery, int flagConsola)
 {
 	loggearSelectMemT(unaQuery);
 	/*
@@ -311,9 +247,10 @@ void procesarSelect(query* unaQuery)
 	/*
 	 * Por ahora solo busca en la MemTable
 	 */
-	char * aux;
+
 	t_list * temp;
-	void * condicionVerdadera;
+	void * listaRegistros;
+	registro * registroFinal = malloc(sizeof(registro));
 
 	if(dictionary_has_key(memTable,unaQuery->tabla))
 	{
@@ -324,34 +261,38 @@ void procesarSelect(query* unaQuery)
 			return ((registro*)elementoLista)->key == unaQuery->key;
 		}
 
-		condicionVerdadera = (registro*)list_find(temp,(void*)condicion);
+		listaRegistros = (t_list*)list_filter(temp,(void*)condicion);
 
-		if(condicionVerdadera)
+
+		if(listaRegistros)
 		{
-		aux = malloc(strlen("Se encontro el registro buscado: {") + strlen(((registro*)condicionVerdadera)->value) + 2);
-		strcpy(aux,"Se encontro el valor buscado: {");
-		strcat(aux,((registro*)condicionVerdadera)->value);
-		strcat(aux,"}");
-		loggearInfoEnLog(logMemTable,aux);
-		printf("%s\n",aux);
-		free(aux);
+		registroFinal->timestamp = 0;
+
+		void mayorTimestamp(registro * unRegistro)
+		{
+			if(unRegistro->timestamp > registroFinal->timestamp)
+			{
+				registroFinal = unRegistro;
+			}
+		}
+
+		list_iterate(listaRegistros,(void*)mayorTimestamp);
+
+		if(registroFinal)
+		loggearRegistroEncontrado(((registro*)registroFinal)->value,flagConsola);
+
 		}else{
 		loggearInfoEnLog(logMemTable,"No se encontro la key buscada");
-		printf("No se encontro la key");
+		if(flagConsola)
+		printf("No se encontro la key\n");
 		}
 	}	else
 	{
-		aux = malloc(strlen("No existe la tabla {}") + strlen(unaQuery->tabla) + 5);
-		strcpy(aux,"No existe la tabla {");
-		strcat(aux,unaQuery->tabla);
-		strcat(aux,"}");
-		loggearInfoEnLog(logMemTable,aux);
-		printf("%s\n",aux);
-		free(aux);
+		loggearRegistroNoEncontrado(unaQuery->tabla,flagConsola);
 	}
-
+	free(registroFinal);
 }
-void agregarAMemTable(t_dictionary * memTable, query * unaQuery)
+void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola)
 {
 	t_list * temp;
 	registro * reg = castearRegistroQuery(unaQuery);
@@ -367,7 +308,8 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery)
 		agregarRegistro(temp,reg);
 		dictionary_put(memTable,unaQuery->tabla,temp);
 		loggearInfoEnLog(logMemTable,"Se inserto un registro correctamente");
-
+		if(flagConsola)
+			printf("Se inserto un registro correctamente\n");
 	}
 	else
 	{
@@ -377,6 +319,11 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery)
 
 		warningTablaNoCreada(unaQuery->tabla);
 		loggearInfoEnLog(logMemTable,"Se inserto un registro correctamente");
+		if(flagConsola)
+		{
+			printf("Warning: Tabla no creada previamente\n");
+			printf("Se inserto un registro correctamente\n");
+		}
 
 	}
 
@@ -410,7 +357,8 @@ void imprimirListaRegistros(t_list * unaLista)
 {
 	void imprimirRegistro(void * valor)
 		{
-			printf("{%d %s %lli}\n",((registro*)valor)->key,((registro*)valor)->value,((registro*)valor)->timestamp);
+
+			printf("-> {%d %s %lli}\n",((registro*)valor)->key,((registro*)valor)->value,((registro*)valor)->timestamp);
 		}
 	list_iterate(unaLista,(void*)imprimirRegistro);
 }
@@ -465,28 +413,6 @@ char * castearRegistroString(registro * unRegistro)
 }
 
 
-void loggearListaRegistros(t_list * unaLista)
-{
-
-	void loggearRegistro(void * valor)
-	{
-
-	char * aux = strdup(castearRegistroString((registro*)valor));
-	char * mensajeALoggear = malloc(strlen(aux) + strlen("Se logea el registro: {") + 2);
-
-	strcpy(mensajeALoggear,"Se logea el registro: {");
-	strcat(mensajeALoggear,aux);
-	strcat(mensajeALoggear,"}");
-
-	loggearInfoEnLog(logMemTable,mensajeALoggear);
-
-	free(aux);
-	free(mensajeALoggear);
-	}
-		list_iterate(unaLista,(void*)loggearRegistro);
-
-}
-
 void warningTablaNoCreada(char * tabla)
 {
 		char * wrg = malloc(strlen(tabla) + 1 + 100);
@@ -499,8 +425,22 @@ void warningTablaNoCreada(char * tabla)
 		free(wrg);
 }
 
+query * crearQuery(int32_t tipoRequest, char * nombreTabla, int32_t key, char * value, int64_t timestamp)
+{
+	query * unaQuery = malloc(sizeof(query));
 
+	unaQuery->requestType = tipoRequest;
+	unaQuery->tabla = strdup(nombreTabla);
+	unaQuery->key = key;
 
+	if(tipoRequest == INSERT)
+	{
+	unaQuery->value = strdup(value);
+	unaQuery->timestamp = timestamp;
+	}
+
+	return unaQuery;
+}
 
 void imprimirMemTable(t_dictionary * memTable)
 {
@@ -511,8 +451,6 @@ void imprimirMemTable(t_dictionary * memTable)
 	}
 	dictionary_iterator(memTable,(void*)imprimirLista);
 }
-
-
 
 void loggearMemTable(t_dictionary * memTable)
 {
@@ -536,23 +474,130 @@ void loggearMemTable(t_dictionary * memTable)
 }
 
 
-query * crearInsert(char * nombreTabla,int32_t key,char * value,int64_t timestamp)
-{
-	char * aux = malloc(strlen(value) + 3);
 
-	strcpy(aux,"'");
+void loggearListaRegistros(t_list * unaLista)
+{
+
+	void loggearRegistro(void * valor)
+	{
+
+	char * aux = strdup(castearRegistroString((registro*)valor));
+	char * mensajeALoggear = malloc(strlen(aux) + strlen("Se logea el registro: {") + 2);
+
+	strcpy(mensajeALoggear,"Se logea el registro: {");
+	strcat(mensajeALoggear,aux);
+	strcat(mensajeALoggear,"}");
+
+	loggearInfoEnLog(logMemTable,mensajeALoggear);
+
+	free(aux);
+	free(mensajeALoggear);
+	}
+		list_iterate(unaLista,(void*)loggearRegistro);
+
+}
+
+void loggearSelectMemT(query* unaQuery)
+{
+		char * key = malloc(50);
+		char * req = malloc(strlen("Se recibio: {SELECT } ") + strlen(unaQuery->tabla) + 2);
+
+		strcpy(req,"Se recibio: {SELECT ");
+		strcat(req,unaQuery->tabla);
+		strcat(req," ");
+		snprintf(key,40,"%d",unaQuery->key);
+		strcat(req,key);
+		strcat(req,"}");
+
+		loggearInfoEnLog(logMemTable,req);
+
+		free(key);
+		free(req);
+}
+
+void loggearRegistroEncontrado(char * value, int flagConsola)
+{
+	char * aux = malloc(strlen("Se encontro el registro buscado: ''") + strlen(value) + 2);
+
+	strcpy(aux,"Se encontro el valor buscado: '");
 	strcat(aux,value);
 	strcat(aux,"'");
 
-	query * unaQuery = malloc(sizeof(query) + strlen(aux) + strlen(nombreTabla));
+	loggearInfoEnLog(logMemTable,aux);
 
-	unaQuery->tabla = strdup(nombreTabla);
-	unaQuery->key = key;
-	unaQuery->value = strdup(aux);
-	unaQuery->timestamp = timestamp;
+	if(flagConsola)
+	printf("%s\n",aux);
 
-	return unaQuery;
+	free(aux);
 }
+
+void loggearRegistroNoEncontrado(char * tabla, int flagConsola)
+{
+	char * aux = malloc(strlen("No existe la tabla ''") + strlen(tabla) + 5);
+	strcpy(aux,"No existe la tabla '");
+	strcat(aux,tabla);
+	strcat(aux,"'");
+	loggearInfoEnLog(logMemTable,aux);
+	if(flagConsola)
+	printf("%s\n",aux);
+	free(aux);
+}
+
+
+void loggearNuevaConexion(int socket)
+{
+	  char * info = malloc(strlen("Nueva conexion asignada al socket: ") + 10 + 4);
+	  char * aux = malloc(10);
+
+	  strcpy(info,"Nueva conexion asignada al socket: ");
+	  snprintf(aux,10,"%d",socket);
+	  strcat(info,aux);
+	  strcat(info,"\n");
+
+	  loggearInfo(info);
+
+	  free(info);
+      free(aux);
+}
+void loggearDatosRecibidos(int socket, int datosRecibidos)
+{
+		  char * info = malloc(strlen("Se recibieron  bytes del socket  ") + 30 + 5);
+		  char * aux = malloc(30);
+
+		  strcpy(info,"Se recibieron  ");
+		  snprintf(aux,30,"%d",datosRecibidos);
+		  strcat(info," bytes del socket ");
+		  snprintf(aux,30,"%d",socket);
+		  strcat(info,aux);
+		  strcat(info,"\n");
+
+		  loggearInfo(info);
+
+		  free(info);
+	      free(aux);
+}
+
+
+void loggearInfoServidor(char * IP, char * Puerto)
+{
+
+	char * ipServidor = malloc(strlen("IP del servidor: ") + strlen(IP) + 1);
+	strcpy(ipServidor,"IP del servidor: ");
+	strcat(ipServidor,IP);
+
+	char * puertoServidor = malloc(strlen("Puerto de escucha: ") + strlen(Puerto) + 1);
+	strcpy(puertoServidor,"Puerto de escucha: ");
+	strcat(puertoServidor,Puerto);
+
+	loggearInfo(ipServidor);
+	loggearInfo(puertoServidor);
+
+	free(ipServidor);
+	free(puertoServidor);
+}
+
+
+
 
 void liberarInsert(query * unQuery)
 {

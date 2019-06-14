@@ -30,6 +30,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+
 t_log * logMemTable;
 
 /*
@@ -58,6 +59,12 @@ typedef struct {
 	int64_t timestamp;
 }registro;
 
+typedef struct{
+	query * unaQuery;
+	int flag;
+}argumentosQuery;
+
+
 void iniciarLFS();
 void inicializarSemaforos();
 
@@ -73,19 +80,21 @@ void loggearInfoServidor(char * IP, char * Puerto);
  * Funcion que se encargará de procesar la query mediante el hilo creado on demand
  */
 
-void procesarQuery(query * unaQuery);
+void procesarQuery(argumentosQuery * args);
 
 /*
  * Garantiza la mutua exclusion
  * Las validaciones sobre si existe o no la tabla se hacen a la hora de agregarMemTable
  */
 
-void procesarInsert(query * unaQuery);
+void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola);
 
 /*
  * NO garantiza mutua exclusion. Permite lecturas sucias
  */
-void procesarSelect(query * unaQuery);
+void procesarSelect(query* unaQuery, int flagConsola);
+
+void procesarInsert(query * unaQuery, int flagConsola);
 
 
 /*
@@ -96,8 +105,10 @@ void procesarDescribe(query * unaQuery);
 void procesarDrop(query * unaQuery);
 
 //Para pruebas
+/*
+ * Valido para SELECT e INSERT por ahora
+ */
 query * crearQuery(int32_t tipoRequest, char * nombreTabla, int32_t key, char * value, int64_t timestamp);
-query * crearInsert(char * nombreTabla,int32_t key,char * value,int64_t timestamp);
 void liberarInsert(query * unQuery);
 
 /*
@@ -109,8 +120,7 @@ void imprimirListaRegistros(t_list * unaLista);
 void agregarRegistro(t_list * unaLista, registro* unRegistro);
 void agregarListaRegistros(t_list * lista,t_list * listaAgregar);
 registro * obtenerRegistro(t_list * lista, int posicionLista);
-void agregarUnRegistroMemTable(query * unaQuery);
-void agregarAMemTable(t_dictionary * memTable, query * unaQuery);
+void agregarUnRegistroMemTable(query * unaQuery, int flagConsola);
 void liberarMemTable(t_dictionary ** memTable);
 
 /*
@@ -129,7 +139,9 @@ void warningTablaNoCreada(char * tabla);
 void imprimirMemTable(t_dictionary * memTable);
 void loggearMemTable(t_dictionary * memTable);
 void loggearSelectMemT(query* unaQuery);
-
+void loggearRegistroEncontrado(char * value, int flagConsola);
+void loggearRegistroNoEncontrado(char * tabla, int flagConsola);
+void loggearNuevaConexion(int socket);
 
 
 
