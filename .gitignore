@@ -46,6 +46,8 @@ PoolMemorias/.gitignore
 *.x86_64
 *.hex
 
+#Xml
+*.xml
 
 # Debug files
 *.dSYM/
