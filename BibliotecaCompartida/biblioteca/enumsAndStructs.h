@@ -26,6 +26,8 @@ typedef struct {
 	int64_t timestamp;
 	int32_t consistencyType;
 	char * script;
+	int32_t cantParticiones;
+	int64_t compactationTime;
 	
 }query;
 
