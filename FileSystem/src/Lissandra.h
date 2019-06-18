@@ -30,6 +30,10 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 
 t_log * logMemTable;
 
@@ -39,7 +43,9 @@ t_log * logMemTable;
  */
 
 pthread_t hiloConsola,hiloServidor;
-pthread_mutex_t mutex_Mem_Table;
+
+pthread_t fileSystem;
+
 
 /*
  * El diccionario tendra como key al nombre de la tabla
@@ -48,7 +54,6 @@ pthread_mutex_t mutex_Mem_Table;
  */
 
 t_dictionary * memTable;
-t_dictionary * memTableBackUp;
 
 /*
  * Se define el registro de la siguiente forma
@@ -65,8 +70,15 @@ typedef struct{
 }argumentosQuery;
 
 
+
+int maxValue;
+int retardo; //en milisegundos  -> puede modificarse (ver cuando y de que forma)
+int dumping; //en milisegundos  -> puede modificarse (ver cuando y de que forma)
+char * puntoMontaje;
+
+void levantarConfig();
+
 void iniciarLFS();
-void inicializarSemaforos();
 
 /*
  * Funciones que tendrán los hilos de consola y server.
@@ -96,11 +108,11 @@ void procesarSelect(query* unaQuery, int flagConsola);
 
 void procesarInsert(query * unaQuery, int flagConsola);
 
+void procesarCreate(query * unaQuery, int flagConsola);
 
 /*
  * Por desarrollar
  */
-void procesarCreate(query * unaQuery);
 void procesarDescribe(query * unaQuery);
 void procesarDrop(query * unaQuery);
 
@@ -135,13 +147,25 @@ char * castearRegistroString(registro * unRegistro);
  */
 
 void loggearListaRegistros(t_list * unaLista);
-void warningTablaNoCreada(char * tabla);
+void errorTablaNoCreada(char * tabla);
 void imprimirMemTable(t_dictionary * memTable);
 void loggearMemTable(t_dictionary * memTable);
 void loggearSelectMemT(query* unaQuery);
 void loggearRegistroEncontrado(char * value, int flagConsola);
 void loggearRegistroNoEncontrado(char * tabla, int flagConsola);
 void loggearNuevaConexion(int socket);
+void loggearTablaCreadaOK(t_log * loggeador,query * unaQuery,int flagConsola, int flagFS);
+void loggearErrorTablaExistente(query * unaQuery,int flagConsola);
+
+
+void gestionarFileSystem();
+
+int rutinaFileSystemSelect(registro * maximoRegMemTable,argumentosQuery * args);
+int rutinaFileSystemCreate(argumentosQuery * args);
+int rutinaFileSystemDrop(argumentosQuery * args);
+int rutinaFileSystemDescribe(argumentosQuery * args);
+
+
 
 
 

@@ -6,11 +6,9 @@
 #include <stdbool.h>
 #include <errno.h>
 
-
-
 #include <commons/process.h>
 #include <commons/temporal.h>
-
+#include <commons/string.h>
 
 /*
  * Para obtener el ID del proceso / hilo actual
@@ -24,6 +22,8 @@ int ObtenerProceso();
  * Para obtener la hora en formato string
  */
 char * ObtenerTimeStamp();
+
+char * eliminarComillas(char * cadena);
 
 
 

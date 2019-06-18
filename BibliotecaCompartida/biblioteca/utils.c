@@ -17,7 +17,12 @@ char * get_Time()
 	return temporal_get_string_time();
 }
 
-
+char * eliminarComillas(char * cadena)
+{
+	if(strlen(cadena) > 2)
+	return string_substring(cadena,1,strlen(cadena) - 3);
+	return "";
+}
 
 /*
 void loggearTrace(char* mensaje) {

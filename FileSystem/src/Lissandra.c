@@ -7,10 +7,11 @@ void iniciarLFS()
 	remove("Lissandra.log");
 
 	iniciarLog("FileSystem");
-	inicializarSemaforos();
+
+	levantarConfig();
 
 	memTable = dictionary_create();
-	memTableBackUp = dictionary_create();
+
 
 	/*
 	 * 2 Hilos iniciales para LFS:
@@ -19,18 +20,32 @@ void iniciarLFS()
 	 * Luego se crean hilos on demand para gestionar requests
 	 */
 
+	fileSystem = crearHilo(gestionarFileSystem,NULL);
+	esperarHilo(fileSystem); // Crea las estructuras administrativas
+
 	hiloConsola = crearHilo(consola,NULL);
 	//hiloServidor = crearHilo(iniciarServidor,NULL);
 
 	esperarHilo(hiloConsola);
 	//esperarHilo(hiloServidor);
+
+
 }
 
 
-void inicializarSemaforos()
+void levantarConfig()
 {
-	pthread_mutex_init(&mutex_Mem_Table,NULL);
+	crearConfig("/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt");
+
+	maxValue =  obtenerInt("TAMAÑO_VALUE");
+	retardo = obtenerInt("RETARDO"); //en milisegundos  -> puede modificarse (ver cuando y de que forma)
+	dumping = obtenerInt("TIEMPO_DUMP"); //en milisegundos  -> puede modificarse (ver cuando y de que forma)
+
+	puntoMontaje = strdup(eliminarComillas(obtenerString("PUNTO_MONTAJE")));
+
+	eliminarEstructuraConfig();
 }
+
 
 
 void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
@@ -108,9 +123,9 @@ void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 
 void consola()
 {
-
+	 int aux;
 	 char * linea;
-	 query * myQuery;
+	 query * myQuery = malloc(100);
 	 argumentosQuery * args;
 	 logMemTable = retornarLogConPath("Memtable.log","Memtable");
 	 system("clear");
@@ -131,30 +146,20 @@ void consola()
 	    }else if (!strncasecmp(linea,"clear",5)) {
 	      system("clear");
 	    }else{
-
-	    switch(parsear(linea,&myQuery))
-	    {
-	    case SELECT:
-	    	args = malloc(sizeof(argumentosQuery));
-	    	args->unaQuery = malloc(sizeof(query));
-	    	args->unaQuery = myQuery;
-	    	args->flag = 1;
-	    	procesarQuery(args);
-	    	free(args);
-	    	//loggearSelectMemT(myQuery);
-	    	break;
-	    case INSERT:
-	    	args = malloc(sizeof(argumentosQuery));
-	       	args->unaQuery = malloc(sizeof(query));
-	    	args->unaQuery = myQuery;
-	    	args->flag = 1;
-	    	procesarQuery(args);
-	    	free(args);
-	    	break;
-	    default:
+	    aux = parsear(linea,&myQuery);
+	    args = malloc(sizeof(argumentosQuery));
+		args->unaQuery = malloc(sizeof(query));
+		args->unaQuery = myQuery;
+		args->flag = 1;
+		if(aux != -1)
+		{
+			procesarQuery(args);
+		}
+		else
+		{
 	    	printf("Request no valida\n");
-	    	break;
 	    }
+	    free(args);
 	    //free(myQuery);
 
 	  }
@@ -164,8 +169,7 @@ void consola()
 
 void iniciarServidor()
 {
-
-	crearConfig("../configuraciones/configuracion.txt"); //Para correrlo en eclipse: "configuraciones/configuracion.txt"
+	crearConfig("/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt");
 
 	char * IP;
 
@@ -186,6 +190,7 @@ void iniciarServidor()
 	free(IP);
 	free(Puerto);
 
+	eliminarEstructuraConfig();
 }
 
 void procesarQuery(argumentosQuery * args)
@@ -201,6 +206,11 @@ void procesarQuery(argumentosQuery * args)
 		break;
 	case INSERT:
 		procesarInsert(args->unaQuery,flagConsola);
+		break;
+	case CREATE:
+		procesarCreate(args->unaQuery,flagConsola);
+		pthread_t  fsCreate = crearHilo(rutinaFileSystemCreate,args);
+		esperarHilo(fsCreate);
 		break;
 	default:
 		loggearWarningEnLog(logMemTable,"Request aun no disponible");
@@ -221,33 +231,14 @@ void procesarInsert(query * unaQuery, int flagConsola)
 
 void agregarUnRegistroMemTable(query * unaQuery, int flagConsola)
 {
-	pthread_mutex_lock(&mutex_Mem_Table);
+
 	agregarAMemTable(memTable,unaQuery,flagConsola);
-	pthread_mutex_unlock(&mutex_Mem_Table);
+
 }
 
 void procesarSelect(query* unaQuery, int flagConsola)
 {
 	loggearSelectMemT(unaQuery);
-	/*
-	 * Para buscar:
-	 * 1° -> Buscar nombre Tabla
-	 * 2° -> Buscar Key
-	 *
-	 * Aca hay que buscar en todos los lugares donde puede estar:
-	 *
-	 * 1° -> La memtable
-	 * 2° -> los .bin
-	 * 3° -> los .tmp
-	 * 4° -> los .tmpc
-	 *
-	 * --> Quedarse con el registro que posea el timestamp mayor
-	 */
-
-	/*
-	 * Por ahora solo busca en la MemTable
-	 */
-
 	t_list * temp;
 	void * listaRegistros;
 	registro * registroFinal = malloc(sizeof(registro));
@@ -299,10 +290,11 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola
 
 	if(dictionary_has_key(memTable,unaQuery->tabla))
 	{
-		temp = (t_list *)dictionary_remove(memTable,unaQuery->tabla);
-
-		if(list_size(temp) == 0 || temp == NULL)
+		if(dictionary_get(memTable,unaQuery->tabla) != NULL)
 		{
+			temp = (t_list *)dictionary_remove(memTable,unaQuery->tabla);
+		}else{
+			dictionary_remove(memTable,unaQuery->tabla);
 			temp = list_create();
 		}
 		agregarRegistro(temp,reg);
@@ -313,19 +305,33 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola
 	}
 	else
 	{
-		temp = list_create();
+		/*
+		 *
+		 temp = list_create();
 		agregarRegistro(temp,reg);
 		dictionary_put(memTable,unaQuery->tabla,temp);
-
-		warningTablaNoCreada(unaQuery->tabla);
 		loggearInfoEnLog(logMemTable,"Se inserto un registro correctamente");
+		 */
+		errorTablaNoCreada(unaQuery->tabla);
+
 		if(flagConsola)
 		{
-			printf("Warning: Tabla no creada previamente\n");
-			printf("Se inserto un registro correctamente\n");
+			printf("Error: Tabla no creada previamente\n");
+			//printf("Se inserto un registro correctamente\n");
 		}
 
 	}
+
+}
+
+void procesarCreate(query * unaQuery, int flagConsola)
+{
+	if(dictionary_has_key(memTable,unaQuery->tabla))
+		{
+		loggearErrorTablaExistente(unaQuery,flagConsola);
+		}
+	dictionary_put(memTable,unaQuery->tabla,NULL);
+	loggearTablaCreadaOK(logMemTable,unaQuery,flagConsola,0);
 
 }
 
@@ -413,16 +419,16 @@ char * castearRegistroString(registro * unRegistro)
 }
 
 
-void warningTablaNoCreada(char * tabla)
+void errorTablaNoCreada(char * tabla)
 {
-		char * wrg = malloc(strlen(tabla) + 1 + 100);
+		char * error = malloc(strlen(tabla) + 1 + 100);
 
-		strcpy(wrg,"Tabla: '");
-		strcat(wrg,tabla);
-		strcat(wrg,"' no creada previamente");
+		strcpy(error,"Tabla: '");
+		strcat(error,tabla);
+		strcat(error,"' no creada previamente");
 
-		loggearWarningEnLog(logMemTable,wrg);
-		free(wrg);
+		loggearErrorEnLog(logMemTable,error);
+		free(error);
 }
 
 query * crearQuery(int32_t tipoRequest, char * nombreTabla, int32_t key, char * value, int64_t timestamp)
@@ -597,14 +603,42 @@ void loggearInfoServidor(char * IP, char * Puerto)
 }
 
 
-
-
 void liberarInsert(query * unQuery)
 {
 	free(unQuery->tabla);
 	free(unQuery->value);
 	free(unQuery);
 }
+
+void loggearTablaCreadaOK(t_log * loggeador,query * unaQuery,int flagConsola, int flagFS){
+
+		char * aux = malloc(strlen("Se creo correctamente la tabla  ''") + strlen(unaQuery->tabla) + 30);
+		strcpy(aux,"Se creo correctamente la tabla '");
+		strcat(aux,unaQuery->tabla);
+		strcat(aux,"'");
+		if(flagFS)
+			strcat(aux," en el FileSystem");
+		else
+			strcat(aux," en la MemTable");
+
+		loggearInfoEnLog(loggeador,aux);
+		if(flagConsola)
+		printf("%s\n",aux);
+		free(aux);
+
+}
+void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
+{
+	char * aux = malloc(strlen("Error la tabla  '' ya existe en el sistema") + strlen(unaQuery->tabla) + 10);
+	strcpy(aux,"Error la tabla '");
+	strcat(aux,unaQuery->tabla);
+	strcat(aux,"' ya existe en el sistema");
+	loggearInfoEnLog(logMemTable,aux);
+	if(flagConsola)
+	printf("%s\n",aux);
+	free(aux);
+}
+
 
 
 

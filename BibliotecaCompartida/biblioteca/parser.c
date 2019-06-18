@@ -155,10 +155,10 @@ int parsear(char * string_query,query **struct_query)
 		string_to_upper(query_split[1]);
 		((*struct_query))->requestType = CREATE;
 		((*struct_query))->tabla = strdup(query_split[1]);
-		((*struct_query))->consistencyType = query_split[2];
+		((*struct_query))->consistencyType = resolverConsistencia(query_split[2]);
 		((*struct_query))->cantParticiones = atoi(query_split[3]);
 		((*struct_query))->compactationTime = atoi(query_split[4]); //Luego sacar esto!
-		((*struct_query))->timestamp = NULL;
+		((*struct_query))->timestamp = -1;
 
 		return CREATE;
 
@@ -377,6 +377,17 @@ int tipo_consistencia_valido(char * texto)
 		//printf("Consistencia INvalida\n");
 		return 0;
 	}
+}
+
+int resolverConsistencia(char * consistencia)
+{
+	if(strcasecmp(consistencia,"SC"))
+	return SC;
+	if(strcasecmp(consistencia,"SHC"))
+	return SHC;
+	if(strcasecmp(consistencia,"EC"))
+	return EC;
+	return -1;
 }
 
 
