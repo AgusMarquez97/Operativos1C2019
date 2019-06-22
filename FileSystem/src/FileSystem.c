@@ -101,6 +101,19 @@ void crearCarpetaBloques()
 
 	FILE * bloque =  txt_open_for_append(bloques);
 	txt_close_file(bloque);
+	int i = 2;
+	char *s;
+	char * blocks;
+	while(i <= 30){
+		s= string_itoa(i);
+		strcat(s,".bin");
+		blocks = malloc(strlen(carpetaBloques)+strlen(s)+1);
+		strcpy(blocks,carpetaBloques);
+		strcat(blocks,s);
+		FILE * block =  txt_open_for_append(blocks);
+		txt_close_file(block);
+		i++;
+	}
 }
 
 void borrarDirectorioVacio(char * directorio)

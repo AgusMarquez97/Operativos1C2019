@@ -10,6 +10,7 @@
 
 #include "Lissandra.h"
 #include "commons/txt.h"
+#include "commons/string.h"
 
 struct stat estado = {0};
 /*	Para info sobre un archivo -> usar: stat(pathArchivo,&estructuraBuffer)
