@@ -43,9 +43,76 @@ void levantarConfig()
 
 	puntoMontaje = strdup(eliminarComillas(obtenerString("PUNTO_MONTAJE")));
 
+	pthread_t hiloMonintor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
+	//Aca voy a querer agregar el hilo a la lista
+
 	eliminarEstructuraConfig();
 }
 
+void actualizarConfig()
+{
+	actualizarVariablesGlobales();
+	reenviarConfig();
+}
+
+void actualizarVariablesGlobales()
+{
+	crearConfig("/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt");
+
+	retardo = obtenerInt("RETARDO");
+	dumping = obtenerInt("TIEMPO_DUMP");
+
+	eliminarEstructuraConfig();
+}
+
+void reenviarConfig()
+{
+	/*
+	 * Hay que crear un cliente que le envie a memoria los nuevos datos del config
+	 */
+	return;
+}
+
+void monitorearConfig()
+{
+
+	const char * pathConfig = "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt";
+
+	int bytesLeidos = 0;
+	const int tamanioBuffer = sizeof(struct inotify_event)*10;
+	void * buffer = malloc(tamanioBuffer);
+	struct inotify_event * evento;
+
+	int archivoMonitor = inotify_init();
+
+	if(archivoMonitor == -1)
+	{
+		loggearError("No se pudo crear el archivo monitor");
+	}
+
+	int monitor = inotify_add_watch(archivoMonitor,pathConfig,IN_MODIFY);
+
+	if(monitor == -1)
+	{
+		loggearError("No se pudo crear el monitor para el path del config:");
+	}
+
+	while(1)
+	{
+		bytesLeidos = read(archivoMonitor,buffer,tamanioBuffer); //Bloquea hasta que ocurre el evento
+
+		if(bytesLeidos<=0)
+		{
+			loggearError("Error al leer del archivo monitor");
+		}
+
+		evento = (struct inotify_event*) bytesLeidos;
+
+		if(evento->len)
+		actualizarConfig();
+	}
+
+}
 
 
 void levantarServidorLFS(char * servidorIP, char* servidorPuerto)

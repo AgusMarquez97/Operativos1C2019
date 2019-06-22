@@ -34,6 +34,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <sys/inotify.h>
+
 
 t_log * logMemTable;
 
@@ -54,6 +56,9 @@ pthread_t fileSystem;
  */
 
 t_dictionary * memTable;
+
+
+t_list * hilos;
 
 /*
  * Se define el registro de la siguiente forma
@@ -166,7 +171,31 @@ int rutinaFileSystemDrop(argumentosQuery * args);
 int rutinaFileSystemDescribe(argumentosQuery * args);
 
 
+/*
+ * Se utiliza inotify para notificar frente a eventos de
+ * modificacion en el archivo de configuracion
+ */
 
+void monitorearConfig();
+
+/*
+ * Actualizar el config implica:
+ *		1) Notificar al resto -> enviando los nuevos valores
+ *		2) Refrescar variables globales locales
+ */
+void actualizarConfig();
+void actualizarVariablesGlobales();
+void reenviarConfig();
+/*
+ 	 	 Estructura del evento:
+   	   	   struct inotify_event {
+               int      wd;  -> Monitor
+               uint32_t mask; -> Evento
+               uint32_t cookie; -> Para conectar multiples eventos
+               uint32_t len;  -> Longitud del nombre del archivo que genero el evento
+               char     name[]; -> Nombre del archivo que genero el evento
+           };
+ */
 
 
 #endif /* LISSANDRA_H_ */
