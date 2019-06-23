@@ -706,6 +706,15 @@ void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
 	free(aux);
 }
 
-
+//me falta testear esto:
+int obtenerTamanioRegistrosDeUnaTabla(t_dictionary * memTable, char * tabla){
+	t_list * registros =(t_list *) dictionary_get(memTable, tabla);
+	int addTamanioRegistro(int accum,registro *unRegistro){
+		int j = (int) strlen(unRegistro->value)+15;//tam registro = value + 4 de key + 8 de timestamp + 3 de ; ; \n
+		return accum + j;
+	}
+	int tamanioRegistros = list_fold(registros, 0, (void*) addTamanioRegistro);
+	return tamanioRegistros;
+}
 
 

@@ -7,7 +7,14 @@
 
 #ifndef FILESYSTEM_H_
 #define FILESYSTEM_H_
-
+#include <sys/types.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "commons/bitarray.h"
+#include <sys/mman.h>
+#include <unistd.h>
+#include <sys/stat.h>
 #include "Lissandra.h"
 #include "commons/txt.h"
 #include "commons/string.h"

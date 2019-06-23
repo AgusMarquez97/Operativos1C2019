@@ -60,8 +60,9 @@ void crearCarpetaMetadata()
 
 	crearConfig(metadataBin);
 	cambiarValorConfig("BLOCK_SIZE","64");
-	cambiarValorConfig("BLOCKS","5192");
+	cambiarValorConfig("BLOCKS","1024");
 	cambiarValorConfig("MAGIC_NUMBER","LISSANDRA");
+	cantidadBloques = obtenerInt("BLOCKS");
 	eliminarEstructuraConfig();
 
 	//Para el bitmap ver: https://github.com/sisoputnfrba/foro/issues/1337
@@ -69,8 +70,21 @@ void crearCarpetaMetadata()
 	strcpy(bitmapBin,carpetaMetadata);
 	strcat(bitmapBin,"Bitmap.bin");
 
-	FILE * bitmap =  txt_open_for_append(bitmapBin);
-	txt_close_file(bitmap);
+	int fd = open(bitmapBin,O_RDWR | O_CREAT, S_IRUSR | S_IWUSR); //se abre si existe, sino se crea
+	    char* bitmap;
+	    ftruncate(fd,cantidadBloques/8);
+	    bitmap= mmap(0,cantidadBloques/8,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0); //se baja el archivo a memoria
+
+		t_bitarray * bitarray = bitarray_create_with_mode(bitmap, cantidadBloques/8, LSB_FIRST);
+
+		for(int i = 0; i<cantidadBloques;i++){
+			bitarray_set_bit(bitarray,i); //seteo todos los bits (al principio todos los bloques están libres)
+
+		}
+
+
+	//FILE * bitmap =  txt_open_for_append(bitmapBin);
+	//txt_close_file(bitmap);
 }
 
 void crearCarpetaTables()
@@ -104,7 +118,12 @@ void crearCarpetaBloques()
 	int i = 2;
 	char *s;
 	char * blocks;
-	while(i <= 30){
+
+	crearConfig(metadataBin);
+	cantidadBloques = obtenerInt("BLOCKS");
+	eliminarEstructuraConfig();
+
+	while(i <= cantidadBloques){
 		s= string_itoa(i);
 		strcat(s,".bin");
 		blocks = malloc(strlen(carpetaBloques)+strlen(s)+1);
