@@ -93,6 +93,24 @@ void serializarInsert(void* buffer, char* tabla, int32_t key, char* value, int64
 
 }
 
+void serializarCreate(void* buffer, char* tabla,int32_t consistencyType,int32_t cantParticiones,int64_t compactationTime,int* desplazamiento){
+	serializarInt(buffer,CREATE,desplazamiento);
+	serializarString(buffer, tabla, desplazamiento);
+	serializarInt(buffer, consistencyType, desplazamiento);
+	serializarInt(buffer, cantParticiones, desplazamiento);
+	serializarDouble(buffer, compactationTime, desplazamiento);
+}
+
+void serializarDescribe(void* buffer, char* tabla, int* desplazamiento){
+	serializarInt(buffer,DESCRIBE,desplazamiento);
+	serializarString(buffer, tabla, desplazamiento);
+}
+
+void serializarDrop(void* buffer, char* tabla,int* desplazamiento){
+	serializarInt(buffer,DROP,desplazamiento);
+	serializarString(buffer, tabla, desplazamiento);
+}
+
 
 void deserializarSelect(char** tabla, int32_t* key, void* buffer, int* desplazamiento) {
 
@@ -110,6 +128,21 @@ void deserializarInsert(char** tabla, int32_t* key, char** value, int64_t* times
 
 }
 
+void deserializarCreate(char** tabla,int32_t * consistencyType,int32_t * cantParticiones,int64_t * compactationTime, void * buffer, int * desplazamiento){
+	deserializarString(buffer,tabla, desplazamiento);
+	deserializarInt(buffer,consistencyType,desplazamiento);
+	deserializarInt(buffer,cantParticiones, desplazamiento);
+	deserializarDouble(buffer,compactationTime,desplazamiento);
+}
+
+void deserializarDescribe(char** tabla, void* buffer, int* desplazamiento){
+	deserializarString(buffer,tabla, desplazamiento);
+}
+
+void deserializarDrop(char** tabla,void* buffer, int* desplazamiento){
+	deserializarString(buffer,tabla, desplazamiento);
+}
+
 //SERIALIZAR Y DESEREALIZAR QUERYS
 
 
@@ -122,7 +155,7 @@ void serializarListaInt(void* buffer, t_list* listaEnteros, int* desplazamiento)
 	serializarInt(buffer, listaEnteros->elements_count, desplazamiento);
 
 	for(int i=0; i < listaEnteros->elements_count; i++){
-		serializarInt(buffer, list_get(listaEnteros, i), desplazamiento);
+		serializarInt(buffer,(int32_t) list_get(listaEnteros, i), desplazamiento);
 	}
 
 }
@@ -160,7 +193,7 @@ void deserializarListaString( void* buffer, t_list* listaString, int* desplazami
 	char* cadena;
 
 	for(int i=0; i < cantElem; i++) {
-		deserializarString(buffer, cadena, desplazamiento);
+		deserializarString(buffer, &cadena, desplazamiento);
 		list_add(listaString, (void*)cadena);
 
 	}

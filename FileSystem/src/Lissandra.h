@@ -36,6 +36,9 @@
 
 #include <sys/inotify.h>
 
+#include <sys/types.h>
+#include <signal.h>
+
 
 t_log * logMemTable;
 
@@ -44,7 +47,7 @@ t_log * logMemTable;
  * Se recibirán requests por consola y por el servidor
  */
 
-pthread_t hiloConsola,hiloServidor;
+pthread_t hiloConsola, hiloServidor, hiloMonintor; // Todos estos pertenecen a la memTable
 
 pthread_t fileSystem;
 
@@ -57,7 +60,7 @@ pthread_t fileSystem;
 
 t_dictionary * memTable;
 
-
+struct inotify_event * evento;
 t_list * hilos;
 
 /*
@@ -170,7 +173,7 @@ int rutinaFileSystemCreate(argumentosQuery * args);
 int rutinaFileSystemDrop(argumentosQuery * args);
 int rutinaFileSystemDescribe(argumentosQuery * args);
 
-
+void terminarAplicacion();
 /*
  * Se utiliza inotify para notificar frente a eventos de
  * modificacion en el archivo de configuracion
@@ -197,5 +200,6 @@ void reenviarConfig();
            };
  */
 
+void terminarHilo(pthread_t * unHilo);
 
 #endif /* LISSANDRA_H_ */

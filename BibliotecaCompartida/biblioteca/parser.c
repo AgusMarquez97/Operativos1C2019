@@ -40,7 +40,7 @@ int parsear(char * string_query,query **struct_query)
 		((*struct_query))->tabla = strdup(query_split[1]);
 		((*struct_query))->key = atoi(query_split[2]);
 		((*struct_query))->value = NULL;
-		((*struct_query))->timestamp = NULL;
+		((*struct_query))->timestamp = -1;
 
 		return SELECT;
 
@@ -62,7 +62,7 @@ int parsear(char * string_query,query **struct_query)
 	  {
 
 		switch (query_cant_palabras) {
-			case (4): ((*struct_query))->timestamp = NULL;
+			case (4): ((*struct_query))->timestamp = -1;
 				  break;
 
 			case (5): if (!valor_solo_numerico(query_split[4])) {
@@ -105,9 +105,9 @@ int parsear(char * string_query,query **struct_query)
 
 	  
           ((*struct_query))->requestType = DESCRIBE;
-	  ((*struct_query))->key = NULL;
+	  ((*struct_query))->key = -1;
 	  ((*struct_query))->value = NULL;
-	  ((*struct_query))->timestamp = NULL;
+	  ((*struct_query))->timestamp = -1;
 
 	  if ( (query_cant_palabras == 1) )
 	  {
@@ -155,7 +155,7 @@ int parsear(char * string_query,query **struct_query)
 		string_to_upper(query_split[1]);
 		((*struct_query))->requestType = CREATE;
 		((*struct_query))->tabla = strdup(query_split[1]);
-		((*struct_query))->consistencyType = resolverConsistencia(query_split[2]);
+		((*struct_query))->consistencyType = string_a_consistencia(query_split[2]);
 		((*struct_query))->cantParticiones = atoi(query_split[3]);
 		((*struct_query))->compactationTime = atoi(query_split[4]); //Luego sacar esto!
 		((*struct_query))->timestamp = -1;
@@ -188,9 +188,9 @@ int parsear(char * string_query,query **struct_query)
 		string_to_upper(query_split[1]);
 		((*struct_query))->requestType = DROP;
 		((*struct_query))->tabla = strdup(query_split[1]);
-		((*struct_query))->key = NULL;
+		((*struct_query))->key = -1;
 		((*struct_query))->value = NULL;
-		((*struct_query))->timestamp = NULL;
+		((*struct_query))->timestamp = -1;
 
 		return DROP;
 
@@ -218,9 +218,9 @@ int parsear(char * string_query,query **struct_query)
 			string_to_upper(query_split[1]);
 			((*struct_query))->requestType = JOURNAL;
 			((*struct_query))->tabla = NULL;
-			((*struct_query))->key = NULL;
+			((*struct_query))->key = -1;
 			((*struct_query))->value = NULL;
-			((*struct_query))->timestamp = NULL;
+			((*struct_query))->timestamp = -1;
 
 			return JOURNAL;
 		}
@@ -379,16 +379,36 @@ int tipo_consistencia_valido(char * texto)
 	}
 }
 
-int resolverConsistencia(char * consistencia)
+
+char * consistencia_a_string(int32_t consistencia)
 {
-	if(strcasecmp(consistencia,"SC"))
+	switch(consistencia)
+	{
+	case SC:
+	return "SC";
+	break;
+	case SHC:
+	return "SHC";
+	break;
+	case EC:
+	return "EC";
+	break;
+	default:
+	return "";
+	}
+}
+
+int string_a_consistencia(char * consistencia)
+{
+	if(!strncasecmp(consistencia,"SC",2))
 	return SC;
-	if(strcasecmp(consistencia,"SHC"))
+	if(!strncasecmp(consistencia,"SHC",3))
 	return SHC;
-	if(strcasecmp(consistencia,"EC"))
+	if(!strncasecmp(consistencia,"EC",2))
 	return EC;
 	return -1;
 }
+
 
 
 

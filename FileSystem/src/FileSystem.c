@@ -316,4 +316,22 @@ void levantarMetadata()
 	eliminarEstructuraConfig();
 
 }
+void liberarLogs()
+{
+	log_destroy(logger);
+	//log_destroy(logMemTable);
+	//log_destroy(fileSystemLog);
+}
+
+void liberarHilos()
+{
+	list_iterate(hilos,(void*)terminarHilo);
+}
+void terminarAplicacion(int pid)
+{
+	liberarHilos();
+	liberarNombres();
+	liberarLogs();
+	exit(1);
+}
 

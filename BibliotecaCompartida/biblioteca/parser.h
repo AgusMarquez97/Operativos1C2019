@@ -7,6 +7,8 @@
 #include <regex.h>
 #include <stdbool.h>
 
+#include <commons/string.h>
+
 //#include "utils.h"
 #include "enumsAndStructs.h"
 //#include "serializacion.h"
@@ -22,5 +24,10 @@ int nombre_tabla_valido(char * text);
 int valor_solo_numerico(char * text);
 
 int tipo_consistencia_valido(char * texto);
+
+
+char * consistencia_a_string(int32_t consistencia);
+int string_a_consistencia(char * consistencia);
+
 
 #endif /* PARSER_H_ */

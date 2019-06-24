@@ -26,6 +26,7 @@ void iniciarLFS()
 	hiloConsola = crearHilo(consola,NULL);
 	//hiloServidor = crearHilo(iniciarServidor,NULL);
 
+
 	esperarHilo(hiloConsola);
 	//esperarHilo(hiloServidor);
 
@@ -43,7 +44,7 @@ void levantarConfig()
 
 	puntoMontaje = strdup(eliminarComillas(obtenerString("PUNTO_MONTAJE")));
 
-	pthread_t hiloMonintor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
+	hiloMonintor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
 	//Aca voy a querer agregar el hilo a la lista
 
 	eliminarEstructuraConfig();
@@ -78,39 +79,43 @@ void monitorearConfig()
 
 	const char * pathConfig = "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt";
 
-	int bytesLeidos = 0;
-	const int tamanioBuffer = sizeof(struct inotify_event)*10;
-	void * buffer = malloc(tamanioBuffer);
-	struct inotify_event * evento;
+	int bytes_leidos;
+    struct inotify_event * evento = malloc(sizeof(*evento));
 
-	int archivoMonitor = inotify_init();
 
-	if(archivoMonitor == -1)
+    int archivo_monitor = inotify_init();
+
+	if(archivo_monitor == -1)
 	{
-		loggearError("No se pudo crear el archivo monitor");
+	 perror("No se pudo crear el archivo monitor");
 	}
 
-	int monitor = inotify_add_watch(archivoMonitor,pathConfig,IN_MODIFY);
+	    int monitor = inotify_add_watch(archivo_monitor,pathConfig,IN_MODIFY);//Ver mask
 
-	if(monitor == -1)
-	{
-		loggearError("No se pudo crear el monitor para el path del config:");
-	}
+	    if(monitor == -1)
+	    {
+	        perror("No se pudo crear el monitor");
+	    }
 
-	while(1)
-	{
-		bytesLeidos = read(archivoMonitor,buffer,tamanioBuffer); //Bloquea hasta que ocurre el evento
+	    while(1)
+	    {
 
-		if(bytesLeidos<=0)
-		{
-			loggearError("Error al leer del archivo monitor");
-		}
+	        bytes_leidos = read(archivo_monitor,evento,sizeof(struct inotify_event)*10);
+	        //Bloquea al proceso/hilo hasta que ocurra el evento declarado en el monitor
 
-		evento = (struct inotify_event*) bytesLeidos;
+	        if(bytes_leidos <= 0)
+	        {
+	            perror("Error al leer el archivo monitor..");
+	            break;
+	        }
 
-		if(evento->len)
-		actualizarConfig();
-	}
+	        if(evento->mask == IN_MODIFY)
+	        {
+	        	actualizarConfig();
+	        }
+
+
+	    }
 
 }
 
@@ -468,8 +473,8 @@ char * castearRegistroString(registro * unRegistro)
 	char * auxV = malloc(longitud);
 	char * auxD = malloc(40);
 
-	snprintf(auxK,40,"%d",unRegistro->key);
-	snprintf(auxD,40,"%lli",unRegistro->timestamp);
+	sprintf(auxK,"%d",unRegistro->key);
+	sprintf(auxD,"%lli",unRegistro->timestamp);
 	strcpy(auxV,unRegistro->value);
 
 	strcpy(registroFinal,auxK);
@@ -578,7 +583,7 @@ void loggearSelectMemT(query* unaQuery)
 		strcpy(req,"Se recibio: {SELECT ");
 		strcat(req,unaQuery->tabla);
 		strcat(req," ");
-		snprintf(key,40,"%d",unaQuery->key);
+		sprintf(key,"%d",unaQuery->key);
 		strcat(req,key);
 		strcat(req,"}");
 
@@ -623,7 +628,7 @@ void loggearNuevaConexion(int socket)
 	  char * aux = malloc(10);
 
 	  strcpy(info,"Nueva conexion asignada al socket: ");
-	  snprintf(aux,10,"%d",socket);
+	  sprintf(aux,"%d",socket);
 	  strcat(info,aux);
 	  strcat(info,"\n");
 
@@ -638,9 +643,9 @@ void loggearDatosRecibidos(int socket, int datosRecibidos)
 		  char * aux = malloc(30);
 
 		  strcpy(info,"Se recibieron  ");
-		  snprintf(aux,30,"%d",datosRecibidos);
+		  sprintf(aux,"%d",datosRecibidos);
 		  strcat(info," bytes del socket ");
-		  snprintf(aux,30,"%d",socket);
+		  sprintf(aux,"%d",socket);
 		  strcat(info,aux);
 		  strcat(info,"\n");
 
@@ -708,13 +713,19 @@ void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
 
 //me falta testear esto:
 int obtenerTamanioRegistrosDeUnaTabla(t_dictionary * memTable, char * tabla){
+	int tamanio = 0;
 	t_list * registros =(t_list *) dictionary_get(memTable, tabla);
-	int addTamanioRegistro(int accum,registro *unRegistro){
-		int j = (int) strlen(unRegistro->value)+15;//tam registro = value + 4 de key + 8 de timestamp + 3 de ; ; \n
-		return accum + j;
+	void tamanioRegistro(registro *unRegistro){
+		tamanio += strlen(unRegistro->value) + 1 + sizeof(int32_t) + sizeof(int64_t) + strlen(";;\n");
+		//15;//tam registro = value + 4 de key + 8 de timestamp + 3 de ; ; \n
 	}
-	int tamanioRegistros = list_fold(registros, 0, (void*) addTamanioRegistro);
-	return tamanioRegistros;
+	list_iterate(registros,(void*)tamanioRegistro);
+	return tamanio;
 }
 
+void terminarHilo(pthread_t * unHilo)
+{
+	//pthread_cancel(unHilo);
+	pthread_kill(*unHilo,SIGTERM);
+}
 

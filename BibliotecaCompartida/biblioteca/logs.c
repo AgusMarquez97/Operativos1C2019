@@ -58,3 +58,17 @@ void loggearErrorEnLog(t_log * unLog,char* mensaje)
 	log_error(unLog, mensaje);
 	log_error(unLog, "Error de errno: %s", strerror(errno));
 }
+
+
+void loggearInfo3Mensajes(char * mensajePrincipal, char * mensajeAConcatenar, char * mensajeFinal)
+{
+	char * log = malloc(strlen(mensajePrincipal) + strlen(mensajeAConcatenar) + strlen(mensajeFinal) + 1);
+
+	strcpy(log,mensajePrincipal);
+	strcat(log,mensajeAConcatenar);
+	strcat(log,mensajeFinal);
+
+	loggearInfo(log);
+
+	free(log);
+}

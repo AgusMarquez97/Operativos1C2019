@@ -9,11 +9,14 @@
 #include "enumsAndStructs.h"
 #include "serializacion.h"
 #include "sockets.h"
+#include "logs.h"
+#include "parser.h"
 
 //Enviar y recibir datos primitivos:
 
 void loggearSelect(char * tabla, int32_t key);
 void loggearInsert(char * tabla, int32_t key, char * value, int64_t timestamp);
+void loggearCreate(char *tabla,int32_t consistencyType, int32_t cantParticiones, int64_t compactationTime);
 
 void enviarInt(int socketReceptor, int32_t entero);
 void enviarChar(int socketReceptor, char caracter);
@@ -54,7 +57,58 @@ void enviarSelect(int socketReceptor, char* tabla, int32_t key);
  * 8° POSICION: 8 BYTES -> TIMESTAMP (int64_t) -> VER DE CAMBIAR A CHAR *
  * EN TOTAL: SIZEOF(int32_t)*5 + SIZEOF((int64_t) + N BYTES DE STRING (STRLEN(NOMBRE_TABLA) + 1) + N BYTES DE VALUE (STRLEN(VALUE) + 1)
  */
+
 void enviarInsert(int socketReceptor, char* tabla, int32_t key, char* value, int64_t timestamp);
+
+/*
+ * enviarCreate:
+ * DIVISION DE TAMANIOS DEL BUFFER:
+ * 1° POSICION: 4 BYTES -> TAMANIO_BUFFER (int32_t)
+ * 2° POSICION: 4 BYTES -> TIPO_QUERY (int32_t)
+ * 3° POSICION: 4 BYTES -> TAMANIO_NOMBRE_TABLA (int32_t)
+ * 4° POSICION: N BYTES (DEFINIDOS EN 3°) -> NOMBRE_TABLA (CHAR *)
+ * 5° POSICION: 4 BYTES -> CONSISTENCYTYPE (int32_t)
+ * 6° POSICION: 4 BYTES -> CANTPARTICIONES (int32_t)
+ * 8° POSICION: 8 BYTES -> COMPACTATIONTIME (int64_t) -> VER DE CAMBIAR A CHAR *
+ * EN TOTAL: SIZEOF(int32_t)*5 + SIZEOF((int64_t) + N BYTES DE STRING (STRLEN(NOMBRE_TABLA) + 1)
+ * */
+
+void enviarCreate(int socketReceptor,char* tabla,int32_t consistencyType,int32_t cantParticiones,int64_t compactationTime);
+
+
+/*
+ * enviarDescribeConTabla: == enviarString()
+ * DIVISION DE TAMANIOS DEL BUFFER:
+ * 1° POSICION: 4 BYTES -> TAMANIO_BUFFER (int32_t)
+ * 2° POSICION: 4 BYTES -> TIPO_QUERY (int32_t)
+ * 3° POSICION: 4 BYTES -> TAMANIO_NOMBRE_TABLA (int32_t)
+ * 4° POSICION: N BYTES (DEFINIDOS EN 3°) -> NOMBRE_TABLA (CHAR *)
+ * EN TOTAL: SIZEOF(int32_t)*3 + N BYTES DE STRING (STRLEN(NOMBRE_TABLA) + 1)
+ */
+
+void enviarDescribe(int socketReceptor,char* tabla);
+
+/*
+ * enviarDrop:
+ * DIVISION DE TAMANIOS DEL BUFFER:
+ * 1° POSICION: 4 BYTES -> TAMANIO_BUFFER (int32_t)
+ * 2° POSICION: 4 BYTES -> TIPO_QUERY (int32_t)
+ * 3° POSICION: 4 BYTES -> TAMANIO_NOMBRE_TABLA (int32_t)
+ * 4° POSICION: N BYTES (DEFINIDOS EN 3°) -> NOMBRE_TABLA (CHAR *)
+ * EN TOTAL: SIZEOF(int32_t)*3 + N BYTES DE STRING (STRLEN(NOMBRE_TABLA) + 1)
+ */
+
+void enviarDrop(int socketReceptor,char* tabla);
+
+/*
+ * enviarRequest:
+ * DIVISION DE TAMANIOS DEL BUFFER:
+ * 1° POSICION: 4 BYTES -> TAMANIO_BUFFER (int32_t)
+ * 2° POSICION: 4 BYTES -> TIPO_QUERY (int32_t)
+ * EN TOTAL: SIZEOF(int32_t)*2
+ */
+
+void enviarRequest(int socketReceptor, int32_t request);
 
 /*
  * RECIBIRQUERY:
@@ -65,7 +119,6 @@ void enviarInsert(int socketReceptor, char* tabla, int32_t key, char* value, int
  */
 
 int recibirQuery(int socketEmisor, query ** myQuery);
-
 
 
 

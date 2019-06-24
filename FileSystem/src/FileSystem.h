@@ -18,6 +18,7 @@
 #include "Lissandra.h"
 #include "commons/txt.h"
 #include "commons/string.h"
+#include <signal.h>
 
 struct stat estado = {0};
 /*	Para info sobre un archivo -> usar: stat(pathArchivo,&estructuraBuffer)
@@ -101,11 +102,6 @@ void crearMetadataTabla(char * directorioTabla, query * queryCreate, int flagCon
 int crearCarpetaTabla(query * queryCreate, int flagConsola);
 
 
-/*
- * Libera todas las variables globales char *
- */
-
-void liberarNombres();
 
 /*
  *	Rutina que manda a ejecutar LFS con un hilo frente a CREATE
@@ -117,5 +113,25 @@ int rutinaFileSystemDrop(argumentosQuery * args);
 char * asignarUnBloqueBin();
 
 void levantarMetadata();
+
+void terminarAplicacion();
+/*
+ * Libera todos los logs del modulo
+ */
+
+void liberarLogs();
+
+/*
+ * Mata a todos los hilos
+ */
+
+void liberarHilos();
+
+/*
+ * Libera todas las variables globales char *
+ */
+
+void liberarNombres();
+
 
 #endif /* FILESYSTEM_H_ */
