@@ -108,14 +108,7 @@ void crearCarpetaBloques()
 			mkdir(carpetaBloques, 0700);
 	}
 
-	char * bloques = malloc(strlen(carpetaBloques) + strlen("1.bin") + 1); //Se crea el primer bloque del sistema
-
-	strcpy(bloques,carpetaBloques);
-	strcat(bloques,"1.bin");
-
-	FILE * bloque =  txt_open_for_append(bloques);
-	txt_close_file(bloque);
-	int i = 2;
+	int i = 0;
 	char *s;
 	char * blocks;
 
@@ -123,7 +116,7 @@ void crearCarpetaBloques()
 	cantidadBloques = obtenerInt("BLOCKS");
 	eliminarEstructuraConfig();
 
-	while(i <= cantidadBloques){
+	while(i < cantidadBloques){
 		s= string_itoa(i);
 		strcat(s,".bin");
 		blocks = malloc(strlen(carpetaBloques)+strlen(s)+1);
@@ -294,7 +287,7 @@ int rutinaFileSystemCreate(argumentosQuery * args)
 	return crearCarpetaTabla(args->unaQuery,args->flag);
 }
 
-char * asignarUnBloqueBin()
+char * asignarUnBloqueBin(t_bitarray* unBitarray)
 {
 	/*
 	 * Hay que:
@@ -302,7 +295,37 @@ char * asignarUnBloqueBin()
 	 * 2° -> Habría que actualizar el archivo de metadata del sistema
 	 * 3° -> Una vez obtenido el bloque, pasarlo a char * con formato de array (ver de evitar esto) y retornarlo
 	 */
+	crearConfig(metadataBin);
+		cantidadBloques = obtenerInt("BLOCKS");
+		eliminarEstructuraConfig();
+		int primerBloqueLibre =buscarPrimerBloqueLibre(unBitarray,cantidadBloques);
+		if(primerBloqueLibre==-1) //falta manejar cuando no hay bloques disponibles acá
+		//faltan pasos 2 y 3
+
+		bitarray_clean_bit(unBitarray,primerBloqueLibre);
 	return "[0]";
+}
+
+
+//buscarPrimerBloqueLibre y si no encuentra retorna -1
+int buscarPrimerBloqueLibre(t_bitarray* unBitarray,int nroBloques){
+	bool esBloqueLibre(int unBloque){
+			return bitarray_test_bit(unBitarray,unBloque);
+			}
+	t_list * listaIndices= list_create();
+	for(int j = 0; j<nroBloques;j++){
+		list_add(listaIndices, j);
+		}
+	bool esBloqueLibre(t_bitarray* unBitarray,int unBloque){
+		return bitarray_test_bit(unBitarray,unBloque);
+	}
+	int primerBloqueLibre = list_find(listaIndices,esBloqueLibre);
+		if(primerBloqueLibre!=0) return primerBloqueLibre;
+		else{
+			if(bitarray_test_bit(unBitarray,0)) return 0;
+			else return -1;
+		}
+	list_destroy(listaIndices);
 }
 
 void levantarMetadata()

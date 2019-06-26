@@ -133,5 +133,8 @@ void liberarHilos();
 
 void liberarNombres();
 
+//toma un bitarray y la cantidad de bloques del file system y retorna el numero del bloque que esta disponible o -1 en caso de no haber bloques disponibles
+int buscarPrimerBloqueLibre(t_bitarray* unBitarray,int nroBloques);
+
 
 #endif /* FILESYSTEM_H_ */
