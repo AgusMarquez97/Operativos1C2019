@@ -19,6 +19,7 @@
 #include "commons/txt.h"
 #include "commons/string.h"
 #include <signal.h>
+#include"commons/collections/list.h"
 
 struct stat estado = {0};
 /*	Para info sobre un archivo -> usar: stat(pathArchivo,&estructuraBuffer)

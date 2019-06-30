@@ -155,6 +155,8 @@ void ejecutarDumping()
 	 * Al guardar la info en bloques hay que actualizar el bitmap para indicar que los bloques estan en uso
 	 * Por ultimo hay que limpiar la memTable para que la puedan volver a utilizar! -> OJO CON LA MEMORIA - FREE
 	 */
+
+
 	}
 }
 
@@ -292,10 +294,9 @@ char * asignarUnBloqueBin(t_bitarray* unBitarray)
 	/*
 	 * Hay que:
 	 * 1° -> Obtener un bloque libre del directorio de bloques o crear dicho bloque -> hay que usar bitmap!
-	 * 2° -> Habría que actualizar el archivo de metadata del sistema
 	 * 3° -> Una vez obtenido el bloque, pasarlo a char * con formato de array (ver de evitar esto) y retornarlo
 	 */
-	crearConfig(metadataBin);
+		crearConfig(metadataBin);
 		cantidadBloques = obtenerInt("BLOCKS");
 		eliminarEstructuraConfig();
 		int primerBloqueLibre =buscarPrimerBloqueLibre(unBitarray,cantidadBloques);
@@ -309,9 +310,6 @@ char * asignarUnBloqueBin(t_bitarray* unBitarray)
 
 //buscarPrimerBloqueLibre y si no encuentra retorna -1
 int buscarPrimerBloqueLibre(t_bitarray* unBitarray,int nroBloques){
-	bool esBloqueLibre(int unBloque){
-			return bitarray_test_bit(unBitarray,unBloque);
-			}
 	t_list * listaIndices= list_create();
 	for(int j = 0; j<nroBloques;j++){
 		list_add(listaIndices, j);
