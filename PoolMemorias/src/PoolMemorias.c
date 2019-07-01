@@ -19,7 +19,7 @@ int main(void) {
 
 	pthread_t hilo_consola, hilo_conexionKernel, hilo_conexionFS;
 
-	pthread_create(&hilo_conexionFS, NULL, (void*) conexionFS, NULL);
+	//pthread_create(&hilo_conexionFS, NULL, (void*) conexionFS, NULL);
 	pthread_create(&hilo_conexionKernel, NULL, (void*) conexionKernel, NULL);
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 
@@ -32,13 +32,13 @@ int main(void) {
 	return 1;
 
 }
-//Esta funcion limpia la consola y lee una linea y si no es exit, la imprime por pantalla
+
 void consola(){
 	printf("Inicializando consola...");
 	sleep(2);
 	system("clear");
 	puts("Bienvenido a la consola de la memoria...");
-	query* query= malloc(sizeof(query));
+	query* query;
 	while(1){
 		char* comando = malloc(50);
 		comando = readline(">");
@@ -50,35 +50,17 @@ void consola(){
 		if (strncmp(comando,"clear",5) == 0) {
 			system("clear");
 		}else{
-			int tipoDeComando = parsear(comando,query);
-			switch(tipoDeComando){
-			case 1:
-				;
-				loggearSelect(query->tabla,query->key);
-				char* comandoEnChar = malloc(sizeof(char));
-				sprintf(comandoEnChar,"%d",tipoDeComando);
-				loggearInfoConcatenandoDosMensajes("El numero comando ingresado fue: ", comandoEnChar);
-				loggearInfo("El comando ingresado fue SELECT");
-				loggearInfoConcatenandoDosMensajes("La tabla del select fue:", query->tabla);
-				//procesarSelect(query);
-				free(comandoEnChar);
-				break;
-			case 2:
-				;
-				loggearInsert(query->tabla,query->key,query->value,query->timestamp);
-				char* comandoEnChar2 = malloc(sizeof(char));
-				sprintf(comandoEnChar,"%d",tipoDeComando);
-				loggearInfoConcatenandoDosMensajes("El numero comando ingresado fue: ", comandoEnChar);
-				loggearInfo("El comando ingresado fue INSERT");
-				loggearInfoConcatenandoDosMensajes("La tabla al que se realizara el insert es:", query->tabla);
-				//procesarInsert(query);
-				free(comandoEnChar2);
-			break;
-			default:
-				break;
+			int aux = parsear(comando,&query);
+			if(aux != -1)
+			{
+				loggearInfo("Query enviada por consola!!");
+				procesarQuery(query);
 			}
+			else
+			{
+		    	printf("Request no valida\n");
+		    }
 			system("clear");
-
 		}
 		free(comando);
 	}
@@ -87,10 +69,10 @@ void consola(){
 	return;
 
 }
-//Leemos arcchivo configuracion
+
 void leerArchivoConfiguracion(){
 
-		configuracionMemoria->IP_FS = obtenerString("IP_FS");
+		configuracionMemoria->IP_FS = getCleanString(obtenerString("IP_FS"));
 		configuracionMemoria->IP_SEEDS = obtenerArray("IP_SEEDS");
 		configuracionMemoria->PUERTO_FS = obtenerInt("PUERTO_FS");
 		configuracionMemoria->PUERTO_SEEDS = (int*) obtenerArray("PUERTO_SEEDS");
@@ -102,11 +84,200 @@ void leerArchivoConfiguracion(){
 		configuracionMemoria->RETARDO_MEM = obtenerInt("RETARDO_MEM");
 		configuracionMemoria->TAM_MEM = obtenerInt("TAM_MEM");
 
-		EscribirArchivoLog();
+		loggearArchivoDeConfiguracion();
 
 
 }
-void EscribirArchivoLog(){
+
+void reservarMemoriaPrincipal(){
+	// Reservamos la memoria
+		g_TamanioMemoria = configuracionMemoria->TAM_MEM;
+		g_BaseMemoria = (char*) malloc(g_TamanioMemoria);
+	// Rellenamos con ceros.
+		memset(g_BaseMemoria, '0', g_TamanioMemoria * sizeof(char));
+
+	// si no podemos salimos y cerramos el programa.
+		if (g_BaseMemoria == NULL )
+		{
+			loggearInfo("No se pudo reservar la memoria.");
+		}
+		else
+		{
+
+			char* tammem= malloc(7*sizeof(char));
+			sprintf(tammem,"%d",g_TamanioMemoria);
+			loggearInfoConcatenandoDosMensajes("MEMORIA RESERVADA. Tamaño de la memoria ", tammem);
+			free(tammem);
+		}
+}
+
+//-----------------------------------------------------------------------
+//----------------------------CONEXIONES---------------------------------
+//-----------------------------------------------------------------------
+
+void conexionFS(){
+
+		char* IP = strdup("127.0.0.1");
+		//char * IP = strdup(obtenerString("IP_FS"));
+		char * Puerto = strdup(obtenerString("PUERTO_FS"));
+		loggearInfoCliente(IP,Puerto);
+		int cliente = levantarCliente(IP,Puerto);
+
+		free(IP);
+		free(Puerto);
+}
+
+
+void conexionKernel(){
+	char * IP;
+
+	if(obtenerString("IP"))
+	{
+			IP = strdup(obtenerString("DIRECCION_IP"));
+	}else
+	{
+			IP = strdup("127.0.0.1");
+	}
+		char * Puerto = strdup(obtenerString("PUERTO"));
+		loggearInfoServidor(IP,Puerto);
+
+		levantarServidorMemoria(IP,Puerto);
+
+		free(IP);
+		free(Puerto);
+}
+
+
+
+void levantarServidorMemoria(char * servidorIP, char* servidorPuerto)
+{
+			query * myQuery;
+	  	  	int socketRespuesta, maximoSocket;
+	  	  	int datosRecibidos = -1;
+			fd_set sockets, clientes;
+
+	        int socketServidor = levantarServidor(servidorIP,servidorPuerto);
+
+	        LimpiarSet(&sockets);
+	        LimpiarSet(&clientes);
+
+	        agregarASet(socketServidor,&sockets);
+	        maximoSocket = socketServidor;
+
+	        tiempoEspera esperaMaxima;
+	        definirEsperaServidor(&esperaMaxima,300);
+
+	        while(1) // Loop para escuchar conexiones entrantes
+			{
+	        clientes = sockets;
+	        ejecutarSelect(maximoSocket,&clientes,&esperaMaxima); //pasarle null si no importa
+
+	        for(int i = 0;i<=maximoSocket;i++) //Itero hasta el ultimo socket
+	        	{
+	        		if (estaEnSet(i, &clientes)) //1 - Tengo un cliente nuevo que quiere leer!
+	        		{
+	                    if (i == socketServidor) //1-1 - Ese Cliente es el mismo servidor -> Acepto nuevas conexiones
+	                    {
+
+	                    socketRespuesta = aceptarConexion(socketServidor);
+
+	                    agregarASet(socketRespuesta,&sockets); //añado a set de sockets al nuevo cliente
+
+	                        if (socketRespuesta > maximoSocket) // Trackeo el maximo socket
+	                        {
+	                            maximoSocket = socketRespuesta;
+	                        }
+
+	                    loggearNuevaConexion(socketRespuesta);
+
+	                    }
+	                    else
+	                    {
+	                    	datosRecibidos = recibirQuery(i,&myQuery);
+	                    	if(datosRecibidos==0)
+	                    	{
+	                    		close(i);
+	                    		EliminarDeSet(i,&sockets);
+	                    	}else  {
+	                    		loggearDatosRecibidos(i,datosRecibidos);
+	                    		pthread_t procesarQ = crearHilo(procesarQuery,(void*)myQuery);
+	                    		esperarHilo(procesarQ);
+	                    	}
+
+	                    }
+	        		}
+	        	}
+			}
+}
+
+
+//-----------------------------------------------------------------------
+//-------------------PROCESAMIENTO DE QUERYS-----------------------------
+//-----------------------------------------------------------------------
+
+void procesarQuery(query* query)
+{
+	switch(query>requestType)
+	{
+	case SELECT:
+		loggearSelect(query->tabla,query->key);
+		loggearInfo("El comando ingresado fue SELECT");
+		loggearInfoConcatenandoDosMensajes("La tabla del select fue:", query->tabla);
+		procesarSelect(query);
+		break;
+	case INSERT:
+		loggearInsert(query->tabla,query->key,query->value,query->timestamp);
+		loggearInfo("El comando ingresado fue INSERT");
+		loggearInfoConcatenandoDosMensajes("La tabla al que se realizara el insert es:", query->tabla);
+		procesarInsert(query);
+		break;
+	case CREATE:
+		procesarCreate(query);
+		break;
+	case DESCRIBE:
+		procesarDescribe(query);
+		break;
+	case DROP:
+		procesarDrop(query);
+		break;
+	case JOURNAL:
+		procesarJournal(query);
+		break;
+	default:
+		loggearInfo("Request Aun No Disponible");
+	}
+}
+
+
+void procesarSelect(query* selectQuery){
+
+}
+
+void procesarInsert(query* insertQuery){
+
+}
+
+void procesarCreate(query* createQuery){
+
+}
+
+void procesarDescribe(query* describeQuery){
+
+}
+
+void procesarDrop(query* dropQuery){
+
+}
+
+void procesarJournal(query* journalQuery){
+
+}
+
+//-----------------------------------------------------------------------
+//--------------------------------LOGS-----------------------------------
+//-----------------------------------------------------------------------
+
+void loggearArchivoDeConfiguracion(){
 			int n = configuracionMemoria->PUERTO_FS;
 			char* puertoFS = malloc(4*sizeof(char));
 			sprintf(puertoFS,"%d",n);
@@ -203,68 +374,7 @@ void EscribirArchivoLog(){
 					loggearInfoConcatenandoDosMensajes("El tamaño de Memoria es: ", tammem);
 					free(tammem);
 }
-void reservarMemoriaPrincipal(){
-	// Reservamos la memoria
-		g_TamanioMemoria = configuracionMemoria->TAM_MEM;
-		g_BaseMemoria = (char*) malloc(g_TamanioMemoria);
-	// Rellenamos con ceros.
-		memset(g_BaseMemoria, '0', g_TamanioMemoria * sizeof(char));
 
-	// si no podemos salimos y cerramos el programa.
-		if (g_BaseMemoria == NULL )
-		{
-			loggearInfo("No se pudo reservar la memoria.");
-		}
-		else
-		{
-
-			char* tammem= malloc(7*sizeof(char));
-			sprintf(tammem,"%d",g_TamanioMemoria);
-			loggearInfoConcatenandoDosMensajes("MEMORIA RESERVADA. Tamaño de la memoria ", tammem);
-			free(tammem);
-		}
-}
-
-/*
-char* procesarSelect(query selectQuery){
-	return
-}*/
-
-/*
-char* procesarInsert(query insertQuery){
-	return
-}*/
-
-void conexionFS(){
-
-		char * IP = strdup(obtenerString("IP_FS"));
-		char * Puerto = strdup(obtenerString("PUERTO_FS"));
-		loggearInfoCliente(IP,Puerto);
-
-		//int cliente = levantarCliente(IP,Puerto);
-
-		free(IP);
-		free(Puerto);
-}
-
-void conexionKernel(){
-	char * IP;
-
-	if(obtenerString("IP"))
-	{
-			IP = strdup(obtenerString("DIRECCION_IP"));
-	}else
-	{
-			IP = strdup("127.0.0.1");
-	}
-		char * Puerto = strdup(obtenerString("PUERTO"));
-		loggearInfoServidor(IP,Puerto);
-
-		levantarServidorMemoria(IP,Puerto);
-
-		free(IP);
-		free(Puerto);
-}
 void loggearInfoServidor(char * IP, char * Puerto)
 {
 
@@ -300,64 +410,6 @@ void loggearInfoCliente(char * IP, char * Puerto)
 	free(ipServidor);
 	free(puertoServidor);
 }
-void levantarServidorMemoria(char * servidorIP, char* servidorPuerto)
-{
-			query * myQuery;
-	  	  	int socketRespuesta, maximoSocket;
-	  	  	int datosRecibidos = -1;
-			fd_set sockets, clientes;
-
-	        int socketServidor = levantarServidor(servidorIP,servidorPuerto);
-
-	        LimpiarSet(&sockets);
-	        LimpiarSet(&clientes);
-
-	        agregarASet(socketServidor,&sockets);
-	        maximoSocket = socketServidor;
-
-	        tiempoEspera esperaMaxima;
-	        definirEsperaServidor(&esperaMaxima,300);
-
-	        while(1) // Loop para escuchar conexiones entrantes
-			{
-	        clientes = sockets;
-	        ejecutarSelect(maximoSocket,&clientes,&esperaMaxima); //pasarle null si no importa
-
-	        for(int i = 0;i<=maximoSocket;i++) //Itero hasta el ultimo socket
-	        	{
-	        		if (estaEnSet(i, &clientes)) //1 - Tengo un cliente nuevo que quiere leer!
-	        		{
-	                    if (i == socketServidor) //1-1 - Ese Cliente es el mismo servidor -> Acepto nuevas conexiones
-	                    {
-
-	                    socketRespuesta = aceptarConexion(socketServidor);
-
-	                    agregarASet(socketRespuesta,&sockets); //añado a set de sockets al nuevo cliente
-
-	                        if (socketRespuesta > maximoSocket) // Trackeo el maximo socket
-	                        {
-	                            maximoSocket = socketRespuesta;
-	                        }
-
-	                    loggearNuevaConexion(socketRespuesta);
-
-	                    }
-	                    else
-	                    {
-	                    	datosRecibidos = recibirQuery(i,myQuery);
-	                    	if(datosRecibidos==0)
-	                    	{
-	                    		close(i);
-	                    		EliminarDeSet(i,&sockets);
-	                    	}else  {
-	                    		loggearDatosRecibidos(i,datosRecibidos);
-	                    	}
-
-	                    }
-	        		}
-	        	}
-			}
-}
 
 void loggearNuevaConexion(int socket)
 {
@@ -375,6 +427,7 @@ void loggearNuevaConexion(int socket)
       free(aux);
 }
 
+
 void loggearDatosRecibidos(int socket, int datosRecibidos)
 {
 		  char * info = malloc(strlen("Se recibieron bytes del socket  ") + 30 + 5);
@@ -391,4 +444,19 @@ void loggearDatosRecibidos(int socket, int datosRecibidos)
 
 		  free(info);
 	      free(aux);
+}
+
+
+//-----------------------------------------------------------------------
+//--------------------------------HELPERS--------------------------------
+//-----------------------------------------------------------------------
+
+char* getCleanString(char* dirtyString){
+		int i,len=strlen(dirtyString);
+		for(i=1;i<len-1;i++)
+		{
+			dirtyString[i-1]=dirtyString[i];
+		}
+		dirtyString[i-1]='\0';
+		return dirtyString;
 }

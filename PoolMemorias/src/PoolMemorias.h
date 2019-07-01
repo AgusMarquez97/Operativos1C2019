@@ -55,14 +55,26 @@ int g_TamanioMemoria;
 
 void consola();
 void leerArchivoConfiguracion();
-void EscribirArchivoLog();
 void reservarMemoriaPrincipal();
+
 void conexionKernel();
 void conexionFS();
+void levantarServidorMemoria(char * servidorIP, char* servidorPuerto);
+
+void procesarQuery(query* query);
+void procesarSelect(query* query);
+void procesarInsert(query* query);
+void procesarCreate(query* query);
+void procesarDescribe(query* describeQuery);
+void procesarDrop(query* dropQuery);
+void procesarJournal(query* journalQuery);
+
+void loggearArchivoDeConfiguracion();
 void loggearInfoServidor(char * IP, char * Puerto);
 void loggearInfoCliente(char * IP, char * Puerto);
-void levantarServidorMemoria(char * servidorIP, char* servidorPuerto);
 void loggearNuevaConexion(int socket);
 void loggearDatosRecibidos(int socket, int datosRecibidos);
+
+char* getCleanString(char* dirtyString);
 
 #endif /* POOLMEMORIAS_H_ */
