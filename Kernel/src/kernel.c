@@ -39,15 +39,17 @@ void *get_in_addr(struct sockaddr *sa) {
 
 }
 
-int solicitar_memorias() {
+int solicitar_memorias(char * ip_memoria, char * puerto_memoria, t_queue * queue_memorias) {
 	/*
 	 * Se comunica con la memoria que encuentra en el archivo
 	 * 	de configuracion y solicita pool de memorias.
 	 *
-	 * Sin implementar todavia
+	 * Por ahora se hardcodea la queue
 	 */
 
 	printf("Solicitando pool de memorias...\n");
+
+	queue_push(queue_memorias,"555.666.777:1234:EasdsaC");
 	return 0;
 }
 
@@ -58,9 +60,53 @@ int agregar_memorias_a_criterios() {
 	 * Sin implementar todavia
 	 */
 
+	char * ip_memoria_inicial = obtenerString("IP_MEMORIA");
+	char * puerto_memoria_inicial = obtenerString("PUERTO_MEMORIA");
+	//t_list *lista_memorias;// = malloc(sizeof(t_list));
+	t_queue * queue_memorias = queue_create();
+	
+
+	/* Aca iria el llamado a la funcion solicitar_memorias
+	 *
+	 * Hay que ponerse de acuerdo en como implementar esto con los chicos de memoria
+	 *
+	 * Se supone que luego del llamado tengo una lista de strings <IP>:<PUERTO>:<CRITERIO>
+	 *
+	 * Por ahora se hardcodea una lista para probar el resto
+	 */
+
+	solicitar_memorias(ip_memoria_inicial,puerto_memoria_inicial,queue_memorias);
+
+	if (queue_size(queue_memorias) == 0)
+	{
+		printf("No se encontraron memorias.\n");
+		return -1;
+	}
+
 	printf("Agregando memorias a los distintos criterios...\n");
-	char * memoria = "111.222.333.444:1234";
-	queue_push(memorias_ec,memoria);
+
+	while (queue_size(queue_memorias) > 0) {
+
+	  char * string_memoria = queue_pop(queue_memorias);
+	  printf("Memoria encontrada: %s\n",string_memoria);
+
+	  char ** memoria = string_split(string_memoria,":");
+
+	  if (!strcasecmp(memoria[2],"SC")) {
+		printf("El criterio de la memoria es SC.\n"); 
+	  } else if (!strcasecmp(memoria[2],"SHC")) {
+		printf("El criterio de la memoria es SHC.\n");
+	  } else if (!strcasecmp(memoria[2],"EC")) {
+		printf("El criterio de la memoria es EC.\n");
+	  } else {
+		   printf("%s: Criterio inexistente.\n",memoria[2]);
+		 }
+
+
+
+}
+//	char * memoria = "111.222.333.444:1234";
+//	queue_push(memorias_ec,memoria);
 	return 0;
 }
 
@@ -349,7 +395,7 @@ void * atender_conexion(void * new_fd) {
 	while ( strcasecmp(input,"salir") ) {
 
 //		if ( string_is_empty(input) ) { continue; }
-		if ( parsear(input,query_struct) < 0 ) // Se le saca el &, volver a poner si algo male sal
+		if ( parsear(input,&query_struct) < 0 ) // Se le saca el &, volver a poner si algo male sal
 		{
 			log_error(kernel_log,"Error en parseo de query, no se planifica.");
 			printf("Error en parseo de query, no se planifica.\n");
@@ -530,7 +576,7 @@ int main(int argc, char *argv[]) {
 	//iniciarLogConPath("","kernel.log");
 
 	//remove("Lissandra.log");
-	solicitar_memorias();
+//	solicitar_memorias();
 	agregar_memorias_a_criterios();
 	procesar();
 	printf("Saliendo...");

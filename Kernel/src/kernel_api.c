@@ -21,12 +21,16 @@ void journal_request()
 int ejecutar_select(query * query_struct)
 {
 
-	char * tabla = query_struct->tabla;
-	printf("Se ejecuta el siguiente request: \"SELECT %s %d\"\n",tabla,query_struct->key);
+	char * nombre_tabla = query_struct->tabla;
+	printf("Se ejecuta el siguiente request: \"SELECT %s %d\"\n",nombre_tabla,query_struct->key);
+//	char * tipo_consistencia = obtener_consistencia_tabla(nombre_tabla);
+//	char * memoria_a_utilizar = obtener_memoria_segun_criterio(tipo_consistencia);
+	char * ip_memoria; //= hacer el split de la memoria 
+	char * puerto_memoria; //= hacer el split de la memoria 
 	//Se supone que deberia consultar en la metadata para conocer la consistencia de la tabla
-	char * proxima_memoria = (char *) queue_pop(memorias_ec); //Aca probablemente deberia ir un mutex
-	printf("La consistencia de la tabla es EC. Se envia a la memoria: %s\n",proxima_memoria);
-	queue_push(memorias_ec,proxima_memoria);
+//	char * proxima_memoria = (char *) queue_pop(memorias_ec); //Aca probablemente deberia ir un mutex
+//	printf("La consistencia de la tabla es EC. Se envia a la memoria: %s\n",proxima_memoria);
+//	queue_push(memorias_ec,proxima_memoria);
 	return 0;
 
 }
