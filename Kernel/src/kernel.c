@@ -90,20 +90,7 @@ int agregar_memorias_a_criterios() {
 	  char * string_memoria = queue_pop(queue_memorias);
 	  printf("Memoria encontrada: %s\n",string_memoria);
 
-	  char ** memoria = string_split(string_memoria,":");
-
-	  if (!strcasecmp(memoria[2],"SC")) {
-		printf("El criterio de la memoria es SC.\n"); 
-	  } else if (!strcasecmp(memoria[2],"SHC")) {
-		printf("El criterio de la memoria es SHC.\n");
-	  } else if (!strcasecmp(memoria[2],"EC")) {
-		printf("El criterio de la memoria es EC.\n");
-	  } else {
-		   printf("%s: Criterio inexistente.\n",memoria[2]);
-		 }
-
-
-
+	  ejecutar_add(string_memoria);
 }
 //	char * memoria = "111.222.333.444:1234";
 //	queue_push(memorias_ec,memoria);

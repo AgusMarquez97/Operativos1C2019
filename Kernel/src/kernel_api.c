@@ -67,3 +67,20 @@ int derivar_request(query * query_struct)
 	return 0;
 
 }
+
+
+int ejecutar_add(char * string_memoria)
+{
+	  char ** memoria = string_split(string_memoria,":");
+
+	  if (!strcasecmp(memoria[2],"SC")) {
+		printf("El criterio de la memoria es SC.\n"); 
+	  } else if (!strcasecmp(memoria[2],"SHC")) {
+		printf("El criterio de la memoria es SHC.\n");
+	  } else if (!strcasecmp(memoria[2],"EC")) {
+		printf("El criterio de la memoria es EC.\n");
+	  } else {
+		   printf("%s: Criterio inexistente.\n",memoria[2]);
+		 }
+
+}
