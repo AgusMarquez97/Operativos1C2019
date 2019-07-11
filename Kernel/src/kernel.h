@@ -21,6 +21,8 @@
 #include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/parser.c>
 #include "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/enumsAndStructs.h"
 #include "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/logs.c"
+#include <readline/readline.h>
+#include <readline/history.h>
 
 typedef struct request_element{
 		t_queue* request_queue;

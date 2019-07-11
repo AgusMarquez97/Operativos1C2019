@@ -7,11 +7,7 @@
 #include<time.h>
 #include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/enumsAndStructs.h>
 #include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/src/kernel.h>
-/*
-void main(int argc, char *argv[])
-{
-}
-*/
+
 
 void journal_request()
 {
@@ -23,7 +19,6 @@ int ejecutar_select(query * query_struct)
 {
 
 	char * nombre_tabla = query_struct->tabla;
-	//double tiempo_ejecucion;
 	double *tiempo_ejecucion = malloc(sizeof(double));
 	clock_t inicio,fin;
 	inicio = clock();
@@ -32,8 +27,6 @@ int ejecutar_select(query * query_struct)
 	fin = clock();
 
 	*tiempo_ejecucion = ((double) (fin - inicio)) / CLOCKS_PER_SEC; // En segundos
-
-	//printf("El tiempo total de ejecucion fue de %f segundos.\n",*tiempo_ejecucion);
 
 	t_lista_metricas *struct_operacion = malloc(sizeof(t_lista_metricas));
 
@@ -46,40 +39,6 @@ int ejecutar_select(query * query_struct)
 	list_add(lista_estadisticas_selects,struct_operacion);
 	pthread_mutex_unlock(&s_lista_selects);
 
-	//printf("El timestamp de la operacion fue: %u segundos (sacado del struct). En formato string es: %s\n",
-	 //(*struct_operacion).timestamp_operacion,asctime(gmtime(&lahora)));
-
-	//printf("El tiempo total de ejecucion fue de %f segundos (sacado del struct).\n",(*struct_operacion).duracion_operacion);
-
-
-
-// Lo mismo pero sacado de la lista
-/*
-	t_lista_metricas *struct_operacion_2 = malloc(sizeof(t_lista_metricas));
-
-	printf("El tamaño de la lista es: %d\n",list_size(lista_estadisticas_selects));
-
-	*struct_operacion_2 = *((t_lista_metricas *) list_get(lista_estadisticas_selects,0));
-
-	(*struct_operacion).timestamp_operacion++;
-	(*struct_operacion).duracion_operacion++;
-
-	printf("El timestamp de la operacion fue: %u segundos (sacado de la lista). En formato string es: %s\n",
-	 (*struct_operacion_2).timestamp_operacion,asctime(gmtime(&lahora)));
-
-	printf("El tiempo total de ejecucion fue de %f segundos (sacado de la lista).\n",(*struct_operacion_2).duracion_operacion);
-*/
-//printf("El tiempo total de ejecucion fue de %f segundos (sacado de la lista).\n",(*struct_operacion).duracion_operacion);
-
-
-//	char * tipo_consistencia = obtener_consistencia_tabla(nombre_tabla);
-//	char * memoria_a_utilizar = obtener_memoria_segun_criterio(tipo_consistencia);
-	char * ip_memoria; //= hacer el split de la memoria 
-	char * puerto_memoria; //= hacer el split de la memoria 
-	//Se supone que deberia consultar en la metadata para conocer la consistencia de la tabla
-//	char * proxima_memoria = (char *) queue_pop(memorias_ec); //Aca probablemente deberia ir un mutex
-//	printf("La consistencia de la tabla es EC. Se envia a la memoria: %s\n",proxima_memoria);
-//	queue_push(memorias_ec,proxima_memoria);
 	return 0;
 
 }
@@ -165,24 +124,21 @@ int ejecutar_insert(query * query_struct)
 
 
 
-unsigned get_timestamp()
+int ejecutar_metrics()
 {
+  printf("\n\n\n\n\n\n ********* Se solicitan las metricas por consola ********* \n\n\n\n\n\n");
 
-	time_t ltime;
-	ltime = time(NULL);
-	//char * retorno = (char *) asctime(localtime(&ltime));
-	//return asctime(localtime(&ltime));
-	//printf("Timestamp de la operacion: %s\n",asctime(localtime(&ltime)));
+  pthread_mutex_lock(&s_lista_selects);
+  metricas_reads(lista_estadisticas_selects);
+  pthread_mutex_unlock(&s_lista_selects);
 
-	fprintf(stdout,"%un",(unsigned)time(NULL));
+  pthread_mutex_lock(&s_lista_inserts);
+  metricas_writes(lista_estadisticas_inserts);
+  pthread_mutex_unlock(&s_lista_inserts);
 
-	unsigned retorno = time(NULL);
-	printf("El retorno essssssssssssSS: %u\n",retorno);
+  // Fata el memory load ya lo seeeeeeeeeeee
 
-	
-
-	return retorno;
-
+  printf("\n\n\n\n\n\n ********* Metricas ejecutadas ********* \n\n\n\n\n\n");
 }
 
 

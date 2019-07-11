@@ -215,7 +215,7 @@ int parsear(char * string_query,query **struct_query)
 		return ERROR;
 	  } else {
 			//printf("El journal es correcto\n");
-			string_to_upper(query_split[1]);
+			string_to_upper(query_split[0]);
 			((*struct_query))->requestType = JOURNAL;
 			((*struct_query))->tabla = NULL;
 			((*struct_query))->key = -1;
@@ -223,6 +223,25 @@ int parsear(char * string_query,query **struct_query)
 			((*struct_query))->timestamp = -1;
 
 			return JOURNAL;
+		}
+		
+
+	}
+
+
+	if (!strcasecmp(query_split[0],"metrics")) {
+
+	  if ( (query_cant_palabras != 1) )
+	  {
+		return ERROR;
+	  } else {
+			((*struct_query))->requestType = METRICS;
+			((*struct_query))->tabla = NULL;
+			((*struct_query))->key = -1;
+			((*struct_query))->value = NULL;
+			((*struct_query))->timestamp = -1;
+
+			return METRICS;
 		}
 		
 

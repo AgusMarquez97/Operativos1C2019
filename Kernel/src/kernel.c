@@ -40,6 +40,9 @@ void *get_in_addr(struct sockaddr *sa) {
 }
 
 
+
+
+
 bool filtro_estadisticas(t_lista_metricas* struct_operacion)
 {
 	unsigned result = (unsigned) time(NULL) - ((*struct_operacion).timestamp_operacion);
@@ -49,42 +52,46 @@ bool filtro_estadisticas(t_lista_metricas* struct_operacion)
 }
 
 
-void metricas_reads(t_list* lista_metricas, int cant_reads)
+void metricas_reads(t_list* lista_metricas)//, int cant_reads)
 {
-	//int cant_reads = list_size(lista_metricas);
 	double duracion_total = 0;
+	float latency = 0;
+	int cant_reads = list_size(lista_estadisticas_selects);
 	t_lista_metricas *struct_operacion = malloc(sizeof(t_lista_metricas));
 
 	for (int i = 0;i<=cant_reads-1;i++)
 	{
 	  struct_operacion = list_get(lista_metricas,i);
-	  printf("Duracion read %d: %f\n",i+1,(*struct_operacion).duracion_operacion);
 	  duracion_total = duracion_total + (*struct_operacion).duracion_operacion;
+	  latency = duracion_total/cant_reads;
 	}
-	printf("Duracion total reads: %f\n",duracion_total);
-	printf("Reads: %d\n",cant_reads);
-	printf("Read latency: %f\n",duracion_total/cant_reads);
+	//printf("Reads: %d\n",cant_reads);
+	//printf("Read latency: %f\n",latency);
+	log_info(kernel_log,"Reads: %d\n",cant_reads);
+	log_info(kernel_log,"Read latency: %f\n",latency);
 
 
 
 }
 
 
-void metricas_writes(t_list* lista_metricas, int cant_writes)
+void metricas_writes(t_list* lista_metricas)//, int cant_writes)
 {
-	//int cant_writes = list_size(lista_metricas);
 	double duracion_total = 0;
+	float latency = 0;
+	int cant_writes = list_size(lista_estadisticas_inserts);
 	t_lista_metricas *struct_operacion = malloc(sizeof(t_lista_metricas));
 
 	for (int i = 0;i<=cant_writes-1;i++)
 	{
 	  struct_operacion = list_get(lista_metricas,i);
-	  printf("Duracion write %d: %f\n",i+1,(*struct_operacion).duracion_operacion);
 	  duracion_total = duracion_total + (*struct_operacion).duracion_operacion;
+	  latency = duracion_total/cant_writes;
 	}
-	printf("Duracion total writes: %f\n",duracion_total);
-	printf("Writes: %d\n",cant_writes);
-	printf("Write latency: %f\n",duracion_total/cant_writes);
+	//printf("Writes: %d\n",cant_writes);
+	//printf("Write latency: %f\n",latency);
+	log_info(kernel_log,"Writes: %d\n",cant_writes);
+	log_info(kernel_log,"Write latency: %f\n\n\n",latency);
 
 
 
@@ -94,15 +101,18 @@ void metricas_writes(t_list* lista_metricas, int cant_writes)
 void *mostrar_y_purgar_metricas() {
 
 	while (1) {
+		sleep(10); //Por motivos de prueba se le puso 10, cambiar a 30 al final
+
+		log_info(kernel_log,"**** Comienzo de metricas automaticas ****\n\n\n");
+
 		pthread_mutex_lock(&s_lista_selects);
 
-		printf("El tamaño de la lista antes de purgar es: %d\n",list_size(lista_estadisticas_selects));
+		//printf("El tamaño de la lista antes de purgar es: %d\n",list_size(lista_estadisticas_selects));
 		lista_estadisticas_selects = list_filter(lista_estadisticas_selects,filtro_estadisticas);
 		int cant_selects = list_size(lista_estadisticas_selects);
-		printf("El tamaño de la lista despues de purgar es: %d\n",cant_selects);
-		if (cant_selects > 0){
-		 metricas_reads(lista_estadisticas_selects,cant_selects);
-		}
+		//printf("El tamaño de la lista despues de purgar es: %d\n",cant_selects);
+
+		metricas_reads(lista_estadisticas_selects);//,cant_selects);
 
 		pthread_mutex_unlock(&s_lista_selects);
 
@@ -110,20 +120,18 @@ void *mostrar_y_purgar_metricas() {
 
 		pthread_mutex_lock(&s_lista_inserts);
 
-		printf("El tamaño de la lista antes de purgar es: %d\n",list_size(lista_estadisticas_inserts));
+		//printf("El tamaño de la lista antes de purgar es: %d\n",list_size(lista_estadisticas_inserts));
 		lista_estadisticas_inserts = list_filter(lista_estadisticas_inserts,filtro_estadisticas);
 		int cant_inserts = list_size(lista_estadisticas_inserts);
-		printf("El tamaño de la lista despues de purgar es: %d\n",cant_inserts);
-		if (cant_inserts > 0){
-		 metricas_writes(lista_estadisticas_inserts,cant_inserts);
-		}
+		//printf("El tamaño de la lista despues de purgar es: %d\n",cant_inserts);
+
+		metricas_writes(lista_estadisticas_inserts);//,cant_inserts);
 
 		pthread_mutex_unlock(&s_lista_inserts);
  	
+		// Fata el memory load ya lo seeeeeeeeeeee
 
-
-		sleep(10);
-
+		log_info(kernel_log,"**** Fin de metricas automaticas ****\n\n\n");
 	}
 
 }
@@ -230,6 +238,10 @@ int ejecutar_request(query * query_struct)
 
 	  case (DROP): 		printf("Se recibio un DROP...\n");
 				resultado_ejecucion_request = ejecutar_drop(query_struct);
+			 	break;
+
+	  case (METRICS):	printf("Se recibio un METRICS...\n");
+				resultado_ejecucion_request = ejecutar_metrics();
 			 	break;
 
 	  default: 		printf("No es un select, se deriva el request...\n");
@@ -464,7 +476,8 @@ void * atender_conexion(void * new_fd) {
 		exit(1);
 	}
 
-	printf("client: received %s", buf);
+	//printf("client: received %s", buf);
+	log_info(kernel_log,"Recibido el siguiente input: %s\n",buf);
 	buf[numbytes] = '\0';
 	input=string_substring(buf, 0, numbytes-2);
 //	memset(&buf, 0, sizeof buf[MAXDATASIZE]);
@@ -474,8 +487,9 @@ void * atender_conexion(void * new_fd) {
 //		if ( string_is_empty(input) ) { continue; }
 		if ( parsear(input,&query_struct) < 0 ) // Se le saca el &, volver a poner si algo male sal
 		{
-			log_error(kernel_log,"Error en parseo de query, no se planifica.");
-			printf("Error en parseo de query, no se planifica.\n");
+			//log_error(kernel_log,"Error en parseo de query, no se planifica.");
+			log_error(kernel_log,"%s: comando desconocido.\n\n",input);
+			printf("%s: comando desconocido.\n\n",input);
 			printf("Fin de proceso.\n\n\n\n");
 			printf("*********************************************\n\n\n\n");
 			if ((numbytes = recv(listening_socket, buf, MAXDATASIZE - 1, 0))
@@ -584,6 +598,50 @@ int procesar() {
 }
 
 
+void *consola()
+{
+	 //int aux;
+	 char * linea;
+	 query * query_struct = malloc(sizeof(query));
+	 //argumentosQuery * args;
+	 //logMemTable = retornarLogConPath("Memtable.log","Memtable");
+	 system("clear");
+	  while(1) {
+	    linea = readline(">");
+	    if (!linea)
+	      break;
+
+	    if (!strcasecmp(linea,"salir")) {
+	      break;
+	    }
+
+	    add_history(linea);
+
+	    if (!strcasecmp(linea,"clear")) {
+	      system("clear");
+	    }else{
+
+	    if ( parsear(linea,&query_struct) < 0 ) {
+			log_error(kernel_log,"%s: comando desconocido.\n\n",linea);
+			printf("%s: comando desconocido.\n\n",linea);
+			printf("Fin de proceso.\n\n\n\n");
+			printf("*********************************************\n\n\n\n");
+
+			continue;
+		}
+
+		t_queue* request_queue = armar_request_queue(query_struct);
+
+		if (request_queue != NULL)
+		{
+		  agregar_a_new(request_queue);
+		}
+	    }
+	  }
+	  exit(1);
+}
+
+
 void inicializar_logs() {
 
 	kernel_log = log_create("/home/utnso/kernel.log", "kernel.log", 0, LOG_LEVEL_INFO);
@@ -621,6 +679,7 @@ void inicializar_threads() {
 	pthread_t readythread_id;
 	pthread_t thread_id;
 	pthread_t metricsthread_id;
+	pthread_t consolathread_id;
 
 	pthread_create(&readythread_id, NULL, agregar_a_ready, NULL);
 	pthread_detach(readythread_id);
@@ -632,6 +691,10 @@ void inicializar_threads() {
 
 	pthread_create(&metricsthread_id, NULL, mostrar_y_purgar_metricas, NULL);
 	pthread_detach(metricsthread_id);
+
+	pthread_create(&consolathread_id, NULL, consola, NULL);
+	//pthread_join(consolathread_id,NULL);
+	pthread_detach(consolathread_id);
 }
 
 void inicializar_colas() {
@@ -659,10 +722,6 @@ int main(int argc, char *argv[]) {
 
 	cargar_configuraciones();
 	iniciar_estructuras();
-	//iniciarLogConPath("","kernel.log");
-
-	//remove("Lissandra.log");
-//	solicitar_memorias();
 	agregar_memorias_a_criterios();
 	procesar();
 	printf("Saliendo...");
