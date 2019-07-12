@@ -55,6 +55,7 @@ sem_t s_hay_request;
 sem_t s_hay_new;
 sem_t s_exec_request_inicial;
 sem_t s_dispatcher;
+sem_t s_hay_request_estado_exit;
 //sem_init(&s_hay_request,0,0);
 pthread_mutex_t s_newq;// = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_readyq;
@@ -64,7 +65,7 @@ pthread_mutex_t s_lista_selects;
 pthread_mutex_t s_lista_inserts;
 int CANT_THREADS_EXEC;// = 5; //TODO: Debe salir del archivo de config
 int QUANTUM_SIZE;// = 2; //TODO: Debe salir del archivo de config
-float RETARDO_EJECUCION;
+long RETARDO_EJECUCION;
 long REFRESH_METADATA;
 
 char * sc_memory = "IP:PUERTO";

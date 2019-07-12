@@ -201,6 +201,7 @@ agregar_a_estado_exit(t_request_struct * next_request)
 	pthread_mutex_lock(&s_exitq);
 	queue_push(exit_queue, next_request);
 	pthread_mutex_unlock(&s_exitq);
+	sem_post(&s_hay_request_estado_exit);
 	
 }
 
@@ -299,7 +300,7 @@ void *exec(void * numero_exec) {
 		
 		pthread_mutex_unlock(&s_readyq);
 
-		t_queue* requests = next_request->request_queue; // Se extrae la lita de requests propiamente dicha
+		t_queue* requests = next_request->request_queue; // Se extrae la lista de requests propiamente dicha
 		int quantum_utilizado = 1;
 
 
@@ -326,6 +327,9 @@ void *exec(void * numero_exec) {
 			  printf("Fin de proceso.\n\n\n\n");
 			  printf("*********************************************\n\n\n\n");
 			  agregar_a_estado_exit(next_request);// En realidad se debe hacer esto
+			  log_info(kernel_log,"**** Se acabaron los requests del script. Se esperan %f segundos\n",RETARDO_EJECUCION/1000);
+			  sleep(RETARDO_EJECUCION/1000);
+			  log_info(kernel_log,"**** Lista la espera.\n");
 			  return;
 
 			}
@@ -342,7 +346,9 @@ void *exec(void * numero_exec) {
 			agregar_a_estado_exit(next_request);// En realidad se debe hacer esto
 			//printf("Fin de proceso.\n\n\n\n");
 			//printf("*********************************************\n\n\n\n");
-			sleep(RETARDO_EJECUCION);
+			log_info(kernel_log,"**** Se acabaron los requests del script. Se esperan %d segundos\n",RETARDO_EJECUCION/1000);
+			sleep(RETARDO_EJECUCION/1000);
+			log_info(kernel_log,"**** Lista la espera.\n");
 
 		} else {
 			log_info(kernel_log,"**** Se acabo el quantum, se vuelve a la ready queue ****\n\n\n\n");
@@ -377,6 +383,26 @@ void *agregar_a_ready() {
 	}
 
 }
+
+
+
+void *purgar_estado_exit() {
+
+	while (1) {
+
+		sem_wait(&s_hay_request_estado_exit);
+log_info(kernel_log,"****Llego un request al estado exit. Se lo elimina de inmediato ****\n\n\n\n");
+		pthread_mutex_lock(&s_exitq);
+
+		queue_pop(exit_queue);
+
+		pthread_mutex_unlock(&s_exitq);
+
+	}
+
+}
+
+
 
 void agregar_a_new(t_queue* requests) {
 	pthread_mutex_lock(&s_newq);
@@ -505,13 +531,22 @@ void * atender_conexion(void * new_fd) {
 			continue;
 		}
 
+		switch (query_struct->requestType)
+		{
+		  case METRICS: log_info(kernel_log,"Viene por el case\n");ejecutar_request(query_struct);
+				break;
+		  case JOURNAL: ejecutar_request(query_struct);
+				break;
+		  case ADD: 	ejecutar_request(query_struct);
+				break;
+		  default: {log_info(kernel_log,"Viene por el default\n");
 		t_queue* request_queue = armar_request_queue(*query_struct); //CUIDADO: le pongo un *
 
 		if (request_queue != NULL)
 		{
 		  agregar_a_new(request_queue);
 		}
-
+} }
 		if ((numbytes = recv(listening_socket, buf, MAXDATASIZE - 1, 0))
 				== -1) {
 			perror("recv");
@@ -520,7 +555,8 @@ void * atender_conexion(void * new_fd) {
 
 		printf("client: received %s", buf);
 		buf[numbytes] = '\0';
-		input=string_substring(buf, 0, string_length(buf) - 2);
+		input=string_substring(buf, 0, string_length(buf) - 2); return;//}
+		//}
 
 	};
 
@@ -653,6 +689,9 @@ void *monitorear_config()
 	char buffer[BUF_LEN];
 	int length = 0;
 	int offset = 0;
+	int quantum = 0;
+	long refresh_metadata = 0;
+	long retardo_ejecucion = 0;
 	//struct inotify_event * evento = malloc(sizeof(*evento));
 
 
@@ -664,7 +703,7 @@ void *monitorear_config()
 	 exit(-1);
 	}
 
-	    int watch_descriptor = inotify_add_watch(file_descriptor,config_file,IN_MODIFY|IN_CREATE|IN_DELETE);//Ver mask
+	    int watch_descriptor = inotify_add_watch(file_descriptor,config_file,IN_MODIFY|IN_CREATE|IN_DELETE|IN_CLOSE_WRITE);//Ver mask
 
 	    if(watch_descriptor == -1)
 	    {
@@ -686,10 +725,34 @@ void *monitorear_config()
 	        }
 
 	    if(evento->len) {
-		if ((evento->mask & IN_DELETE) && !strcasecmp(evento->name,".kernel_config.cfg.swp")) // Chequear IN_CLOSE_WRITE
+		/*if ((evento->mask & IN_DELETE) && !strcasecmp(evento->name,".kernel_config.cfg.swp")) // Chequear IN_CLOSE_WRITE
 		    { log_info(kernel_log,"**** Se elimino el siguiente archivo: %s\n",evento->name);
-		    } else if ((evento->mask & IN_CLOSE_WRITE) && !strcasecmp(evento->name,"kernel_config.cfg")) // Chequear IN_CLOSE_WRITE
-		    { log_info(kernel_log,"**** Paso algo con el siguiente archivo: %s\n",evento->name);
+		    } else*/ if ((evento->mask & IN_CLOSE_WRITE) && !strcasecmp(evento->name,"kernel_config.cfg"))
+		    {
+			//log_info(kernel_log,"**** Paso algo con el siguiente archivo: %s\n",evento->name);
+
+			crearConfig("/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/config/kernel_config.cfg");
+
+			quantum = obtenerInt("QUANTUM");
+			refresh_metadata = obtenerInt("REFRESH_METADATA");
+			retardo_ejecucion = obtenerInt("RETARDO_EJECUCION");
+
+			if (quantum != QUANTUM_SIZE) {
+			 log_info(kernel_log,"**** Actualizado el valor del quantum. Viejo valor: %d, nuevo valor: %d \n",QUANTUM_SIZE,quantum);
+			 QUANTUM_SIZE = quantum;
+			}
+
+			if (refresh_metadata != REFRESH_METADATA) {
+			 log_info(kernel_log,"**** Actualizado el valor de refresh de metadata. Viejo valor: %d segundos, nuevo valor: %d segundos\n",
+			   REFRESH_METADATA,refresh_metadata);
+			 REFRESH_METADATA = refresh_metadata;
+			}
+
+			if (retardo_ejecucion != RETARDO_EJECUCION) {
+			 log_info(kernel_log,"**** Actualizado el valor de retardo de ejecucion. Viejo valor: %d ms, nuevo valor: %d ms\n",
+			   RETARDO_EJECUCION,retardo_ejecucion);
+			 RETARDO_EJECUCION = retardo_ejecucion;
+			}
 		    }
 	    }
 		offset += sizeof (struct inotify_event) + evento->len;
@@ -705,11 +768,12 @@ void inicializar_logs() {
 
 }
 
-void inicializar_semaforos() {
+void inicializar_semaforos() { //TODO: creo que hay algunos que no se usan
 	sem_init(&s_hay_request, 0, 0);
 	sem_init(&s_hay_new, 0, 0);
 	sem_init(&s_exec_request_inicial, 0, 0);
 	sem_init(&s_dispatcher, 0, 1);
+	sem_init(&s_hay_request_estado_exit, 0, 0);
 	pthread_mutex_init(&s_newq, NULL);
 	pthread_mutex_init(&s_readyq, NULL);
 	pthread_mutex_init(&s_exitq, NULL);
@@ -729,15 +793,15 @@ void cargar_configuraciones() {
 
 	QUANTUM_SIZE = atoi(strdup(obtenerString("QUANTUM")));
 	REFRESH_METADATA = atoi(strdup(obtenerString("REFRESH_METADATA")));
-	RETARDO_EJECUCION = atof(strdup(obtenerString("RETARDO_EJECUCION")));
+	RETARDO_EJECUCION = atoi(strdup(obtenerString("RETARDO_EJECUCION")));
 
 	log_info(kernel_log,"**** Se cargaron los siguientes valores de configuracion: \n****");
 	log_info(kernel_log,"Numero de estados de ejecucion: %d\n",CANT_THREADS_EXEC);
 	log_info(kernel_log,"Tamaño del quantum: %d\n",QUANTUM_SIZE);
 	log_info(kernel_log,"Tiempo de actualizacion de la metadata de las tablas: %d\n",REFRESH_METADATA);
-	log_info(kernel_log,"Retardo al final del ciclo de ejecucion (en milisegundos): %f\n****",RETARDO_EJECUCION);
+	log_info(kernel_log,"Retardo al final del ciclo de ejecucion (en milisegundos): %d\n****",RETARDO_EJECUCION);
 
-	RETARDO_EJECUCION = RETARDO_EJECUCION / 1000;
+	//RETARDO_EJECUCION = RETARDO_EJECUCION / 1000;
 
 }
 
@@ -748,6 +812,7 @@ void inicializar_threads() {
 	pthread_t metricsthread_id;
 	pthread_t consolathread_id;
 	pthread_t monitorconfigthread_id;
+	pthread_t purgarexitthread_id;
 
 	pthread_create(&readythread_id, NULL, agregar_a_ready, NULL);
 	pthread_detach(readythread_id);
@@ -766,6 +831,9 @@ void inicializar_threads() {
 
 	pthread_create(&monitorconfigthread_id, NULL, monitorear_config, NULL);
 	pthread_detach(monitorconfigthread_id);
+
+	pthread_create(&purgarexitthread_id, NULL, purgar_estado_exit, NULL);
+	pthread_detach(purgarexitthread_id);
 }
 
 void inicializar_colas() {
