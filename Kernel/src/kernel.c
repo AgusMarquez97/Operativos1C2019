@@ -46,7 +46,7 @@ void *get_in_addr(struct sockaddr *sa) {
 bool filtro_estadisticas(t_lista_metricas* struct_operacion)
 {
 	unsigned result = (unsigned) time(NULL) - ((*struct_operacion).timestamp_operacion);
-	printf("La diferencia en segundos es de: %u\n",result);
+	//printf("La diferencia en segundos es de: %u\n",result);
 	return (result <= 30);
 
 }
@@ -101,7 +101,7 @@ void metricas_writes(t_list* lista_metricas)//, int cant_writes)
 void *mostrar_y_purgar_metricas() {
 
 	while (1) {
-		sleep(10); //Por motivos de prueba se le puso 10, cambiar a 30 al final
+		sleep(30); //Por motivos de prueba se le puso 10, cambiar a 30 al final
 
 		log_info(kernel_log,"**** Comienzo de metricas automaticas ****\n\n\n");
 
@@ -211,7 +211,7 @@ int ejecutar_request(query * query_struct)
 	int resultado_ejecucion_request = 0;
 	int codigo_request = query_struct->requestType;
 
-	printf("Nombre de tabla: %s\n",query_struct->tabla);
+	//printf("Nombre de tabla: %s\n",query_struct->tabla);
 
 	if ( codigo_request == 0 )
 	{
@@ -240,7 +240,7 @@ int ejecutar_request(query * query_struct)
 				resultado_ejecucion_request = ejecutar_drop(query_struct);
 			 	break;
 
-	  case (METRICS):	printf("Se recibio un METRICS...\n");
+	  case (METRICS):	//printf("Se recibio un METRICS...\n");
 				resultado_ejecucion_request = ejecutar_metrics();
 			 	break;
 
@@ -330,7 +330,7 @@ void *exec(void * numero_exec) {
 
 			}
 
-			printf("El codigo de resultado de ejecucion de request es: %d\n",codigo_ejecucion);
+			//printf("El codigo de resultado de ejecucion de request es: %d\n",codigo_ejecucion);
 			//free(next_query);
 
 		  }
@@ -340,14 +340,15 @@ void *exec(void * numero_exec) {
 			//queue_destroy(requests);
 			//queue_clean_and_destroy_elements(requests, free);
 			agregar_a_estado_exit(next_request);// En realidad se debe hacer esto
-			printf("Fin de proceso.\n\n\n\n");
-			printf("*********************************************\n\n\n\n");
+			//printf("Fin de proceso.\n\n\n\n");
+			//printf("*********************************************\n\n\n\n");
+			sleep(RETARDO_EJECUCION);
 
 		} else {
-
+			log_info(kernel_log,"**** Se acabo el quantum, se vuelve a la ready queue ****\n\n\n\n");
 			printf("\n\n\n\n**** Se acabo el quantum, se vuelve a la ready queue ****\n\n\n\n");
 			agregar_request_ready(next_request);
-		} printf("En estado exit hay %d requests (Los scripts se cuentan como un solo request)\n",(int) queue_size(exit_queue));
+		} //printf("En estado exit hay %d requests (Los scripts se cuentan como un solo request)\n",(int) queue_size(exit_queue));
 	
 	} 
 
@@ -413,7 +414,7 @@ t_queue* procesar_script(char * script) {
 		//char * line2 = string_duplicate(line);
 		line3 = string_split(line,"\n");
 		query * query_struct = malloc(sizeof(query));
-		if ( parsear(line3[0],query_struct) > 0 )
+		if ( parsear(line3[0],&query_struct) > 0 )
 		{
 		  queue_push(request_queue, query_struct);//No va free(); -> NO LIBERA
 		} else
@@ -441,8 +442,8 @@ t_queue* procesar_script(char * script) {
  *
 */
 
-t_queue* armar_request_queue(query * query_struct) {
-
+t_queue* armar_request_queue(query un_query/*_struct*/) { //CUIDADO: esto se modifico para que no reciba el puntero, ver version vieja por las dudas
+	query * query_struct = malloc(sizeof(query)); *query_struct = un_query;
 	if ( query_struct->requestType == RUN )
 	{
 	  t_queue* request_queue = procesar_script(query_struct->script);
@@ -504,7 +505,7 @@ void * atender_conexion(void * new_fd) {
 			continue;
 		}
 
-		t_queue* request_queue = armar_request_queue(query_struct);
+		t_queue* request_queue = armar_request_queue(*query_struct); //CUIDADO: le pongo un *
 
 		if (request_queue != NULL)
 		{
@@ -580,7 +581,7 @@ int procesar() {
 		exit(1);
 	}
 
-	printf("Planificador iniciado. Escuchando...\n");
+	//printf("Planificador iniciado. Escuchando...\n");
 	log_info(kernel_log,"Planificador iniciado. Escuchando...");
 
 	while (1) {
@@ -624,13 +625,13 @@ void *consola()
 	    if ( parsear(linea,&query_struct) < 0 ) {
 			log_error(kernel_log,"%s: comando desconocido.\n\n",linea);
 			printf("%s: comando desconocido.\n\n",linea);
-			printf("Fin de proceso.\n\n\n\n");
-			printf("*********************************************\n\n\n\n");
+			//printf("Fin de proceso.\n\n\n\n");
+			//printf("*********************************************\n\n\n\n");
 
 			continue;
 		}
 
-		t_queue* request_queue = armar_request_queue(query_struct);
+		t_queue* request_queue = armar_request_queue(*query_struct); //CUIDADO: le pongo un *
 
 		if (request_queue != NULL)
 		{
@@ -639,6 +640,62 @@ void *consola()
 	    }
 	  }
 	  exit(1);
+}
+
+
+void *monitorear_config()
+{
+	log_info(kernel_log,"**** Hilo de modificacion de configuracion inicializado **** \n****");
+	//const char * config_file = "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/config/kernel_config.cfg";
+	const char * config_file = "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/config/";
+
+	while(1) {
+	char buffer[BUF_LEN];
+	int length = 0;
+	int offset = 0;
+	//struct inotify_event * evento = malloc(sizeof(*evento));
+
+
+    int file_descriptor = inotify_init();
+
+	if(file_descriptor == -1)
+	{
+	 perror("No se pudo crear el archivo monitor");
+	 exit(-1);
+	}
+
+	    int watch_descriptor = inotify_add_watch(file_descriptor,config_file,IN_MODIFY|IN_CREATE|IN_DELETE);//Ver mask
+
+	    if(watch_descriptor == -1)
+	    {
+	        perror("No se pudo crear el monitor");
+		exit(-1);
+	    }
+
+//while(1) {
+	    length = read(file_descriptor,buffer,BUF_LEN);
+	    while(offset < length){
+		struct inotify_event * evento = (struct inotify_event *) &buffer[offset];
+	        //bytes_leidos = read(archivo_monitor,buffer,BUF_LEN);
+	        //Bloquea al proceso/hilo hasta que ocurra el evento declarado en el monitor
+
+	        if(length <= 0)
+	        {
+	            perror("Error al leer el archivo monitor.");exit(-1);
+	            break;
+	        }
+
+	    if(evento->len) {
+		if ((evento->mask & IN_DELETE) && !strcasecmp(evento->name,".kernel_config.cfg.swp")) // Chequear IN_CLOSE_WRITE
+		    { log_info(kernel_log,"**** Se elimino el siguiente archivo: %s\n",evento->name);
+		    } else if ((evento->mask & IN_CLOSE_WRITE) && !strcasecmp(evento->name,"kernel_config.cfg")) // Chequear IN_CLOSE_WRITE
+		    { log_info(kernel_log,"**** Paso algo con el siguiente archivo: %s\n",evento->name);
+		    }
+	    }
+		offset += sizeof (struct inotify_event) + evento->len;
+	    }
+	    }
+
 }
 
 
@@ -665,12 +722,22 @@ void cargar_configuraciones() {
 
 	crearConfig("/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/config/kernel_config.cfg");
 
-	if(obtenerString("GRADO_MULTIPROCESAMIENTO"))
-	{
+	//if(obtenerString("GRADO_MULTIPROCESAMIENTO"))
+	//{
 	   CANT_THREADS_EXEC = atoi(strdup(obtenerString("GRADO_MULTIPROCESAMIENTO")));
-	} else { exit(-1); }
+	//} else { exit(-1); }
 
 	QUANTUM_SIZE = atoi(strdup(obtenerString("QUANTUM")));
+	REFRESH_METADATA = atoi(strdup(obtenerString("REFRESH_METADATA")));
+	RETARDO_EJECUCION = atof(strdup(obtenerString("RETARDO_EJECUCION")));
+
+	log_info(kernel_log,"**** Se cargaron los siguientes valores de configuracion: \n****");
+	log_info(kernel_log,"Numero de estados de ejecucion: %d\n",CANT_THREADS_EXEC);
+	log_info(kernel_log,"Tamaño del quantum: %d\n",QUANTUM_SIZE);
+	log_info(kernel_log,"Tiempo de actualizacion de la metadata de las tablas: %d\n",REFRESH_METADATA);
+	log_info(kernel_log,"Retardo al final del ciclo de ejecucion (en milisegundos): %f\n****",RETARDO_EJECUCION);
+
+	RETARDO_EJECUCION = RETARDO_EJECUCION / 1000;
 
 }
 
@@ -680,6 +747,7 @@ void inicializar_threads() {
 	pthread_t thread_id;
 	pthread_t metricsthread_id;
 	pthread_t consolathread_id;
+	pthread_t monitorconfigthread_id;
 
 	pthread_create(&readythread_id, NULL, agregar_a_ready, NULL);
 	pthread_detach(readythread_id);
@@ -688,13 +756,16 @@ void inicializar_threads() {
 		pthread_create(&thread_id, NULL, exec, (void *) thread);
 		pthread_detach(thread_id);
 	}
-
+/*
 	pthread_create(&metricsthread_id, NULL, mostrar_y_purgar_metricas, NULL);
 	pthread_detach(metricsthread_id);
-
+*/
 	pthread_create(&consolathread_id, NULL, consola, NULL);
 	//pthread_join(consolathread_id,NULL);
 	pthread_detach(consolathread_id);
+
+	pthread_create(&monitorconfigthread_id, NULL, monitorear_config, NULL);
+	pthread_detach(monitorconfigthread_id);
 }
 
 void inicializar_colas() {
@@ -706,7 +777,7 @@ void inicializar_colas() {
 
 void iniciar_estructuras() {
 
-	inicializar_logs();
+	//inicializar_logs();
 	inicializar_semaforos();
 	inicializar_threads();
 	inicializar_colas();
@@ -720,6 +791,7 @@ void iniciar_estructuras() {
 
 int main(int argc, char *argv[]) {
 
+	inicializar_logs();
 	cargar_configuraciones();
 	iniciar_estructuras();
 	agregar_memorias_a_criterios();

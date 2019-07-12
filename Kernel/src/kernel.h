@@ -21,8 +21,13 @@
 #include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/parser.c>
 #include "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/enumsAndStructs.h"
 #include "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/logs.c"
+//#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/src/kernel_utils.c>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <sys/inotify.h>
+
+#define EVENT_SIZE (sizeof(struct inotify_event)+24)
+#define BUF_LEN (1024*EVENT_SIZE)
 
 typedef struct request_element{
 		t_queue* request_queue;
@@ -59,6 +64,8 @@ pthread_mutex_t s_lista_selects;
 pthread_mutex_t s_lista_inserts;
 int CANT_THREADS_EXEC;// = 5; //TODO: Debe salir del archivo de config
 int QUANTUM_SIZE;// = 2; //TODO: Debe salir del archivo de config
+float RETARDO_EJECUCION;
+long REFRESH_METADATA;
 
 char * sc_memory = "IP:PUERTO";
 t_queue* memorias_ec = NULL;

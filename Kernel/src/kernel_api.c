@@ -126,7 +126,8 @@ int ejecutar_insert(query * query_struct)
 
 int ejecutar_metrics()
 {
-  printf("\n\n\n\n\n\n ********* Se solicitan las metricas por consola ********* \n\n\n\n\n\n");
+  //printf("\n\n\n\n\n\n ********* Se solicitan las metricas por consola ********* \n\n\n\n\n\n");
+  log_info(kernel_log,"********* Se solicitan las metricas por consola ********* \n\n\n\n");
 
   pthread_mutex_lock(&s_lista_selects);
   metricas_reads(lista_estadisticas_selects);
@@ -138,7 +139,8 @@ int ejecutar_metrics()
 
   // Fata el memory load ya lo seeeeeeeeeeee
 
-  printf("\n\n\n\n\n\n ********* Metricas ejecutadas ********* \n\n\n\n\n\n");
+  //printf("\n\n\n\n\n\n ********* Metricas ejecutadas ********* \n\n\n\n\n\n");
+  log_info(kernel_log,"********* Metricas ejecutadas ********* \n\n\n\n");
 }
 
 
