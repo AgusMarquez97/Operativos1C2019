@@ -63,9 +63,9 @@ pthread_mutex_t s_requestq;
 pthread_mutex_t s_exitq;
 pthread_mutex_t s_lista_selects;
 pthread_mutex_t s_lista_inserts;
-int CANT_THREADS_EXEC;// = 5; //TODO: Debe salir del archivo de config
-int QUANTUM_SIZE;// = 2; //TODO: Debe salir del archivo de config
-long RETARDO_EJECUCION;
+int CANT_THREADS_EXEC;
+int QUANTUM_SIZE;
+float RETARDO_EJECUCION,sleep_ejecucion;
 long REFRESH_METADATA;
 
 char * sc_memory = "IP:PUERTO";

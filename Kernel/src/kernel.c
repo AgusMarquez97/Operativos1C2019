@@ -68,8 +68,9 @@ int metricas_reads(/*t_list* lista_metricas*/int tipo_salida)//, int cant_reads)
 
 	switch (tipo_salida)
 	{
-	  case 0: log_info(kernel_log,"Reads: %d\n",cant_reads);
-		  log_info(kernel_log,"Read latency: %f\n",latency);
+	  case 0: log_info(kernel_log,"Reads: %d",cant_reads);
+		  log_info(kernel_log,"Read latency: %f",latency);
+		  log_info(kernel_log,"");
 		  break;
 	  case 1: printf("\nReads: %d\n",cant_reads);
 		  printf("Read latency: %f\n",latency);
@@ -98,11 +99,14 @@ void metricas_writes(/*t_list* lista_metricas*/int tipo_salida)//, int cant_writ
 
 	switch (tipo_salida)
 	{
-	  case 0: log_info(kernel_log,"Writes: %d\n",cant_writes);
-		  log_info(kernel_log,"Write latency: %f\n\n\n",latency);
+	  case 0: log_info(kernel_log,"Writes: %d",cant_writes);
+		  log_info(kernel_log,"Write latency: %f",latency);
+		  log_info(kernel_log,"");
+		  log_info(kernel_log,"");
+		  log_info(kernel_log,"");
 		  break;
 	  case 1: printf("Writes: %d\n",cant_writes);
-		  printf("Write latency: %f\n",latency);
+		  printf("Write latency: %f\n\n\n",latency);
 		  break;
 	  default: printf("Tipo incorrecto de salida\n");
 		   return -1;
@@ -120,7 +124,10 @@ void *mostrar_y_purgar_metricas() {
 	while (1) {
 		sleep(30); //Por motivos de prueba se le puso 10, cambiar a 30 al final
 
-		log_info(kernel_log,"**** Comienzo de metricas automaticas ****\n\n\n");
+		log_info(kernel_log,"**** Comienzo de metricas automaticas ****");
+		log_info(kernel_log,"");
+		log_info(kernel_log,"");
+		log_info(kernel_log,"");
 
 		pthread_mutex_lock(&s_lista_selects);
 
@@ -148,7 +155,10 @@ void *mostrar_y_purgar_metricas() {
  	
 		// Fata el memory load ya lo seeeeeeeeeeee
 
-		log_info(kernel_log,"**** Fin de metricas automaticas ****\n\n\n");
+		log_info(kernel_log,"");
+		log_info(kernel_log,"");
+		log_info(kernel_log,"");
+		log_info(kernel_log,"**** Fin de metricas automaticas ****");
 	}
 
 }
@@ -301,7 +311,7 @@ void *exec(void * numero_exec) {
 	int thread_n = (int) numero_exec;
 	query *next_query = malloc(sizeof(query));
 
-	log_info(kernel_log,"**** El hilo de ejecucion %d (thread_id %d) esta arriba ****",thread_n, pthread_self());
+	log_info(kernel_log,"**** El hilo de ejecucion %d (thread_id %u) esta arriba ****",thread_n, pthread_self());
 	//printf("**** El hilo de ejecucion %d (thread_id %d) esta arriba ****\n",
 	//		thread_n, pthread_self());
 
@@ -327,7 +337,7 @@ void *exec(void * numero_exec) {
 
 			next_query = (query *) queue_pop(requests);		
 
-			log_info(kernel_log,"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %d ****\n",thread_n,next_query->requestType);
+			log_debug(kernel_log,"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %d ****\n",thread_n,next_query->requestType);
 			//printf(
 			//		"**** El hilo de ejecucion %d va a ejecutar el siguiente request: %d ****\n",
 			//		thread_n,next_query->requestType);
@@ -339,13 +349,13 @@ void *exec(void * numero_exec) {
 
 			if (codigo_ejecucion < 0) {
 
-			  log_error(kernel_log,"Error en la ejecucion del request.");
+			  log_error(kernel_log,"Error en la ejecucion del request."); //TODO:Ver forma de indicar el request que fallo 
 			  printf("Error en la ejecucion del request.\n");
 			  printf("Fin de proceso.\n\n\n\n");
 			  printf("*********************************************\n\n\n\n");
 			  agregar_a_estado_exit(next_request);// En realidad se debe hacer esto
-			  log_info(kernel_log,"**** Se acabaron los requests del script. Se esperan %f segundos\n",RETARDO_EJECUCION/1000);
-			  sleep(RETARDO_EJECUCION/1000);
+			  log_info(kernel_log,"**** Fin del script por fallo en un request. Se esperan %f segundos\n",sleep_ejecucion);
+			  sleep(sleep_ejecucion);
 			  log_info(kernel_log,"**** Lista la espera.\n");
 			  return;
 
@@ -363,12 +373,12 @@ void *exec(void * numero_exec) {
 			agregar_a_estado_exit(next_request);// En realidad se debe hacer esto
 			//printf("Fin de proceso.\n\n\n\n");
 			//printf("*********************************************\n\n\n\n");
-			log_info(kernel_log,"**** Se acabaron los requests del script. Se esperan %d segundos\n",RETARDO_EJECUCION/1000);
-			sleep(RETARDO_EJECUCION/1000);
-			log_info(kernel_log,"**** Lista la espera.\n");
+			log_info(kernel_log,"Fin de ejecucion de request unitario o script. Se esperan %f segundos",sleep_ejecucion);
+			sleep(sleep_ejecucion);
+			log_debug(kernel_log,"**** Lista la espera ****");
 
 		} else {
-			log_info(kernel_log,"**** Se acabo el quantum, se vuelve a la ready queue ****\n\n\n\n");
+			log_info(kernel_log,"**** Se acabo el quantum, se vuelve a la ready queue ****");
 			printf("\n\n\n\n**** Se acabo el quantum, se vuelve a la ready queue ****\n\n\n\n");
 			agregar_request_ready(next_request);
 		} //printf("En estado exit hay %d requests (Los scripts se cuentan como un solo request)\n",(int) queue_size(exit_queue));
@@ -408,7 +418,7 @@ void *purgar_estado_exit() {
 	while (1) {
 
 		sem_wait(&s_hay_request_estado_exit);
-log_info(kernel_log,"****Llego un request al estado exit. Se lo elimina de inmediato ****\n\n\n\n");
+		log_debug(kernel_log,"****Llego un request al estado exit. Se lo elimina de inmediato ****");
 		pthread_mutex_lock(&s_exitq);
 
 		queue_pop(exit_queue);
@@ -445,9 +455,9 @@ t_queue* procesar_script(char * script) {
 	log_info(kernel_log,"Se ejecuta el script: %s",script);
 
 	if ((fid = fopen(script, "r+")) == NULL) {
+		log_error(kernel_log,"Error al abrir el script: %s",script);
+		log_debug(kernel_log,"Longitud del parametro ruta del archivo: %d",string_length(script));
 		printf("Error al abrir el script: %s\n", script);
-		printf("Longitud del parametro ruta del archivo: %d\n",
-				string_length(script));
 		return NULL;
 	}
 
@@ -526,7 +536,7 @@ void * atender_conexion(void * new_fd) {
 	}
 
 	//printf("client: received %s", buf);
-	log_info(kernel_log,"Recibido el siguiente input: %s\n",buf);
+	log_debug(kernel_log,"Recibido el siguiente input via telnet: %s",buf);
 	buf[numbytes] = '\0';
 	input=string_substring(buf, 0, numbytes-2);
 //	memset(&buf, 0, sizeof buf[MAXDATASIZE]);
@@ -537,7 +547,7 @@ void * atender_conexion(void * new_fd) {
 		if ( parsear(input,&query_struct) < 0 ) // Se le saca el &, volver a poner si algo male sal
 		{
 			//log_error(kernel_log,"Error en parseo de query, no se planifica.");
-			log_error(kernel_log,"%s: comando desconocido.\n\n",input);
+			log_error(kernel_log,"%s: comando desconocido.",input);
 			printf("%s: comando desconocido.\n\n",input);
 			printf("Fin de proceso.\n\n\n\n");
 			printf("*********************************************\n\n\n\n");
@@ -665,14 +675,19 @@ void *consola()
 	 query * query_struct = malloc(sizeof(query));
 	 //argumentosQuery * args;
 	 //logMemTable = retornarLogConPath("Memtable.log","Memtable");
-	 system("clear");
+	 //system("clear");
+	 printf("\n\n\n*** Conectado a Lissandra ***\n\n");
 	  while(1) {
-	    linea = readline("\nkernel> ");
+	    linea = readline("kernel> ");
 	    if (!linea)
 	      break;
 
 	    if (!strcasecmp(linea,"salir")) {
 	      break;
+	    }
+
+	    if (!strcasecmp(linea,"")) {
+	      continue;
 	    }
 
 	    add_history(linea);
@@ -682,7 +697,7 @@ void *consola()
 	    }else{
 
 	    if ( parsear(linea,&query_struct) < 0 ) {
-			log_error(kernel_log,"%s: comando desconocido.\n\n",linea);
+			log_error(kernel_log,"%s: comando desconocido.",linea);
 			printf("%s: comando desconocido.\n\n",linea);
 			//printf("Fin de proceso.\n\n\n\n");
 			//printf("*********************************************\n\n\n\n");
@@ -722,7 +737,7 @@ void *consola()
 
 void *monitorear_config()
 {
-	log_info(kernel_log,"**** Hilo de modificacion de configuracion inicializado **** \n****");
+	log_info(kernel_log,"**** Hilo de modificacion de configuracion inicializado ****");
 	//const char * config_file = "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/config/kernel_config.cfg";
 	const char * config_file = "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/config/";
 
@@ -779,20 +794,21 @@ void *monitorear_config()
 			retardo_ejecucion = obtenerInt("RETARDO_EJECUCION");
 
 			if (quantum != QUANTUM_SIZE) {
-			 log_info(kernel_log,"**** Actualizado el valor del quantum. Viejo valor: %d, nuevo valor: %d \n",QUANTUM_SIZE,quantum);
+			 log_info(kernel_log,"Actualizado el valor del quantum. Viejo valor: %d, nuevo valor: %d",QUANTUM_SIZE,quantum);
 			 QUANTUM_SIZE = quantum;
 			}
 
 			if (refresh_metadata != REFRESH_METADATA) {
-			 log_info(kernel_log,"**** Actualizado el valor de refresh de metadata. Viejo valor: %d segundos, nuevo valor: %d segundos\n",
+			 log_info(kernel_log,"Actualizado el valor de refresh de metadata. Viejo valor: %d segundos, nuevo valor: %d segundos",
 			   REFRESH_METADATA,refresh_metadata);
 			 REFRESH_METADATA = refresh_metadata;
 			}
 
 			if (retardo_ejecucion != RETARDO_EJECUCION) {
-			 log_info(kernel_log,"**** Actualizado el valor de retardo de ejecucion. Viejo valor: %d ms, nuevo valor: %d ms\n",
+			 log_info(kernel_log,"Actualizado el valor de retardo de ejecucion. Viejo valor: %d ms, nuevo valor: %d ms",
 			   RETARDO_EJECUCION,retardo_ejecucion);
 			 RETARDO_EJECUCION = retardo_ejecucion;
+			 sleep_ejecucion = RETARDO_EJECUCION/1000;
 			}
 		    }
 	    }
@@ -835,14 +851,13 @@ void cargar_configuraciones() {
 	QUANTUM_SIZE = atoi(strdup(obtenerString("QUANTUM")));
 	REFRESH_METADATA = atoi(strdup(obtenerString("REFRESH_METADATA")));
 	RETARDO_EJECUCION = atoi(strdup(obtenerString("RETARDO_EJECUCION")));
+	sleep_ejecucion = RETARDO_EJECUCION/1000;
 
-	log_info(kernel_log,"**** Se cargaron los siguientes valores de configuracion: \n****");
-	log_info(kernel_log,"Numero de estados de ejecucion: %d\n",CANT_THREADS_EXEC);
-	log_info(kernel_log,"Tamaño del quantum: %d\n",QUANTUM_SIZE);
-	log_info(kernel_log,"Tiempo de actualizacion de la metadata de las tablas: %d\n",REFRESH_METADATA);
-	log_info(kernel_log,"Retardo al final del ciclo de ejecucion (en milisegundos): %d\n****",RETARDO_EJECUCION);
-
-	//RETARDO_EJECUCION = RETARDO_EJECUCION / 1000;
+	log_info(kernel_log,"Se cargaron los siguientes valores de configuracion:");
+	log_info(kernel_log,"*	Numero de estados de ejecucion: %d",CANT_THREADS_EXEC);
+	log_info(kernel_log,"*	Tamaño del quantum: %d",QUANTUM_SIZE);
+	log_info(kernel_log,"*	Tiempo de actualizacion de la metadata de las tablas: %d",REFRESH_METADATA);
+	log_info(kernel_log,"*	Retardo al final del ciclo de ejecucion (en milisegundos): %d",RETARDO_EJECUCION);
 
 }
 
@@ -862,10 +877,10 @@ void inicializar_threads() {
 		pthread_create(&thread_id, NULL, exec, (void *) thread);
 		pthread_detach(thread_id);
 	}
-/*
+
 	pthread_create(&metricsthread_id, NULL, mostrar_y_purgar_metricas, NULL);
 	pthread_detach(metricsthread_id);
-*/
+
 	pthread_create(&consolathread_id, NULL, consola, NULL);
 	//pthread_join(consolathread_id,NULL);
 	pthread_detach(consolathread_id);
