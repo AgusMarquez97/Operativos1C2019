@@ -52,7 +52,7 @@ bool filtro_estadisticas(t_lista_metricas* struct_operacion)
 }
 
 
-void metricas_reads(t_list* lista_metricas)//, int cant_reads)
+int metricas_reads(/*t_list* lista_metricas*/int tipo_salida)//, int cant_reads)
 {
 	double duracion_total = 0;
 	float latency = 0;
@@ -61,21 +61,28 @@ void metricas_reads(t_list* lista_metricas)//, int cant_reads)
 
 	for (int i = 0;i<=cant_reads-1;i++)
 	{
-	  struct_operacion = list_get(lista_metricas,i);
+	  struct_operacion = list_get(/*lista_metricas*/lista_estadisticas_selects,i);
 	  duracion_total = duracion_total + (*struct_operacion).duracion_operacion;
 	  latency = duracion_total/cant_reads;
 	}
-	//printf("Reads: %d\n",cant_reads);
-	//printf("Read latency: %f\n",latency);
-	log_info(kernel_log,"Reads: %d\n",cant_reads);
-	log_info(kernel_log,"Read latency: %f\n",latency);
 
+	switch (tipo_salida)
+	{
+	  case 0: log_info(kernel_log,"Reads: %d\n",cant_reads);
+		  log_info(kernel_log,"Read latency: %f\n",latency);
+		  break;
+	  case 1: printf("\nReads: %d\n",cant_reads);
+		  printf("Read latency: %f\n",latency);
+		  break;
+	  default: printf("Tipo incorrecto de salida\n");
+		   return -1;
+	}
 
 
 }
 
 
-void metricas_writes(t_list* lista_metricas)//, int cant_writes)
+void metricas_writes(/*t_list* lista_metricas*/int tipo_salida)//, int cant_writes)
 {
 	double duracion_total = 0;
 	float latency = 0;
@@ -84,14 +91,24 @@ void metricas_writes(t_list* lista_metricas)//, int cant_writes)
 
 	for (int i = 0;i<=cant_writes-1;i++)
 	{
-	  struct_operacion = list_get(lista_metricas,i);
+	  struct_operacion = list_get(/*lista_metricas*/lista_estadisticas_inserts,i);
 	  duracion_total = duracion_total + (*struct_operacion).duracion_operacion;
 	  latency = duracion_total/cant_writes;
 	}
-	//printf("Writes: %d\n",cant_writes);
-	//printf("Write latency: %f\n",latency);
-	log_info(kernel_log,"Writes: %d\n",cant_writes);
-	log_info(kernel_log,"Write latency: %f\n\n\n",latency);
+
+	switch (tipo_salida)
+	{
+	  case 0: log_info(kernel_log,"Writes: %d\n",cant_writes);
+		  log_info(kernel_log,"Write latency: %f\n\n\n",latency);
+		  break;
+	  case 1: printf("Writes: %d\n",cant_writes);
+		  printf("Write latency: %f\n",latency);
+		  break;
+	  default: printf("Tipo incorrecto de salida\n");
+		   return -1;
+	}
+	
+	
 
 
 
@@ -112,7 +129,7 @@ void *mostrar_y_purgar_metricas() {
 		int cant_selects = list_size(lista_estadisticas_selects);
 		//printf("El tamaño de la lista despues de purgar es: %d\n",cant_selects);
 
-		metricas_reads(lista_estadisticas_selects);//,cant_selects);
+		metricas_reads(/*lista_estadisticas_selects*/0);//,cant_selects);
 
 		pthread_mutex_unlock(&s_lista_selects);
 
@@ -125,7 +142,7 @@ void *mostrar_y_purgar_metricas() {
 		int cant_inserts = list_size(lista_estadisticas_inserts);
 		//printf("El tamaño de la lista despues de purgar es: %d\n",cant_inserts);
 
-		metricas_writes(lista_estadisticas_inserts);//,cant_inserts);
+		metricas_writes(/*lista_estadisticas_inserts*/0);//,cant_inserts);
 
 		pthread_mutex_unlock(&s_lista_inserts);
  	
@@ -233,7 +250,7 @@ int ejecutar_request(query * query_struct)
 				//resultado_ejecucion_request = ejecutar_run(query_struct);
 			 	break;
 
-	  case (SELECT): 	printf("Se recibio un SELECT...\n");
+	  case (SELECT): 	//printf("Se recibio un SELECT...\n");
 				resultado_ejecucion_request = ejecutar_select(query_struct);
 			 	break;
 
@@ -422,8 +439,10 @@ t_queue* procesar_script(char * script) {
 	ssize_t read;
 	char * line = NULL;
 	char ** line3;
+	int linea_script = 1;
 
-	printf("Se ejecut el script: %s\n",script);
+	//printf("Se ejecuta el script: %s\n",script);
+	log_info(kernel_log,"Se ejecuta el script: %s",script);
 
 	if ((fid = fopen(script, "r+")) == NULL) {
 		printf("Error al abrir el script: %s\n", script);
@@ -445,15 +464,18 @@ t_queue* procesar_script(char * script) {
 		  queue_push(request_queue, query_struct);//No va free(); -> NO LIBERA
 		} else
 		  {
-			log_error(kernel_log,"Uno de los requests fallo, se cancela la ejecucion del script.");
-			printf("Uno de los requests fallo, se cancela la ejecucion del script\n");
-			printf("Fin de proceso.\n\n\n\n");
-			printf("*********************************************\n\n\n\n");
+			log_error(kernel_log,"%s: comando desconocido.",line3[0]);
+			log_error(kernel_log,"El request en la linea %d fallo, se cancela la ejecucion del script",linea_script);
+			printf("%s: comando desconocido.\n",line3[0]);
+			printf("El request en la linea %d fallo, se cancela la ejecucion del script\n",linea_script);
+			//printf("Fin de proceso.\n\n\n\n");
+			//printf("*********************************************\n\n\n\n");
 		  //free(query_struct); //sirve?
 			//queue_destroy(request_queue);
 			//queue_destroy_and_destroy_elements(request_queue, free);
 			return NULL;
 		  }
+		linea_script++;
 	}
 
 	//pthread_mutex_unlock(&s_requestq);
@@ -533,20 +555,21 @@ void * atender_conexion(void * new_fd) {
 
 		switch (query_struct->requestType)
 		{
-		  case METRICS: log_info(kernel_log,"Viene por el case\n");ejecutar_request(query_struct);
+		  case METRICS: ejecutar_request(query_struct);
 				break;
 		  case JOURNAL: ejecutar_request(query_struct);
 				break;
 		  case ADD: 	ejecutar_request(query_struct);
 				break;
-		  default: {log_info(kernel_log,"Viene por el default\n");
-		t_queue* request_queue = armar_request_queue(*query_struct); //CUIDADO: le pongo un *
+		  default: {
+				t_queue* request_queue = armar_request_queue(*query_struct); //CUIDADO: le pongo un *
 
-		if (request_queue != NULL)
-		{
-		  agregar_a_new(request_queue);
+				if (request_queue != NULL)
+				{
+		  		  agregar_a_new(request_queue);
+				}
+			    }
 		}
-} }
 		if ((numbytes = recv(listening_socket, buf, MAXDATASIZE - 1, 0))
 				== -1) {
 			perror("recv");
@@ -644,7 +667,7 @@ void *consola()
 	 //logMemTable = retornarLogConPath("Memtable.log","Memtable");
 	 system("clear");
 	  while(1) {
-	    linea = readline(">");
+	    linea = readline("\nkernel> ");
 	    if (!linea)
 	      break;
 
@@ -665,14 +688,32 @@ void *consola()
 			//printf("*********************************************\n\n\n\n");
 
 			continue;
-		}
+	    }
 
+		switch (query_struct->requestType)
+		{
+		  case METRICS: ejecutar_request(query_struct);
+				break;
+		  case JOURNAL: ejecutar_request(query_struct);
+				break;
+		  case ADD: 	ejecutar_request(query_struct);
+				break;
+		  default: {
+				t_queue* request_queue = armar_request_queue(*query_struct); //CUIDADO: le pongo un *
+
+				if (request_queue != NULL)
+				{
+		  		  agregar_a_new(request_queue);
+				}
+			    }
+		}
+/*
 		t_queue* request_queue = armar_request_queue(*query_struct); //CUIDADO: le pongo un *
 
 		if (request_queue != NULL)
 		{
 		  agregar_a_new(request_queue);
-		}
+		}*/
 	    }
 	  }
 	  exit(1);

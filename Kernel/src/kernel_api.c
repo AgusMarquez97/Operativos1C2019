@@ -22,7 +22,7 @@ int ejecutar_select(query * query_struct)
 	double *tiempo_ejecucion = malloc(sizeof(double));
 	clock_t inicio,fin;
 	inicio = clock();
-	printf("Se ejecuta el siguiente request (Por ahora solo se muestra esto por pantalla): \"SELECT %s %d\"\n",nombre_tabla,query_struct->key);
+	//printf("Se ejecuta el siguiente request (Por ahora solo se muestra esto por pantalla): \"SELECT %s %d\"\n\n",nombre_tabla,query_struct->key);
 	//En algun lugar de por aca va a estar la conexion a la memoria
 	fin = clock();
 
@@ -127,20 +127,20 @@ int ejecutar_insert(query * query_struct)
 int ejecutar_metrics()
 {
   //printf("\n\n\n\n\n\n ********* Se solicitan las metricas por consola ********* \n\n\n\n\n\n");
-  log_info(kernel_log,"********* Se solicitan las metricas por consola ********* \n\n\n\n");
+  //log_info(kernel_log,"********* Se solicitan las metricas por consola ********* \n\n\n\n");
 
-  pthread_mutex_lock(&s_lista_selects);
-  metricas_reads(lista_estadisticas_selects);
-  pthread_mutex_unlock(&s_lista_selects);
+//  pthread_mutex_lock(&s_lista_selects);
+  metricas_reads(/*lista_estadisticas_selects*/1);
+//  pthread_mutex_unlock(&s_lista_selects);
 
-  pthread_mutex_lock(&s_lista_inserts);
-  metricas_writes(lista_estadisticas_inserts);
-  pthread_mutex_unlock(&s_lista_inserts);
+//  pthread_mutex_lock(&s_lista_inserts);
+  metricas_writes(/*lista_estadisticas_inserts*/1);
+//  pthread_mutex_unlock(&s_lista_inserts);
 
   // Fata el memory load ya lo seeeeeeeeeeee
 
-  //printf("\n\n\n\n\n\n ********* Metricas ejecutadas ********* \n\n\n\n\n\n");
-  log_info(kernel_log,"********* Metricas ejecutadas ********* \n\n\n\n");
+  printf("\n\n ********* Metricas ejecutadas ********* \n\n\n\n\n\n");
+  //log_info(kernel_log,"********* Metricas ejecutadas ********* \n\n\n\n");
 }
 
 
