@@ -712,7 +712,7 @@ void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
 }
 
 //me falta testear esto:
-int obtenerTamanioRegistrosDeUnaTabla(t_dictionary * memTable, char * tabla){
+int obtenerTamanioRegistrosDeUnaTabla(char * tabla){
 	int tamanio = 0;
 	t_list * registros =(t_list *) dictionary_get(memTable, tabla);
 	void tamanioRegistro(registro *unRegistro){

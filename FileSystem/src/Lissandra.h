@@ -142,7 +142,7 @@ void agregarListaRegistros(t_list * lista,t_list * listaAgregar);
 registro * obtenerRegistro(t_list * lista, int posicionLista);
 void agregarUnRegistroMemTable(query * unaQuery, int flagConsola);
 void liberarMemTable(t_dictionary ** memTable);
-int obtenerTamanioRegistrosDeUnaTabla(t_dictionary * memTable, char * tabla);
+int obtenerTamanioRegistrosDeUnaTabla(char * tabla);
 /*
  * Para casteos query -> registro
  */

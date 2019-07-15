@@ -20,6 +20,9 @@
 #include "commons/string.h"
 #include <signal.h>
 #include"commons/collections/list.h"
+#include <math.h>
+#include <time.h>
+
 
 struct stat estado = {0};
 /*	Para info sobre un archivo -> usar: stat(pathArchivo,&estructuraBuffer)
@@ -57,8 +60,12 @@ char * carpetaBloques;
 char * metadataBin;
 char * bitmapBin;
 
-char * tamanioBloque;
+int tamanioBloque;
 int cantidadBloques;
+
+t_bitarray* unBitarray;
+
+pthread_mutex_t mutex_bloques; //= PTHREAD_MUTEX_INITIALIZER
 
 
 void gestionarFileSystem();
@@ -135,7 +142,14 @@ void liberarHilos();
 void liberarNombres();
 
 //toma un bitarray y la cantidad de bloques del file system y retorna el numero del bloque que esta disponible o -1 en caso de no haber bloques disponibles
-int buscarPrimerBloqueLibre(t_bitarray* unBitarray,int nroBloques);
 
+int buscarPrimerBloqueLibre();
+char * obtenerSiguienteTmp(char * nombreTabla);
+char * castearBloquesChar(int lista_bloques[]);
+int obtenerCantidadBloques(int tamanio);
+void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[], char * listaRegistros);
+char * castearRegistrosChar(int tamanioNecesario,t_list * listaRegistros);
+
+char * asignarBloques(int tamanioNecesario, char * nombreTabla,t_list * listaRegistros);
 
 #endif /* FILESYSTEM_H_ */
