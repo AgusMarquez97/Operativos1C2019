@@ -66,7 +66,7 @@ int cantidadBloques;
 t_bitarray* unBitarray;
 
 pthread_mutex_t mutex_bloques; //= PTHREAD_MUTEX_INITIALIZER
-
+pthread_mutex_t mutex_bitarray;
 
 void gestionarFileSystem();
 

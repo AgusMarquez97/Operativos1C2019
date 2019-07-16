@@ -76,12 +76,12 @@ void crearCarpetaMetadata()
 	    ftruncate(fd,cantidadBloques/8);
 	    bitmap= mmap(0,cantidadBloques/8,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0); //se baja el archivo a memoria
 
-		t_bitarray * bitarray = bitarray_create_with_mode(bitmap, cantidadBloques/8, LSB_FIRST);
+		unBitarray = bitarray_create_with_mode(bitmap, cantidadBloques/8, LSB_FIRST);
 
 		for(int i = 0; i<cantidadBloques;i++){
-			bitarray_clean_bit(bitarray,i); //seteo todos los bits en 0 (al principio todos los bloques están libres)
+			bitarray_clean_bit(unBitarray,i); //seteo todos los bits en 0 (al principio todos los bloques están libres)
 		}
-		munmap(bitmap,cantidadBloques/8);
+		//munmap(bitmap,cantidadBloques/8);
 
 	//FILE * bitmap =  txt_open_for_append(bitmapBin);
 	//txt_close_file(bitmap);
@@ -139,6 +139,7 @@ void borrarDirectorioVacio(char * directorio)
 void inicializarSemaforos()
 {
 	pthread_mutex_init(&mutex_bloques, NULL);
+	pthread_mutex_init(&mutex_bitarray, NULL);
 }
 
 void ejecutarDumping()
@@ -313,15 +314,14 @@ int rutinaFileSystemCreate(argumentosQuery * args)
 
 char * asignarUnBloqueBin()
 {
-	/*
-	 * Hay que:
-	 * 1° -> Obtener un bloque libre del directorio de bloques o crear dicho bloque -> hay que usar bitmap!
-	 * 3° -> Una vez obtenido el bloque, pasarlo a char * con formato de array (ver de evitar esto) y retornarlo
-	 */
 
+	int aux = buscarPrimerBloqueLibre();
+	char* bloque= malloc(10);
+	strcpy(bloque,"[");
+	strcat(bloque,string_itoa(aux));
+	strcat(bloque,"]");
 
-
-	return "[0]";
+	return bloque;
 }
 
 
@@ -522,7 +522,8 @@ int  buscarPrimerBloqueLibre()
 {
 	int aux = 0;
 
-	while(!bitarray_test_bit(unBitarray,aux))
+
+	while(bitarray_test_bit(unBitarray,aux))
 	{
 
 		aux++;
@@ -530,10 +531,12 @@ int  buscarPrimerBloqueLibre()
 	if(aux > cantidadBloques)
 		{
 		return -1;
+
 		}
 	}
-
 	bitarray_set_bit(unBitarray,aux);
+
+
 	return aux;
 
 }
