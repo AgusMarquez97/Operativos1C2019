@@ -321,7 +321,7 @@ char * asignarUnBloqueBin()
 	strcpy(bloque,"[");
 	strcat(bloque,string_itoa(aux));
 	strcat(bloque,"]");
-
+	free(bloque);
 	return bloque;
 }
 
@@ -355,6 +355,8 @@ char * castearRegistrosChar(int tamanioNecesario,t_list * listaRegistros)
 		strcat(registros,";");
 
 		sprintf(aux,"%lli",unRegistro->timestamp);
+
+		strcat(registros,aux);
 
 		strcat(registros,"\n");
 
@@ -434,7 +436,7 @@ char * asignarBloques(int tamanioNecesario, char * nombreTabla,t_list * listaReg
 	strcat(nombreTemp,"/");
 	strcat(nombreTemp,"1.tmp");//obtenerSiguienteTmp(nombreTemp)); //Hacer esta funcion!
 
-	printf("%s",nombreTemp);
+	//printf("%s",nombreTemp);
 
 	FILE * temp =  txt_open_for_append(nombreTemp);
 	txt_close_file(temp);
