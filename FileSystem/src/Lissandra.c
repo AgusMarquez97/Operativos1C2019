@@ -714,12 +714,22 @@ void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
 //me falta testear esto:
 int obtenerTamanioRegistrosDeUnaTabla(char * tabla){
 	int tamanio = 0;
+
+	char * key = malloc(500), * tmp = malloc(500);
+
 	t_list * registros =(t_list *) dictionary_get(memTable, tabla);
-	void tamanioRegistro(registro *unRegistro){
-		tamanio += strlen(unRegistro->value) + 1 + sizeof(int32_t) + sizeof(int64_t) + strlen(";;\n");
+
+	void tamanioRegistro(registro *unRegistro)
+	{
+		sprintf(key,"%d",unRegistro->key);
+		sprintf(tmp,"%lli",unRegistro->timestamp);
+
+		tamanio += strlen(unRegistro->value) + strlen(key) + strlen(tmp) + strlen(";;\n");
 		//15;//tam registro = value + 4 de key + 8 de timestamp + 3 de ; ; \n
 	}
 	list_iterate(registros,(void*)tamanioRegistro);
+	free(key);
+	free(tmp);
 	return tamanio;
 }
 

@@ -20,7 +20,7 @@ void gestionarFileSystem()
 	limpiarFileSystem();
 	levantarFileSystem();
 	levantarMetadata();
-	//hiloDump = crearHilo(ejecutarDumping,NULL);
+	hiloDump = crearHilo(ejecutarDumping,NULL);
 	//liberarNombres(); //->No liberar que luego no se pueden usar
 }
 
@@ -60,7 +60,7 @@ void crearCarpetaMetadata()
 	txt_close_file(metadata);
 
 	crearConfig(metadataBin);
-	cambiarValorConfig("BLOCK_SIZE","64");
+	cambiarValorConfig("BLOCK_SIZE","16");
 	cambiarValorConfig("BLOCKS","1024");
 	cambiarValorConfig("MAGIC_NUMBER","LISSANDRA");
 	cantidadBloques = obtenerInt("BLOCKS");
@@ -178,6 +178,7 @@ void ejecutarDumping()
 	}
 	dictionary_iterator(memTable,(void*)dumpearTabla);
 	dictionary_destroy_and_destroy_elements(memTable,free);
+	memTable = dictionary_create();
 	}
 }
 
@@ -381,7 +382,7 @@ void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[],
 	int aux = 0;
 	char * aux2 = malloc(100);
 	sprintf(aux2,"%d",cantidadDeBloques);
-	char * nombreBloque = malloc(strlen(carpetaBloques) + strlen(aux2) + 2 + strlen(".bin"));
+	char * nombreBloque = malloc(strlen(carpetaBloques) + strlen(aux2) + 5 + 2 + strlen(".bin"));
 	while(listaBloques[aux] != -1)
 	{
 
@@ -409,42 +410,47 @@ void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[],
 
 char * asignarBloques(int tamanioNecesario, char * nombreTabla,t_list * listaRegistros) //retorna el nombre del .tmp
 {
+
 	int cantBloques = obtenerCantidadBloques(tamanioNecesario);
 
 	int listaBloques[cantBloques];
 
 	for(int i = 0; i < cantBloques; i++)
 	{
-		pthread_mutex_lock(&mutex_bloques);
+		//pthread_mutex_lock(&mutex_bloques);
 		listaBloques[i] = buscarPrimerBloqueLibre();
-		pthread_mutex_unlock(&mutex_bloques);
+		//pthread_mutex_unlock(&mutex_bloques);
 	}
 
+	char * aux_tmp = malloc(1000);
 	listaBloques[cantBloques] = -1; //Valor centinela de corte
 
 	char * bloques = strdup(castearBloquesChar(listaBloques));
 
-	char * nombreTemp = malloc(strlen(nombreTabla) + strlen("9999.tmp") + 2); // Hasta 9999 posibles .tmp
+	char * nombreTemp = malloc(strlen(carpetaTables) + strlen(nombreTabla) + strlen("9999.tmp") + 2 + 20); // Hasta 9999 posibles .tmp
 
-	strcpy(nombreTemp,nombreTabla);
-	strcat(nombreTemp,obtenerSiguienteTmp(nombreTabla)); //Hacer esta funcion!
+	strcpy(nombreTemp,carpetaTables);
+	strcat(nombreTemp,nombreTabla);
+	strcat(nombreTemp,"/");
+	strcat(nombreTemp,"1.tmp");//obtenerSiguienteTmp(nombreTemp)); //Hacer esta funcion!
+
+	printf("%s",nombreTemp);
 
 	FILE * temp =  txt_open_for_append(nombreTemp);
 	txt_close_file(temp);
 
-	char * aux = malloc(100);
 
-	sprintf(aux,"%d",tamanioNecesario);
+	sprintf(aux_tmp,"%d",tamanioNecesario);
 
 	crearConfig(nombreTemp);
-	cambiarValorConfig("SIZE",aux);
+	cambiarValorConfig("SIZE",aux_tmp);
 	cambiarValorConfig("BLOCKS",bloques);
 	eliminarEstructuraConfig();
 
-	free(aux);
+	free(aux_tmp);
 	free(bloques);
 
-	escribirBloques(abs(tamanioNecesario - cantBloques*tamanioBloque),cantBloques,listaBloques,castearRegistrosChar(tamanioNecesario,listaRegistros));
+	escribirBloques(tamanioNecesario - (cantBloques-1)*tamanioBloque,cantBloques,listaBloques,castearRegistrosChar(tamanioNecesario,listaRegistros));
 
 	return nombreTemp;
 
@@ -500,20 +506,24 @@ char * obtenerSiguienteTmp(char * nombreTabla)
 	 * Tengo que recorrer todos los .tmp de la carpeta, y retornar la cantidad leida + 1 concantenando .tmp
 	 *
 	*/
-	char * tmp = malloc(strlen(nombreTabla) + strlen("9999.bin") + 2);
-	char * aux = malloc(100);
-	strcpy(tmp,nombreTabla);
+	char * rutaFinal = malloc(strlen(nombreTabla) + strlen("9999.tmp") + 2);
+	char * archivo_temporal = malloc(strlen(nombreTabla) + strlen("9999.tmp") + 2);
+	strcpy(rutaFinal,nombreTabla);
+	char * auxiliar = malloc(100);
 	int contador = 0;
+
 	do{
-		sprintf(aux,"%d",contador);
-		strcat(tmp,aux);
-		strcat(tmp,".bin");
+		sprintf(auxiliar,"%d",contador);
+		strcpy(archivo_temporal,auxiliar);
+		strcat(archivo_temporal,".tmp");
+		strcat(rutaFinal,archivo_temporal); //rutaCarpeta/nro.tmp
 		contador++;
-	}while(stat(tmp, &estado) != -1);
+	}while(stat(rutaFinal, &estado) != -1);
 
-	free(aux);
+	free(auxiliar);
+	free(rutaFinal);
 
-	return tmp;
+	return archivo_temporal;
 }
 
 
