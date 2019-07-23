@@ -122,6 +122,7 @@ void crearCarpetaBloques()
 		blocks = malloc(strlen(carpetaBloques)+strlen(s)+1);
 		strcpy(blocks,carpetaBloques);
 		strcat(blocks,s);
+		remove(blocks); //DESPUES SACAR ESTO
 		FILE * block =  txt_open_for_append(blocks);
 		txt_close_file(block);
 		i++;
@@ -134,6 +135,23 @@ void borrarDirectorioVacio(char * directorio)
 	{
 	//loggearInfoEnLog(fileSystemLog,"No se pudo borrar el directorio");
 	}
+}
+
+
+int borrarArchivosDirectorio(const char *path, const struct stat *datosArchivo,int flags)
+{
+    if(flags == FTW_F)
+    {
+        //printf("Se elimina el archivo: %s",path);
+        remove(path);
+    }
+    return 0;
+}
+
+void limpiarTabla(char * rutaTabla)
+{
+	ftw(rutaTabla,borrarArchivosDirectorio,15);
+
 }
 
 void inicializarSemaforos()
@@ -149,12 +167,39 @@ void ejecutarDumping()
 	usleep(dumping*1000);
 
 	int tamNecesario = 0;
+
+	t_dictionary * memTableDumping = dictionary_create();
+
+	void copiarDiccionario(char * key, t_list * registros)
+	{
+		if(registros)
+		{
+			if(!list_is_empty(registros))
+			{
+				dictionary_put(memTableDumping,key,registros);
+			}
+		}
+
+	}
+
+	dictionary_iterator(memTable,(void*)copiarDiccionario);
+
+
+
 	void dumpearTabla(char * tabla, t_list * listaRegistros)
 	{
 		//Luego crear un hilo detacheable por cada una de estas
+		if(listaRegistros)
+		{
+				if(!list_is_empty(listaRegistros))
+			{
+			int tamNecesario = obtenerTamanioRegistrosDeUnaTabla(listaRegistros);
+			char * aux = asignarBloques(tamNecesario,tabla,listaRegistros); // Libera la memoria
+			free(aux);
+			list_destroy_and_destroy_elements(listaRegistros,free);
+			}
+		}
 
-		tamNecesario = obtenerTamanioRegistrosDeUnaTabla(tabla);
-		asignarBloques(tamNecesario,tabla,listaRegistros); // Libera la memoria
 
 		/*
 		 *
@@ -176,9 +221,9 @@ void ejecutarDumping()
 		*/
 
 	}
-	dictionary_iterator(memTable,(void*)dumpearTabla);
-	dictionary_destroy_and_destroy_elements(memTable,free);
-	memTable = dictionary_create();
+	dictionary_iterator(memTableDumping,(void*)dumpearTabla);
+	dictionary_destroy(memTableDumping);
+	loggearInfo("Dumpeo OK");
 	}
 }
 
@@ -191,14 +236,6 @@ void liberarNombres()
 	free(carpetaBloques);
 }
 
-int tablaYaExistenteEnFS(char * pathAbsolutoCarpeta)
-{
-	/*
-	 * Validar con mayusculas y minusculas -> el stat() no sirve ya que no diferencia
-	 * mayus de minusc
-	 */
-	return 0;
-}
 
 void crearMetadataTabla(char * directorioTabla, query * queryCreate, int flagConsola)
 {
@@ -268,15 +305,19 @@ void crearParticonesTabla(char * directorioTabla, query * queryCreate, int flagC
 			txt_close_file(particion);
 
 			char * aux = malloc(sizeof(int)*2);
+
+			char * bloque = asignarUnBloqueBin();
+
 			sprintf(aux,"%d",tamanioBloque);
 
 			crearConfig(nroParticion);
 			cambiarValorConfig("SIZE",aux);
-			cambiarValorConfig("BLOCKS",asignarUnBloqueBin());
+			cambiarValorConfig("BLOCKS",bloque);
 			eliminarEstructuraConfig();
 
 			free(nroParticion);
 			free(nroAux);
+			free(bloque);
 
 			i++;
 			}
@@ -289,15 +330,13 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola)
 	strcat(directorioTabla,queryCreate->tabla);
 	strcat(directorioTabla,"/");
 
-	if (tablaYaExistenteEnFS(directorioTabla) == 0) {
+	if (stat(directorioTabla, &estado) == -1) {
 	mkdir(directorioTabla, 0700);
 	}else
 	{
-		loggearErrorEnLog(fileSystemLog,"Error, tabla ya existe en el FileSystem");
-		if(flagConsola)
-			printf("Error, tabla ya existe en el FileSystem\n");
 		return -1;
 	}
+		limpiarTabla(directorioTabla);
 		crearMetadataTabla(directorioTabla,queryCreate,flagConsola);
 		crearParticonesTabla(directorioTabla,queryCreate,flagConsola);
 
@@ -308,20 +347,25 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola)
 	return 0;
 }
 
-int rutinaFileSystemCreate(argumentosQuery * args)
+int * rutinaFileSystemCreate(argumentosQuery * args)
 {
-	return crearCarpetaTabla(args->unaQuery,args->flag);
+	int * aux = malloc(sizeof(int));
+	int retorno = crearCarpetaTabla(args->unaQuery,args->flag);
+	memcpy(aux,&retorno,sizeof(int));
+	return aux;
 }
 
 char * asignarUnBloqueBin()
 {
 
 	int aux = buscarPrimerBloqueLibre();
-	char* bloque= malloc(10);
+	char* bloque= malloc(50);
+	char * aux2 = malloc(50);
 	strcpy(bloque,"[");
-	strcat(bloque,string_itoa(aux));
+	sprintf(aux2,"%d",aux);
+	strcat(bloque,aux2);
 	strcat(bloque,"]");
-	free(bloque);
+	free(aux2);
 	return bloque;
 }
 
@@ -434,9 +478,9 @@ char * asignarBloques(int tamanioNecesario, char * nombreTabla,t_list * listaReg
 	strcpy(nombreTemp,carpetaTables);
 	strcat(nombreTemp,nombreTabla);
 	strcat(nombreTemp,"/");
-	strcat(nombreTemp,"1.tmp");//obtenerSiguienteTmp(nombreTemp)); //Hacer esta funcion!
-
-	//printf("%s",nombreTemp);
+	char * auxTmp = obtenerSiguienteTmp(nombreTemp);
+	strcat(nombreTemp,auxTmp);
+	free(auxTmp);
 
 	FILE * temp =  txt_open_for_append(nombreTemp);
 	txt_close_file(temp);
@@ -509,12 +553,14 @@ char * obtenerSiguienteTmp(char * nombreTabla)
 	 *
 	*/
 	char * rutaFinal = malloc(strlen(nombreTabla) + strlen("9999.tmp") + 2);
+	struct stat estado = {0};
 	char * archivo_temporal = malloc(strlen(nombreTabla) + strlen("9999.tmp") + 2);
-	strcpy(rutaFinal,nombreTabla);
+	//
 	char * auxiliar = malloc(100);
 	int contador = 0;
 
 	do{
+		strcpy(rutaFinal,nombreTabla);
 		sprintf(auxiliar,"%d",contador);
 		strcpy(archivo_temporal,auxiliar);
 		strcat(archivo_temporal,".tmp");
@@ -527,7 +573,6 @@ char * obtenerSiguienteTmp(char * nombreTabla)
 
 	return archivo_temporal;
 }
-
 
 //buscarPrimerBloqueLibre y si no encuentra retorna -1
 int  buscarPrimerBloqueLibre()
@@ -582,4 +627,49 @@ void terminarAplicacion(int pid)
 	liberarLogs();
 	exit(1);
 }
+
+void levantarMemTable()
+{
+	//ftw(carpetaTables,recorrer_directorio,15);
+	recorrerDirectorio(carpetaTables);
+}
+
+int recorrer_directorio(const char *path, const struct stat *datosArchivo,int flags)
+	{
+		char * aux = malloc(strlen(path) + 3);
+		strcpy(aux,path);
+		strcat(aux,"/");
+		char * nombreCarpeta = strdup(string_substring_from(aux,strlen(carpetaTables) - 1));
+
+	    if(flags & FTW_D)
+	    	printf("%s",nombreCarpeta);//dictionary_put(memTable,nombreCarpeta,NULL);
+
+	    free(aux);
+	    free(nombreCarpeta);
+	    return 0;
+	}
+
+
+
+void recorrerDirectorio(char * directorio)
+{
+        DIR * dir = opendir(directorio);
+        struct dirent *estructuraDir; //Para recorrer y obtener info del directorio
+
+        if(dir != NULL)
+        {
+            while ((estructuraDir=readdir(dir)))
+            {
+
+                if(estructuraDir->d_type == DT_DIR && strncmp(estructuraDir->d_name,".",1))
+                {
+                	dictionary_put(memTable,estructuraDir->d_name,NULL);
+                }
+            }
+            closedir(dir);
+        }
+
+}
+
+
 

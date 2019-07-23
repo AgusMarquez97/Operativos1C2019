@@ -3,6 +3,7 @@
 
 void iniciarLFS()
 {
+
 	remove("Memtable.log");
 	remove("Lissandra.log");
 
@@ -12,25 +13,18 @@ void iniciarLFS()
 
 	memTable = dictionary_create();
 
+	//levantarMemTable();
 
-	/*
-	 * 2 Hilos iniciales para LFS:
-	 * 1° -> Valida y gestiona la consola (Puede recibir Querys)
-	 * 2° -> Gestiona el servidor (Puede recibir Querys)
-	 * Luego se crean hilos on demand para gestionar requests
-	 */
+
 
 	fileSystem = crearHilo(gestionarFileSystem,NULL);
 	esperarHilo(fileSystem); // Crea las estructuras administrativas
-
+	levantarMemTable();
 	hiloConsola = crearHilo(consola,NULL);
 	//hiloServidor = crearHilo(iniciarServidor,NULL);
 
-
 	esperarHilo(hiloConsola);
 	//esperarHilo(hiloServidor);
-
-
 }
 
 
@@ -223,9 +217,11 @@ void consola()
 		args->unaQuery = malloc(sizeof(query));
 		args->unaQuery = myQuery;
 		args->flag = 1;
+
 		if(aux != -1)
 		{
-			procesarQuery(args);
+
+				procesarQuery(args);
 		}
 		else
 		{
@@ -268,7 +264,8 @@ void iniciarServidor()
 void procesarQuery(argumentosQuery * args)
 {
 	int flagConsola = args->flag;
-
+	int * retornoCreate;
+	pthread_t  fsCreate;
 	logMemTable = retornarLogConPath("Memtable.log","Memtable");
 
 	switch(args->unaQuery->requestType)
@@ -277,12 +274,28 @@ void procesarQuery(argumentosQuery * args)
 		procesarSelect(args->unaQuery,flagConsola);
 		break;
 	case INSERT:
+		if(strlen(args->unaQuery->value) <= maxValue)
+		{
 		procesarInsert(args->unaQuery,flagConsola);
+		}
+		else
+		{
+			loggearWarning("Error: Valor maximo del value superado");
+			if(flagConsola)
+		printf("Error: Valor maximo del value superado\n");
+		}
 		break;
 	case CREATE:
+		fsCreate = crearHilo(rutinaFileSystemCreate,args);
+		pthread_join(fsCreate,(void*)&retornoCreate);
+		if(*(int*)retornoCreate != -1)
+		{
 		procesarCreate(args->unaQuery,flagConsola);
-		pthread_t  fsCreate = crearHilo(rutinaFileSystemCreate,args);
-		esperarHilo(fsCreate);
+		}
+		else
+		{
+			loggearErrorTablaExistente(args->unaQuery,flagConsola);
+		}
 		break;
 	default:
 		loggearWarningEnLog(logMemTable,"Request aun no disponible");
@@ -362,9 +375,17 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola
 
 	if(dictionary_has_key(memTable,unaQuery->tabla))
 	{
-		if(dictionary_get(memTable,unaQuery->tabla) != NULL)
+		temp = dictionary_get(memTable,unaQuery->tabla);
+		if(temp != NULL)
 		{
+			if(!list_is_empty(temp))
+			{
 			temp = (t_list *)dictionary_remove(memTable,unaQuery->tabla);
+			}
+			{
+				dictionary_remove(memTable,unaQuery->tabla);
+				temp = list_create();
+			}
 		}else{
 			dictionary_remove(memTable,unaQuery->tabla);
 			temp = list_create();
@@ -398,13 +419,8 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola
 
 void procesarCreate(query * unaQuery, int flagConsola)
 {
-	if(dictionary_has_key(memTable,unaQuery->tabla))
-		{
-		loggearErrorTablaExistente(unaQuery,flagConsola);
-		}
 	dictionary_put(memTable,unaQuery->tabla,NULL);
 	loggearTablaCreadaOK(logMemTable,unaQuery,flagConsola,0);
-
 }
 
 void liberarMemTable(t_dictionary ** memTable)
@@ -712,12 +728,10 @@ void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
 }
 
 //me falta testear esto:
-int obtenerTamanioRegistrosDeUnaTabla(char * tabla){
+int obtenerTamanioRegistrosDeUnaTabla(t_list * registros){
+
 	int tamanio = 0;
-
 	char * key = malloc(500), * tmp = malloc(500);
-
-	t_list * registros =(t_list *) dictionary_get(memTable, tabla);
 
 	void tamanioRegistro(registro *unRegistro)
 	{

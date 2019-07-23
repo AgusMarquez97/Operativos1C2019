@@ -22,6 +22,8 @@
 #include"commons/collections/list.h"
 #include <math.h>
 #include <time.h>
+#include <ftw.h>
+#include <dirent.h>
 
 
 struct stat estado = {0};
@@ -92,12 +94,6 @@ void inicializarSemaforos();
 void limpiarFileSystem();
 void borrarDirectorioVacio(char * directorio);
 
-/*
- * Valida si ya existe una carpeta en el FS
- */
-int tablaYaExistenteEnFS(char * pathAbsolutoCarpeta);
-
-
 
 /*
  * Crea las estructuras administrativas para la tabla
@@ -115,7 +111,7 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola);
  *	Rutina que manda a ejecutar LFS con un hilo frente a CREATE
  */
 
-int rutinaFileSystemCreate(argumentosQuery * args);
+int * rutinaFileSystemCreate(argumentosQuery * args);
 int rutinaFileSystemDrop(argumentosQuery * args);
 
 char * asignarUnBloqueBin();
@@ -151,5 +147,9 @@ void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[],
 char * castearRegistrosChar(int tamanioNecesario,t_list * listaRegistros);
 
 char * asignarBloques(int tamanioNecesario, char * nombreTabla,t_list * listaRegistros);
+
+void levantarMemTable();
+int recorrer_directorio(const char *path, const struct stat *datosArchivo,int flags);
+void recorrerDirectorio(char * directorio);
 
 #endif /* FILESYSTEM_H_ */

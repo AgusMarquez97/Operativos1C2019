@@ -142,7 +142,7 @@ void agregarListaRegistros(t_list * lista,t_list * listaAgregar);
 registro * obtenerRegistro(t_list * lista, int posicionLista);
 void agregarUnRegistroMemTable(query * unaQuery, int flagConsola);
 void liberarMemTable(t_dictionary ** memTable);
-int obtenerTamanioRegistrosDeUnaTabla(char * tabla);
+int obtenerTamanioRegistrosDeUnaTabla(t_list * registros);
 /*
  * Para casteos query -> registro
  */
@@ -169,7 +169,7 @@ void loggearErrorTablaExistente(query * unaQuery,int flagConsola);
 void gestionarFileSystem();
 
 int rutinaFileSystemSelect(registro * maximoRegMemTable,argumentosQuery * args);
-int rutinaFileSystemCreate(argumentosQuery * args);
+int * rutinaFileSystemCreate(argumentosQuery * args);
 int rutinaFileSystemDrop(argumentosQuery * args);
 int rutinaFileSystemDescribe(argumentosQuery * args);
 
@@ -201,5 +201,7 @@ void reenviarConfig();
  */
 
 void terminarHilo(pthread_t * unHilo);
+
+void levantarMemTable();
 
 #endif /* LISSANDRA_H_ */
