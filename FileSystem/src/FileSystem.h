@@ -146,7 +146,7 @@ int obtenerCantidadBloques(int tamanio);
 void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[], char * listaRegistros);
 char * castearRegistrosChar(int tamanioNecesario,t_list * listaRegistros);
 
-char * asignarBloques(int tamanioNecesario, char * nombreTabla,t_list * listaRegistros);
+char * asignarBloques(int tamanioNecesario, char * nombreTabla,char * listaRegistros);
 
 void levantarMemTable();
 int recorrer_directorio(const char *path, const struct stat *datosArchivo,int flags);

@@ -74,7 +74,7 @@ void monitorearConfig()
 	const char * pathConfig = "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt";
 
 	int bytes_leidos;
-    struct inotify_event * evento = malloc(sizeof(*evento));
+	struct inotify_event evento;
 
 
     int archivo_monitor = inotify_init();
@@ -94,7 +94,9 @@ void monitorearConfig()
 	    while(1)
 	    {
 
-	        bytes_leidos = read(archivo_monitor,evento,sizeof(struct inotify_event)*10);
+
+	        bytes_leidos = read(archivo_monitor,&evento,sizeof(struct inotify_event)*10);
+
 	        //Bloquea al proceso/hilo hasta que ocurra el evento declarado en el monitor
 
 	        if(bytes_leidos <= 0)
@@ -103,10 +105,11 @@ void monitorearConfig()
 	            break;
 	        }
 
-	        if(evento->mask == IN_MODIFY)
+	        if(evento.mask == IN_MODIFY)
 	        {
 	        	actualizarConfig();
 	        }
+
 
 
 	    }
@@ -201,6 +204,7 @@ void consola()
 	      break;
 
 	    if (!strncasecmp(linea,"exit",4)) {
+	      free(linea);
 	      break;
 	    }
 
@@ -208,13 +212,14 @@ void consola()
 
 	    if(!strncasecmp(linea,"imprimir",5))
 	    {
+	    	free(linea);
 	    	imprimirMemTable(memTable);
 	    }else if (!strncasecmp(linea,"clear",5)) {
+	      free(linea);
 	      system("clear");
 	    }else{
 	    aux = parsear(linea,&myQuery);
 	    args = malloc(sizeof(argumentosQuery));
-		args->unaQuery = malloc(sizeof(query));
 		args->unaQuery = myQuery;
 		args->flag = 1;
 
@@ -228,6 +233,7 @@ void consola()
 	    	printf("Request no valida\n");
 	    }
 	    free(args);
+	    free(linea);
 	    //free(myQuery);
 
 	  }
@@ -272,6 +278,7 @@ void procesarQuery(argumentosQuery * args)
 	{
 	case SELECT:
 		procesarSelect(args->unaQuery,flagConsola);
+		free(args->unaQuery);
 		break;
 	case INSERT:
 		if(strlen(args->unaQuery->value) <= maxValue)
@@ -296,6 +303,7 @@ void procesarQuery(argumentosQuery * args)
 		{
 			loggearErrorTablaExistente(args->unaQuery,flagConsola);
 		}
+		free(retornoCreate);
 		break;
 	default:
 		loggearWarningEnLog(logMemTable,"Request aun no disponible");
@@ -382,10 +390,6 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola
 			{
 			temp = (t_list *)dictionary_remove(memTable,unaQuery->tabla);
 			}
-			{
-				dictionary_remove(memTable,unaQuery->tabla);
-				temp = list_create();
-			}
 		}else{
 			dictionary_remove(memTable,unaQuery->tabla);
 			temp = list_create();
@@ -398,21 +402,12 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola
 	}
 	else
 	{
-		/*
-		 *
-		 temp = list_create();
-		agregarRegistro(temp,reg);
-		dictionary_put(memTable,unaQuery->tabla,temp);
-		loggearInfoEnLog(logMemTable,"Se inserto un registro correctamente");
-		 */
 		errorTablaNoCreada(unaQuery->tabla);
-
 		if(flagConsola)
 		{
 			printf("Error: Tabla no creada previamente\n");
 			//printf("Se inserto un registro correctamente\n");
 		}
-
 	}
 
 }
@@ -449,12 +444,18 @@ void liberarRegistro(registro * unRegistro)
 
 void imprimirListaRegistros(t_list * unaLista)
 {
+	if(unaLista)
+	{
+		if(!list_is_empty(unaLista))
+		{
 	void imprimirRegistro(void * valor)
 		{
 
 			printf("-> {%d %s %lli}\n",((registro*)valor)->key,((registro*)valor)->value,((registro*)valor)->timestamp);
 		}
 	list_iterate(unaLista,(void*)imprimirRegistro);
+		}
+	}
 }
 
 void agregarRegistro(t_list * unaLista, registro* unRegistro)

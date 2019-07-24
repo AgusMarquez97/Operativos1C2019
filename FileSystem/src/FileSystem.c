@@ -109,17 +109,16 @@ void crearCarpetaBloques()
 	}
 
 	int i = 0;
-	char *s;
-	char * blocks;
+	char *s = malloc(30);
+	char * blocks = malloc(strlen(carpetaBloques)+strlen("99999.bin")+2);
 
 	crearConfig(metadataBin);
 	cantidadBloques = obtenerInt("BLOCKS");
 	eliminarEstructuraConfig();
 
 	while(i < cantidadBloques){
-		s= string_itoa(i);
+		sprintf(s,"%d",i);
 		strcat(s,".bin");
-		blocks = malloc(strlen(carpetaBloques)+strlen(s)+1);
 		strcpy(blocks,carpetaBloques);
 		strcat(blocks,s);
 		remove(blocks); //DESPUES SACAR ESTO
@@ -127,6 +126,8 @@ void crearCarpetaBloques()
 		txt_close_file(block);
 		i++;
 	}
+	free(s);
+	free(blocks);
 }
 
 void borrarDirectorioVacio(char * directorio)
@@ -166,26 +167,6 @@ void ejecutarDumping()
 	{
 	usleep(dumping*1000);
 
-	int tamNecesario = 0;
-
-	t_dictionary * memTableDumping = dictionary_create();
-
-	void copiarDiccionario(char * key, t_list * registros)
-	{
-		if(registros)
-		{
-			if(!list_is_empty(registros))
-			{
-				dictionary_put(memTableDumping,key,registros);
-			}
-		}
-
-	}
-
-	dictionary_iterator(memTable,(void*)copiarDiccionario);
-
-
-
 	void dumpearTabla(char * tabla, t_list * listaRegistros)
 	{
 		//Luego crear un hilo detacheable por cada una de estas
@@ -194,11 +175,13 @@ void ejecutarDumping()
 				if(!list_is_empty(listaRegistros))
 			{
 			int tamNecesario = obtenerTamanioRegistrosDeUnaTabla(listaRegistros);
-			char * aux = asignarBloques(tamNecesario,tabla,listaRegistros); // Libera la memoria
-			free(aux);
+			char * registros = castearRegistrosChar(tamNecesario,listaRegistros);
 			list_destroy_and_destroy_elements(listaRegistros,free);
+			char * aux = asignarBloques(tamNecesario,tabla,registros); // Libera la memoria
+			free(aux);
+			free(registros);
 			}
-		}
+	}
 
 
 		/*
@@ -221,8 +204,7 @@ void ejecutarDumping()
 		*/
 
 	}
-	dictionary_iterator(memTableDumping,(void*)dumpearTabla);
-	dictionary_destroy(memTableDumping);
+	dictionary_iterator(memTable,(void*)dumpearTabla);
 	loggearInfo("Dumpeo OK");
 	}
 }
@@ -248,7 +230,7 @@ void crearMetadataTabla(char * directorioTabla, query * queryCreate, int flagCon
 
 			//Tratar de cambiar todo eso a char *
 
-			char * consistencia = malloc(5);
+			char * consistencia;
 
 			switch(queryCreate->consistencyType)
 			{
@@ -318,6 +300,7 @@ void crearParticonesTabla(char * directorioTabla, query * queryCreate, int flagC
 			free(nroParticion);
 			free(nroAux);
 			free(bloque);
+			free(aux);
 
 			i++;
 			}
@@ -381,7 +364,7 @@ int obtenerCantidadBloques(int tamanio)
 //Este libera los registros!
 char * castearRegistrosChar(int tamanioNecesario,t_list * listaRegistros)
 {
-	char * registros = malloc(tamanioNecesario);
+	char * registros = malloc(tamanioNecesario + 100);
 	strcpy(registros,"");
 
 	char * aux = malloc(100);
@@ -429,6 +412,7 @@ void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[],
 	char * aux2 = malloc(100);
 	sprintf(aux2,"%d",cantidadDeBloques);
 	char * nombreBloque = malloc(strlen(carpetaBloques) + strlen(aux2) + 5 + 2 + strlen(".bin"));
+	char * subCadena;
 	while(listaBloques[aux] != -1)
 	{
 
@@ -442,19 +426,25 @@ void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[],
 		if(aux == cantidadDeBloques)
 		{
 			//escribir lo que entre en el ultimo bloque
-			fwrite(string_substring(listaRegistros,strlen(listaRegistros) - cantidadFinal,cantidadFinal),cantidadFinal,1,bloque);
+			subCadena = string_substring(listaRegistros,strlen(listaRegistros) - cantidadFinal,cantidadFinal);
+			fwrite(subCadena,cantidadFinal,1,bloque);
 			txt_close_file(bloque);
+			free(subCadena);
 			break;
-		}
-		fwrite(string_substring(listaRegistros,tamanioBloque*aux,tamanioBloque),tamanioBloque,1,bloque);
+		}else
+		{
+		subCadena = string_substring(listaRegistros,tamanioBloque*aux,tamanioBloque);
+		fwrite(subCadena,tamanioBloque,1,bloque);
 		txt_close_file(bloque);
+		free(subCadena);
+		}
 		aux++;
 	}
 	free(aux2);
 	free(nombreBloque);
 }
 
-char * asignarBloques(int tamanioNecesario, char * nombreTabla,t_list * listaRegistros) //retorna el nombre del .tmp
+char * asignarBloques(int tamanioNecesario, char * nombreTabla,char * listaRegistros) //retorna el nombre del .tmp
 {
 
 	int cantBloques = obtenerCantidadBloques(tamanioNecesario);
@@ -471,7 +461,7 @@ char * asignarBloques(int tamanioNecesario, char * nombreTabla,t_list * listaReg
 	char * aux_tmp = malloc(1000);
 	listaBloques[cantBloques] = -1; //Valor centinela de corte
 
-	char * bloques = strdup(castearBloquesChar(listaBloques));
+	char * bloques = castearBloquesChar(listaBloques);
 
 	char * nombreTemp = malloc(strlen(carpetaTables) + strlen(nombreTabla) + strlen("9999.tmp") + 2 + 20); // Hasta 9999 posibles .tmp
 
@@ -496,7 +486,7 @@ char * asignarBloques(int tamanioNecesario, char * nombreTabla,t_list * listaReg
 	free(aux_tmp);
 	free(bloques);
 
-	escribirBloques(tamanioNecesario - (cantBloques-1)*tamanioBloque,cantBloques,listaBloques,castearRegistrosChar(tamanioNecesario,listaRegistros));
+	escribirBloques(tamanioNecesario - (cantBloques-1)*tamanioBloque,cantBloques,listaBloques,listaRegistros);
 
 	return nombreTemp;
 
@@ -517,11 +507,10 @@ char * castearBloquesChar(int lista_bloques[])
 		return NULL;
 
 	char * lista_final = malloc(indice*2 + 10);
-	char * aux = malloc(indice + 10);
+	char * aux = malloc(indice + 10); //Ver de eliminar y probar
 	//La correcta deberia ser cantidad_elementos + (cantidad_elementos - 1) + 2 + 1 pero para asegurar se da mas
 
-	lista_final[0] = '[';
-
+	strcpy(lista_final,"[");
 	sprintf(aux,"%d",lista_bloques[0]);
 	strcat(lista_final,aux);
 
