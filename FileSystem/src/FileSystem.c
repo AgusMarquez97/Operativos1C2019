@@ -176,33 +176,14 @@ void ejecutarDumping()
 			{
 			int tamNecesario = obtenerTamanioRegistrosDeUnaTabla(listaRegistros);
 			char * registros = castearRegistrosChar(tamNecesario,listaRegistros);
-			list_destroy_and_destroy_elements(listaRegistros,free);
+
+			list_clean_and_destroy_elements(listaRegistros,free);
+
 			char * aux = asignarBloques(tamNecesario,tabla,registros); // Libera la memoria
 			free(aux);
 			free(registros);
 			}
-	}
-
-
-		/*
-		 *
-		typedef struct
-		{
-			int tamanio;
-			char * nombreTabla;
-			t_list * listaRegistros
-		}params;
-
-		params hilo;
-
-		hilo->tamanio = tamNecesario;
-		hilo->nombreTabla = strdup(tabla);
-		hilo->listaRegistros = listaRegistros;
-
-		pthread_t hiloTabla = crearHilo((void*)asignarBloques,params);
-		Nota: Habria que cambiar asignarBloques para que reciba la estructura params
-		*/
-
+		}
 	}
 	dictionary_iterator(memTable,(void*)dumpearTabla);
 	loggearInfo("Dumpeo OK");

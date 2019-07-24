@@ -267,6 +267,15 @@ void iniciarServidor()
 	eliminarEstructuraConfig();
 }
 
+void temp()
+{
+	void imprimirTabla(char * key, void * asd)
+			{
+				printf("%s\n",key);
+			}
+			dictionary_iterator(memTable,imprimirTabla);
+}
+
 void procesarQuery(argumentosQuery * args)
 {
 	int flagConsola = args->flag;
@@ -276,6 +285,9 @@ void procesarQuery(argumentosQuery * args)
 
 	switch(args->unaQuery->requestType)
 	{
+	case DESCRIBE:
+		temp();
+		break;
 	case SELECT:
 		procesarSelect(args->unaQuery,flagConsola);
 		free(args->unaQuery);
@@ -395,6 +407,7 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola
 			temp = list_create();
 		}
 		agregarRegistro(temp,reg);
+		dictionary_remove(memTable,unaQuery->tabla);
 		dictionary_put(memTable,unaQuery->tabla,temp);
 		loggearInfoEnLog(logMemTable,"Se inserto un registro correctamente");
 		if(flagConsola)
@@ -753,4 +766,3 @@ void terminarHilo(pthread_t * unHilo)
 	//pthread_cancel(unHilo);
 	pthread_kill(*unHilo,SIGTERM);
 }
-
