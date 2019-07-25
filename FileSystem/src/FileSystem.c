@@ -70,16 +70,24 @@ void crearCarpetaMetadata()
 	bitmapBin = malloc(strlen(carpetaMetadata) + strlen("Bitmap.bin") + 1);
 	strcpy(bitmapBin,carpetaMetadata);
 	strcat(bitmapBin,"Bitmap.bin");
+	int x = 0; //si ya existia
+	if (stat(bitmapBin, &estado) == -1) {
+				x=-1;//no existia
+		}
 
-		int fd = open(bitmapBin,O_RDWR | O_CREAT, S_IRUSR | S_IWUSR); //se abre si existe, sino se crea
-	    char* bitmap;
-	    ftruncate(fd,cantidadBloques/8);
-	    bitmap= mmap(0,cantidadBloques/8,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0); //se baja el archivo a memoria
+	int fd = open(bitmapBin,O_RDWR | O_CREAT, S_IRUSR | S_IWUSR); //se abre si existe, sino se crea
+	char* bitmap;
+	ftruncate(fd,cantidadBloques/8);
+	bitmap= mmap(0,cantidadBloques/8,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0); //se baja el archivo a memoria
 
-		unBitarray = bitarray_create_with_mode(bitmap, cantidadBloques/8, LSB_FIRST);
+	unBitarray = bitarray_create_with_mode(bitmap, cantidadBloques/8, LSB_FIRST);
 
-		for(int i = 0; i<cantidadBloques;i++){
+	if(x==-1)
+		{
+		for(int i = 0; i<cantidadBloques;i++)
+			{
 			bitarray_clean_bit(unBitarray,i); //seteo todos los bits en 0 (al principio todos los bloques están libres)
+			}
 		}
 		//munmap(bitmap,cantidadBloques/8);
 
@@ -121,7 +129,7 @@ void crearCarpetaBloques()
 		strcat(s,".bin");
 		strcpy(blocks,carpetaBloques);
 		strcat(blocks,s);
-		remove(blocks); //DESPUES SACAR ESTO
+		//remove(blocks); //DESPUES SACAR ESTO
 		FILE * block =  txt_open_for_append(blocks);
 		txt_close_file(block);
 		i++;
@@ -187,6 +195,7 @@ void ejecutarDumping()
 	}
 	dictionary_iterator(memTable,(void*)dumpearTabla);
 	loggearInfo("Dumpeo OK");
+
 	}
 }
 
@@ -641,5 +650,166 @@ void recorrerDirectorio(char * directorio)
 
 }
 
+char * leerBloque(char * numeroBloque,int bytesALeer) // "5"
+{ //Bytes a leer es siempre tamaño del bloque, excepto en el ultimo bloque
+	char * auxiliar = malloc(strlen("99999.bin")+strlen(numeroBloque)+1);
+	strcpy(auxiliar,numeroBloque);
+	strcat(auxiliar,".bin");
+	char * bloqueALeer = malloc(strlen(carpetaBloques)+strlen(auxiliar)+100);
+	strcpy(bloqueALeer,carpetaBloques);
+	strcat(bloqueALeer,auxiliar);
+	char * contenido = malloc(bytesALeer+1);
+	strcpy(contenido,"");
+	FILE * archivo= fopen(bloqueALeer,"r");
+//	fseek(archivo, 0, SEEK_SET);
+	fflush(archivo);
+	rewind(archivo);
+	fread(contenido,1,bytesALeer,archivo);
+	contenido[bytesALeer] = 0;
+	fclose(archivo);
+	free(bloqueALeer);
+	free(auxiliar);
+	return contenido;
+
+}
+
+char * obtenerRegistrosArchivo(char * ruta)
+{
+	crearConfig(ruta);
+	char ** bloques = obtenerArray("BLOCKS"); // devuelve ["5","64","17",NULL]
+	int tamanioArchivo = obtenerInt("SIZE");
+	eliminarEstructuraConfig();
+	char* aux = malloc(tamanioArchivo+10);
+	strcpy(aux,"");
+	int i = 0;
+	char * bloqueLeido;
+	while(bloques[i]!=NULL)
+	{
+		bloqueLeido=NULL;
+		if(bloques[i+1]!=NULL)
+		{
+		bloqueLeido =leerBloque(bloques[i],tamanioBloque);
+		strcat(aux,bloqueLeido);
+		}
+		else
+		{
+		bloqueLeido =leerBloque(bloques[i],tamanioArchivo-tamanioBloque*i);
+		strcat(aux,bloqueLeido);
+		}
+	free(bloqueLeido);
+	i++;
+	}
+
+	free(bloques);
+	return aux;
+
+
+}
+
+registro * rutinaFileSystemSelect(char * tabla, int32_t key)
+	{
+	t_list* registros;
+	char * rutaAbs = malloc(strlen(carpetaTables)+strlen(tabla)+strlen("99999.bin")+1);
+	strcpy(rutaAbs,carpetaTables);
+	strcat(rutaAbs,tabla);
+	strcat(rutaAbs,"/");
+
+	registros=leerTabla(rutaAbs,key);
+	if(registros!=NULL)
+	{
+		if(!list_is_empty(registros))
+		{
+
+	registro * registroMax = malloc(sizeof(sizeof(int32_t)+sizeof(int64_t)+maxValue+1));
+	registroMax->timestamp=-1;
+
+	void mayorTimestamp(registro * unRegistro)
+			{
+				if(unRegistro->timestamp > registroMax->timestamp)
+				{
+					free(registroMax);
+					registroMax = unRegistro;
+				}
+			}
+
+			list_iterate(registros,(void*)mayorTimestamp);
+			free(registros);
+			free(rutaAbs);
+
+			return registroMax;
+		}
+	}
+	return NULL;
+
+	}
+
+
+t_list * leerTabla(char * tabla, int32_t key)
+{
+        DIR * dir = opendir(tabla);
+        struct dirent *estructuraDir; //Para recorrer y obtener info del directorio
+        t_list* listaRegistros = list_create();
+
+        if(dir != NULL)
+        {
+            while ((estructuraDir=readdir(dir)))
+            {
+            	char * rutaAbs = malloc(strlen(carpetaTables)+strlen(tabla)+strlen(estructuraDir->d_name)+1);
+            	strcpy(rutaAbs,tabla);
+            	strcat(rutaAbs,estructuraDir->d_name);
+            	char * rutaMetadata = malloc(strlen(carpetaTables)+strlen(tabla)+strlen("Metadata")+1);
+            	strcpy(rutaMetadata,tabla);
+            	strcat(rutaMetadata,"Metadata");
+            	if(!strcmp(rutaAbs,rutaMetadata))
+            	{
+
+            	}
+            	else
+            	{
+
+            	char * registros = obtenerRegistrosArchivo(rutaAbs);
+            	list_add_all(listaRegistros,obtenerRegistros(registros, key));
+
+            	free(rutaAbs);
+            	free(registros);
+
+            	}
+            }
+            closedir(dir);
+        }
+        return listaRegistros;
+}
+
+t_list* obtenerRegistros(char * registros, int32_t key){
+	t_list * listaRegistros = list_create();
+	char ** aux = string_split(registros,"\n");
+	int i = 0;
+	registro* registroAux;
+
+
+		while(aux[i]!=NULL)
+		{
+			if(strcmp(aux[i],"")){
+
+
+		char ** registro =string_split(aux[i],";");
+		registroAux=malloc(sizeof(int32_t)+sizeof(int64_t)+1+strlen(registro[1]));
+		registroAux->key=atoi(registro[0]);
+
+			if(registroAux->key == key)
+			{
+				registroAux->value=registro[1];
+				registroAux->timestamp=atoi(registro[2]);
+				list_add(listaRegistros,registroAux);
+
+			}
+			free(registro);
+			}
+			i++;
+		}
+
+	free(aux);
+	return listaRegistros;
+}
 
 

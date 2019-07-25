@@ -152,4 +152,10 @@ void levantarMemTable();
 int recorrer_directorio(const char *path, const struct stat *datosArchivo,int flags);
 void recorrerDirectorio(char * directorio);
 
+char * leerBloque(char *  numeroBloque,int bytesALeer);
+char * obtenerRegistrosArchivo(char * ruta);
+registro * rutinaFileSystemSelect(char * tabla, int32_t key);
+t_list * leerTabla(char * tabla,int32_t key);
+t_list* obtenerRegistros(char * registros,int32_t key);
+
 #endif /* FILESYSTEM_H_ */

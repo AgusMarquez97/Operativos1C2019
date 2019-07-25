@@ -282,15 +282,18 @@ void procesarQuery(argumentosQuery * args)
 	int * retornoCreate;
 	pthread_t  fsCreate;
 	logMemTable = retornarLogConPath("Memtable.log","Memtable");
-
+	registro* selectAux;
 	switch(args->unaQuery->requestType)
 	{
 	case DESCRIBE:
 		temp();
 		break;
 	case SELECT:
-		procesarSelect(args->unaQuery,flagConsola);
-		free(args->unaQuery);
+		selectAux=rutinaFileSystemSelect(args->unaQuery->tabla, args->unaQuery->key);
+		printf("registro obtenido: %d %s %lli\n",selectAux->key,selectAux->value,selectAux->timestamp);
+		free(selectAux);
+		//procesarSelect(args->unaQuery,flagConsola);
+		//free(args->unaQuery);
 		break;
 	case INSERT:
 		if(strlen(args->unaQuery->value) <= maxValue)
@@ -766,3 +769,5 @@ void terminarHilo(pthread_t * unHilo)
 	//pthread_cancel(unHilo);
 	pthread_kill(*unHilo,SIGTERM);
 }
+
+

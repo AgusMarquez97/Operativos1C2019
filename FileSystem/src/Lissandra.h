@@ -168,7 +168,7 @@ void loggearErrorTablaExistente(query * unaQuery,int flagConsola);
 
 void gestionarFileSystem();
 
-int rutinaFileSystemSelect(registro * maximoRegMemTable,argumentosQuery * args);
+registro * rutinaFileSystemSelect(char * tabla, int32_t key);
 int * rutinaFileSystemCreate(argumentosQuery * args);
 int rutinaFileSystemDrop(argumentosQuery * args);
 int rutinaFileSystemDescribe(argumentosQuery * args);
@@ -203,5 +203,7 @@ void reenviarConfig();
 void terminarHilo(pthread_t * unHilo);
 
 void levantarMemTable();
+
+
 
 #endif /* LISSANDRA_H_ */
