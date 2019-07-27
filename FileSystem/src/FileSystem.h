@@ -25,6 +25,8 @@
 #include <ftw.h>
 #include <dirent.h>
 
+#define CANTIDAD_MAXIMA_BLOQUES 100000
+
 
 struct stat estado = {0};
 /*	Para info sobre un archivo -> usar: stat(pathArchivo,&estructuraBuffer)
@@ -112,7 +114,8 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola);
  */
 
 int * rutinaFileSystemCreate(argumentosQuery * args);
-int rutinaFileSystemDrop(argumentosQuery * args);
+int rutinaFileSystemDrop(char * tabla);
+char * rutinaFileSystemDescribe(char * tabla);
 
 char * asignarUnBloqueBin();
 
@@ -157,5 +160,12 @@ char * obtenerRegistrosArchivo(char * ruta);
 registro * rutinaFileSystemSelect(char * tabla, int32_t key);
 t_list * leerTabla(char * tabla,int32_t key);
 t_list* obtenerRegistros(char * registros,int32_t key);
+
+int eliminarDirectorio(char * directorio);
+void borrarBloques(char * rutaArchivo);
+int cantidadTablas();
+char * obtenerMetadaTabla(char * rutaTabla);
+char * obtenerMetadataTablas();
+char * obtenerNombre(char * ruta);
 
 #endif /* FILESYSTEM_H_ */

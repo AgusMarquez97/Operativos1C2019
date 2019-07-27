@@ -112,7 +112,7 @@ void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola
 /*
  * NO garantiza mutua exclusion. Permite lecturas sucias
  */
-void procesarSelect(query* unaQuery, int flagConsola);
+registro * procesarSelectMemTable(query* unaQuery);
 
 void procesarInsert(query * unaQuery, int flagConsola);
 
@@ -159,19 +159,23 @@ void errorTablaNoCreada(char * tabla);
 void imprimirMemTable(t_dictionary * memTable);
 void loggearMemTable(t_dictionary * memTable);
 void loggearSelectMemT(query* unaQuery);
-void loggearRegistroEncontrado(char * value, int flagConsola);
-void loggearRegistroNoEncontrado(char * tabla, int flagConsola);
+void loggearRegistroEncontrado(int key, char * value, int flagConsola);
+void loggearRegistroNoEncontrado(int key, int flagConsola);
+void loggearTablaNoEncontrado(char * tabla, int flagConsola);
 void loggearNuevaConexion(int socket);
 void loggearTablaCreadaOK(t_log * loggeador,query * unaQuery,int flagConsola, int flagFS);
 void loggearErrorTablaExistente(query * unaQuery,int flagConsola);
 
+void loggearTablaDropeadaOK(char * tabla, int flagConsola);
+void loggearErrorDrop(char * tabla, int flagConsola);
 
 void gestionarFileSystem();
 
 registro * rutinaFileSystemSelect(char * tabla, int32_t key);
 int * rutinaFileSystemCreate(argumentosQuery * args);
-int rutinaFileSystemDrop(argumentosQuery * args);
-int rutinaFileSystemDescribe(argumentosQuery * args);
+int rutinaFileSystemDrop(char * tabla);
+char * rutinaFileSystemDescribe(char * tabla);
+char * obtenerNombre(char * ruta);
 
 void terminarAplicacion();
 /*

@@ -20,7 +20,7 @@ void gestionarFileSystem()
 	limpiarFileSystem();
 	levantarFileSystem();
 	levantarMetadata();
-	hiloDump = crearHilo(ejecutarDumping,NULL);
+	//hiloDump = crearHilo(ejecutarDumping,NULL);
 	//liberarNombres(); //->No liberar que luego no se pueden usar
 }
 
@@ -280,7 +280,7 @@ void crearParticonesTabla(char * directorioTabla, query * queryCreate, int flagC
 
 			char * bloque = asignarUnBloqueBin();
 
-			sprintf(aux,"%d",tamanioBloque);
+			sprintf(aux,"%d",0);
 
 			crearConfig(nroParticion);
 			cambiarValorConfig("SIZE",aux);
@@ -357,7 +357,7 @@ char * castearRegistrosChar(int tamanioNecesario,t_list * listaRegistros)
 	char * registros = malloc(tamanioNecesario + 100);
 	strcpy(registros,"");
 
-	char * aux = malloc(100);
+	char * aux = malloc(300);
 
 	void agregarRegistro(registro * unRegistro)
 	{
@@ -679,11 +679,12 @@ char * obtenerRegistrosArchivo(char * ruta)
 	char ** bloques = obtenerArray("BLOCKS"); // devuelve ["5","64","17",NULL]
 	int tamanioArchivo = obtenerInt("SIZE");
 	eliminarEstructuraConfig();
+
 	char* aux = malloc(tamanioArchivo+10);
 	strcpy(aux,"");
 	int i = 0;
 	char * bloqueLeido;
-	while(bloques[i]!=NULL)
+	while(bloques[i]!=NULL && tamanioArchivo > 0)
 	{
 		bloqueLeido=NULL;
 		if(bloques[i+1]!=NULL)
@@ -702,8 +703,6 @@ char * obtenerRegistrosArchivo(char * ruta)
 
 	free(bloques);
 	return aux;
-
-
 }
 
 registro * rutinaFileSystemSelect(char * tabla, int32_t key)
@@ -715,13 +714,20 @@ registro * rutinaFileSystemSelect(char * tabla, int32_t key)
 	strcat(rutaAbs,"/");
 
 	registros=leerTabla(rutaAbs,key);
+	registro * registroMax;
 	if(registros!=NULL)
 	{
 		if(!list_is_empty(registros))
 		{
+			if(list_size(registros) == 1)
+			{
+				registroMax = (registro *)list_remove(registros,0);
+				list_destroy(registros);
+				free(rutaAbs);
+				return registroMax;
+			}
 
-	registro * registroMax = malloc(sizeof(sizeof(int32_t)+sizeof(int64_t)+maxValue+1));
-	registroMax->timestamp=-1;
+	registroMax = (registro *)list_remove(registros,0);
 
 	void mayorTimestamp(registro * unRegistro)
 			{
@@ -729,13 +735,15 @@ registro * rutinaFileSystemSelect(char * tabla, int32_t key)
 				{
 					free(registroMax);
 					registroMax = unRegistro;
+				}else
+				{
+					free(unRegistro);
 				}
 			}
 
 			list_iterate(registros,(void*)mayorTimestamp);
-			free(registros);
 			free(rutaAbs);
-
+			list_destroy(registros);
 			return registroMax;
 		}
 	}
@@ -757,10 +765,7 @@ t_list * leerTabla(char * tabla, int32_t key)
             	char * rutaAbs = malloc(strlen(carpetaTables)+strlen(tabla)+strlen(estructuraDir->d_name)+1);
             	strcpy(rutaAbs,tabla);
             	strcat(rutaAbs,estructuraDir->d_name);
-            	char * rutaMetadata = malloc(strlen(carpetaTables)+strlen(tabla)+strlen("Metadata")+1);
-            	strcpy(rutaMetadata,tabla);
-            	strcat(rutaMetadata,"Metadata");
-            	if(!strcmp(rutaAbs,rutaMetadata))
+            	if(!strncmp(estructuraDir->d_name,"Metadata",8) || !strncmp(estructuraDir->d_name,".",1))
             	{
 
             	}
@@ -768,12 +773,13 @@ t_list * leerTabla(char * tabla, int32_t key)
             	{
 
             	char * registros = obtenerRegistrosArchivo(rutaAbs);
-            	list_add_all(listaRegistros,obtenerRegistros(registros, key));
-
-            	free(rutaAbs);
+            	t_list * registrosAux = obtenerRegistros(registros, key);
+            	list_add_all(listaRegistros,registrosAux);
+            	list_destroy(registrosAux);
             	free(registros);
-
             	}
+            	free(rutaAbs);
+
             }
             closedir(dir);
         }
@@ -799,12 +805,13 @@ t_list* obtenerRegistros(char * registros, int32_t key){
 			if(registroAux->key == key)
 			{
 				registroAux->value=registro[1];
-				registroAux->timestamp=atoi(registro[2]);
+				registroAux->timestamp = (int64_t) atoll(registro[2]);
 				list_add(listaRegistros,registroAux);
-
 			}
+
 			free(registro);
 			}
+			free(aux[i]);
 			i++;
 		}
 
@@ -812,4 +819,243 @@ t_list* obtenerRegistros(char * registros, int32_t key){
 	return listaRegistros;
 }
 
+
+int rutinaFileSystemDrop(char * tabla)
+{
+
+	char * rutaTabla = malloc(strlen(carpetaTables)+strlen(tabla) + 5);
+	strcpy(rutaTabla,carpetaTables);
+	strcat(rutaTabla,tabla);
+	strcat(rutaTabla,"/");
+	int retorno = eliminarDirectorio(rutaTabla);
+	remove(rutaTabla);
+	free(rutaTabla);
+	return retorno;
+}
+
+int eliminarDirectorio(char * directorio)
+{
+        DIR * dir = opendir(directorio);
+        struct dirent *estructuraDir; //Para recorrer y obtener info del directorio
+
+        if(dir != NULL)
+                {
+                    while ((estructuraDir=readdir(dir)))
+                    {
+                    	char * rutaAbs = malloc(strlen(directorio)+strlen(estructuraDir->d_name)+6);
+                    	strcpy(rutaAbs,directorio);
+                    	strcat(rutaAbs,estructuraDir->d_name);
+                    	if(!strncmp(estructuraDir->d_name,"Metadata",8) || !strncmp(estructuraDir->d_name,".",1))
+                    	{
+                    		if(!strncmp(estructuraDir->d_name,"Metadata",8))
+                    		remove(rutaAbs);
+                    	}
+                    	else
+                    	{
+                    		borrarBloques(rutaAbs);
+                    	}
+                    	free(rutaAbs);
+
+                    }
+                    return 1;
+                    closedir(dir);
+                }
+        return 0;
+
+}
+
+void borrarBloques(char * rutaArchivo)
+{
+FILE * bloque;
+crearConfig(rutaArchivo);
+char ** bloques = obtenerArray("BLOCKS"); // devuelve ["5","64","17",NULL]
+eliminarEstructuraConfig();
+
+char * rutaBloque = malloc(strlen(carpetaBloques) + CANTIDAD_MAXIMA_BLOQUES + strlen(".bin") + 1);
+
+int i = 0;
+char * bloqueLeido = malloc(CANTIDAD_MAXIMA_BLOQUES + strlen(".bin") + 1);
+
+while(bloques[i]!=NULL)
+	{
+		strcpy(bloqueLeido,bloques[i]);
+		strcat(bloqueLeido,".bin");
+		strcpy(rutaBloque,carpetaBloques);
+		bitarray_clean_bit(unBitarray,atoi(bloques[i]));
+		strcat(rutaBloque,bloqueLeido);
+		remove(rutaBloque);
+		bloque =  txt_open_for_append(rutaBloque);
+		txt_close_file(bloque);
+		i++;
+	}
+free(rutaBloque);
+free(bloqueLeido);
+free(bloques);
+remove(rutaArchivo);
+
+}
+
+
+char * rutinaFileSystemDescribe(char * tabla)
+{
+	char * metadata;
+	if(tabla)
+	{
+	char * rutaTabla = malloc(strlen(carpetaTables)+strlen(tabla)+strlen("999999.bin")+1);
+	strcpy(rutaTabla,carpetaTables);
+	strcat(rutaTabla,tabla);
+	metadata = obtenerMetadaTabla(rutaTabla);
+	}
+	else
+	{
+	metadata = obtenerMetadataTablas();
+	}
+	return metadata;
+
+}
+char * obtenerMetadataTablas()
+{
+	int cantidadTablasSistema = cantidadTablas();
+	if(cantidadTablasSistema>0)
+	{
+		DIR * dir = opendir(carpetaTables);
+		char * tablaActual;
+		struct dirent * estructuraDir; //Para recorrer y obtener info del directorio
+		char * cadenaRetorno = malloc(strlen("\nTABLE=TABLA_REQUETE_LARGA_LOL;CONSISTENCY=SHC;PARTITIONS=9999999;COMPACTION_TIME=100000000000000;\n")*cantidadTablasSistema + 50);
+		strcpy(cadenaRetorno,"");
+		if(dir != NULL)
+		{
+		while ((estructuraDir=readdir(dir)))
+			   {
+					if(strncmp(estructuraDir->d_name,".",1))
+					{
+						tablaActual = malloc(strlen(carpetaTables) + strlen(estructuraDir->d_name) + 1);
+						strcpy(tablaActual,carpetaTables);
+						strcat(tablaActual,estructuraDir->d_name);
+						char * metadataTabla = obtenerMetadaTabla(tablaActual);
+						strcat(cadenaRetorno,metadataTabla);
+						free(metadataTabla);
+						free(tablaActual);
+					}
+			   }
+		}
+		closedir(dir);
+		return cadenaRetorno;
+	}
+		return NULL;
+}
+char * obtenerMetadaTabla(char * rutaTabla)
+{
+	 DIR * dir = opendir(rutaTabla);
+	 struct dirent *estructuraDir; //Para recorrer y obtener info del directorio
+	 char * cadenaRetorno = NULL;
+	 char * nombreTabla;
+	 if(dir != NULL)
+	     {
+	        while ((estructuraDir=readdir(dir)))
+	        {
+	        	if(!strncmp(estructuraDir->d_name,"Metadata",8))
+	        	{
+				char * rutaMetadata = malloc(strlen(carpetaTables)+strlen(rutaTabla)+strlen(estructuraDir->d_name)+1);
+				strcpy(rutaMetadata,rutaTabla);
+				strcat(rutaMetadata,"/");
+				strcat(rutaMetadata,"Metadata");
+
+				crearConfig(rutaMetadata);
+
+				nombreTabla = obtenerNombre(rutaTabla);
+
+				cadenaRetorno = malloc(strlen(estructuraDir->d_name) +
+				strlen("TABLE=;CONSISTENCY=;PARTITIONS=;COMPACTION_TIME=;COMPACTION_TIME=\n")
+				+ strlen(obtenerString("CONSISTENCY")) + strlen(obtenerString("PARTITIONS"))
+				+ strlen(obtenerString("COMPACTION_TIME")) + 30);
+
+				strcpy(cadenaRetorno,"TABLE=");
+				strcat(cadenaRetorno,nombreTabla);
+				strcat(cadenaRetorno,";CONSISTENCY=");
+				strcat(cadenaRetorno,obtenerString("CONSISTENCY"));
+				strcat(cadenaRetorno,";PARTITIONS=");
+				strcat(cadenaRetorno,obtenerString("PARTITIONS"));
+				strcat(cadenaRetorno,";COMPACTION_TIME=");
+				strcat(cadenaRetorno,obtenerString("COMPACTION_TIME"));
+				strcat(cadenaRetorno,"\n");
+				eliminarEstructuraConfig();
+
+				free(rutaMetadata);
+				free(nombreTabla);
+				}
+	        }
+	        closedir(dir);
+	      }
+
+	 return cadenaRetorno;
+}
+
+int cantidadTablas()
+{
+		DIR * dir = opendir(carpetaTables);
+		struct dirent *estructuraDir; //Para recorrer y obtener info del directorio
+		int cantidad = 0;
+		if(dir != NULL)
+		     {
+		        while ((estructuraDir=readdir(dir)))
+		        {
+		        	if(strncmp(estructuraDir->d_name,".",1))
+		        	{
+		        		cantidad++;
+					}
+		        }
+		        closedir(dir);
+		      }
+
+		 return cantidad;
+}
+
+char * obtenerNombre(char * ruta)
+{
+	int i = 0;
+	int cantidadBarras = 0;
+	char * cadenaRetorno = malloc(strlen(ruta)+1);
+	while(ruta[i] !=  0)
+	{
+		if(ruta[i] == '/')
+		{
+			cantidadBarras++;
+		}
+		i++;
+	}
+	int offSet = 0;
+	i=0;
+	int cant_anterior = 0;
+	while(ruta[i] != 0)
+	{
+		if(ruta[i] == '/')
+		{
+			if((cantidadBarras - cant_anterior) == 1)
+			{
+				offSet = i;
+				break;
+			}
+			else
+			{
+				cant_anterior++;
+			}
+		}
+		i++;
+	}
+	i=0;
+	if(offSet != 0)
+	{
+		offSet++;
+		while(ruta[offSet] != 0)
+		{
+			cadenaRetorno[i] = ruta[offSet];
+			offSet++;
+			i++;
+		}
+		cadenaRetorno[i] = 0;
+		return cadenaRetorno;
+	}
+	return NULL;
+}
 

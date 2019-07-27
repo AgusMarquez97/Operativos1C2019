@@ -1,4 +1,5 @@
 #include "Lissandra.h"
+#include <time.h>
 //#include "FileSystem.h"
 
 pthread_t lissandra;
@@ -8,7 +9,6 @@ int main() {
 
 	//signal(SIGINT,terminarAplicacion);
 	//signal(SIGTERM,terminarAplicacion);
-
 
 	hilos = list_create();
 	lissandra = crearHilo(iniciarLFS,NULL);

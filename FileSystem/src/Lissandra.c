@@ -281,19 +281,63 @@ void procesarQuery(argumentosQuery * args)
 	int flagConsola = args->flag;
 	int * retornoCreate;
 	pthread_t  fsCreate;
+	char * cadenaDescribe;
 	logMemTable = retornarLogConPath("Memtable.log","Memtable");
-	registro* selectAux;
+	registro* selectAuxFS, * selectAuxMT;
 	switch(args->unaQuery->requestType)
 	{
 	case DESCRIBE:
-		temp();
+		cadenaDescribe = rutinaFileSystemDescribe(args->unaQuery->tabla);
+		if(cadenaDescribe != NULL)
+		{
+		loggearInfo(cadenaDescribe);
+		if(flagConsola)
+			printf("%s",cadenaDescribe);
+		free(cadenaDescribe);
+		}else
+		{
+			if(args->unaQuery->tabla == NULL)
+			{
+		loggearInfo("Error, no hay tablas en el sistema");
+		if(flagConsola)
+			printf("Error, no hay tablas en el sistema\n");
+			}
+			else
+			{
+		loggearInfo("Error, Tabla no existente en el sistema");
+		if(flagConsola)
+			printf("Error, Tabla no existente en el sistema \n");
+			}
+		}
 		break;
 	case SELECT:
-		selectAux=rutinaFileSystemSelect(args->unaQuery->tabla, args->unaQuery->key);
-		printf("registro obtenido: %d %s %lli\n",selectAux->key,selectAux->value,selectAux->timestamp);
-		free(selectAux);
-		//procesarSelect(args->unaQuery,flagConsola);
-		//free(args->unaQuery);
+		selectAuxMT = procesarSelectMemTable(args->unaQuery);
+		selectAuxFS = rutinaFileSystemSelect(args->unaQuery->tabla, args->unaQuery->key);
+		if(selectAuxFS != NULL)
+		{
+			if(selectAuxMT != NULL)
+			{
+				if(selectAuxMT->timestamp > selectAuxFS->timestamp)
+				{
+					loggearRegistroEncontrado(args->unaQuery->key,selectAuxMT->value,flagConsola);
+				}else
+				{
+				free(selectAuxFS);
+				loggearRegistroEncontrado(args->unaQuery->key,selectAuxFS->value,flagConsola);
+				}
+			}
+			else
+			{
+				free(selectAuxFS);
+				loggearRegistroEncontrado(args->unaQuery->key,selectAuxFS->value,flagConsola);
+			}
+		}else if(selectAuxMT != NULL)
+		{
+		loggearRegistroEncontrado(args->unaQuery->key,selectAuxMT->value,flagConsola);
+		}else
+		{
+			loggearRegistroNoEncontrado(args->unaQuery->key,flagConsola);
+		}
 		break;
 	case INSERT:
 		if(strlen(args->unaQuery->value) <= maxValue)
@@ -320,6 +364,16 @@ void procesarQuery(argumentosQuery * args)
 		}
 		free(retornoCreate);
 		break;
+	case DROP:
+		if(rutinaFileSystemDrop(args->unaQuery->tabla) == 1)
+		{
+			loggearTablaDropeadaOK(args->unaQuery->tabla,args->flag);
+			dictionary_remove(memTable,args->unaQuery->tabla);
+		}
+		else{
+		loggearErrorDrop(args->unaQuery->tabla,args->flag);
+		}
+		break;
 	default:
 		loggearWarningEnLog(logMemTable,"Request aun no disponible");
 	}
@@ -330,7 +384,7 @@ void procesarInsert(query * unaQuery, int flagConsola)
 
 	if(unaQuery->timestamp == -1)
 	{
-		unaQuery->timestamp = (int64_t) (time(NULL))/1000;//Finalmente se agrega el epoch de linux
+		unaQuery->timestamp = (int64_t) (time(NULL))*1000;//Finalmente se agrega el epoch de linux
 	}
 
 	agregarUnRegistroMemTable(unaQuery,flagConsola);
@@ -344,16 +398,21 @@ void agregarUnRegistroMemTable(query * unaQuery, int flagConsola)
 
 }
 
-void procesarSelect(query* unaQuery, int flagConsola)
+registro * procesarSelectMemTable(query* unaQuery)
 {
-	loggearSelectMemT(unaQuery);
+
 	t_list * temp;
 	void * listaRegistros;
-	registro * registroFinal = malloc(sizeof(registro));
+	registro * registroFinal;
 
 	if(dictionary_has_key(memTable,unaQuery->tabla))
 	{
 		temp = (t_list *)dictionary_get(memTable,unaQuery->tabla);
+
+		if(temp != NULL)
+		{
+			if(!list_is_empty(temp))
+			{
 
 		bool condicion(void * elementoLista)
 		{
@@ -364,32 +423,32 @@ void procesarSelect(query* unaQuery, int flagConsola)
 
 
 		if(listaRegistros)
-		{
-		registroFinal->timestamp = 0;
+			{
+			registroFinal = list_get(listaRegistros,0);
+
+			if(list_size(listaRegistros) == 1)
+				{
+					return registroFinal;
+				}
 
 		void mayorTimestamp(registro * unRegistro)
-		{
+				{
 			if(unRegistro->timestamp > registroFinal->timestamp)
-			{
+					{
 				registroFinal = unRegistro;
-			}
-		}
+					}
+				}
 
 		list_iterate(listaRegistros,(void*)mayorTimestamp);
 
-		if(registroFinal)
-		loggearRegistroEncontrado(((registro*)registroFinal)->value,flagConsola);
-
-		}else{
-		loggearInfoEnLog(logMemTable,"No se encontro la key buscada");
-		if(flagConsola)
-		printf("No se encontro la key\n");
+				}
+		list_destroy(listaRegistros);
+		return registroFinal;
+			}
 		}
-	}	else
-	{
-		loggearRegistroNoEncontrado(unaQuery->tabla,flagConsola);
 	}
-	free(registroFinal);
+	return NULL;
+
 }
 void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola)
 {
@@ -626,23 +685,30 @@ void loggearSelectMemT(query* unaQuery)
 		free(req);
 }
 
-void loggearRegistroEncontrado(char * value, int flagConsola)
+void loggearRegistroEncontrado(int key, char * value, int flagConsola)
 {
-	char * aux = malloc(strlen("Se encontro el registro buscado: ''") + strlen(value) + 2);
+	char * nro = malloc(100);
+	char * aux = malloc(strlen("Key buscada: s'' value: ''") + strlen(value) + 5);
 
-	strcpy(aux,"Se encontro el valor buscado: '");
+	sprintf(nro,"%d",key);
+
+	strcpy(aux,"Key buscada: '");
+	strcat(aux,nro);
+	strcat(aux,"'");
+	strcat(aux," value: '");
 	strcat(aux,value);
 	strcat(aux,"'");
 
-	loggearInfoEnLog(logMemTable,aux);
+	loggearInfo(aux);
 
 	if(flagConsola)
 	printf("%s\n",aux);
 
+	free(nro);
 	free(aux);
 }
 
-void loggearRegistroNoEncontrado(char * tabla, int flagConsola)
+void loggearTablaNoEncontrado(char * tabla, int flagConsola)
 {
 	char * aux = malloc(strlen("No existe la tabla ''") + strlen(tabla) + 5);
 	strcpy(aux,"No existe la tabla '");
@@ -652,6 +718,24 @@ void loggearRegistroNoEncontrado(char * tabla, int flagConsola)
 	if(flagConsola)
 	printf("%s\n",aux);
 	free(aux);
+}
+
+void loggearRegistroNoEncontrado(int key, int flagConsola)
+{
+	char * nro = malloc(100);
+	sprintf(nro,"%d",key);
+	char * aux = malloc(strlen("No se encontro value para la siguiente key ''") + 5);
+	strcpy(aux,"No se encontro value para la siguiente key '");
+	strcat(aux,nro);
+	strcat(aux,"'");
+
+	loggearInfo(aux);
+
+	if(flagConsola)
+	printf("%s\n",aux);
+
+	free(aux);
+	free(nro);
 }
 
 
@@ -768,6 +852,29 @@ void terminarHilo(pthread_t * unHilo)
 {
 	//pthread_cancel(unHilo);
 	pthread_kill(*unHilo,SIGTERM);
+}
+
+void loggearTablaDropeadaOK(char * tabla, int flagConsola)
+{
+	char * aux = malloc(strlen("Tabla '' eliminada Correctamente") + strlen(tabla) + 10);
+	strcpy(aux,"Tabla '");
+	strcat(aux,tabla);
+	strcat(aux,"' eliminada Correctamente");
+	loggearInfo(aux);
+	if(flagConsola)
+	printf("%s\n",aux);
+	free(aux);
+}
+void loggearErrorDrop(char * tabla, int flagConsola)
+{
+	char * aux = malloc(strlen("La tabla '' no existe en el Sistema") + strlen(tabla) + 10);
+	strcpy(aux,"Tabla '");
+	strcat(aux,tabla);
+	strcat(aux,"' no existe en el Sistema");
+	loggearInfo(aux);
+	if(flagConsola)
+	printf("%s\n",aux);
+	free(aux);
 }
 
 

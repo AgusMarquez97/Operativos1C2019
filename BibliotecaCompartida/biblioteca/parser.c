@@ -71,7 +71,7 @@ int parsear(char * string_query,query **struct_query)
 					return ERROR;
 					break;}
 				  else {
-					((*struct_query))->timestamp = atoi(query_split[4]);
+					((*struct_query))->timestamp = (int64_t) atoll(query_split[4]);
 					break;
 				  }
 				  
@@ -104,7 +104,7 @@ int parsear(char * string_query,query **struct_query)
 	if (!strcasecmp(query_split[0],"describe")) {
 
 	  
-          ((*struct_query))->requestType = DESCRIBE;
+      ((*struct_query))->requestType = DESCRIBE;
 	  ((*struct_query))->key = -1;
 	  ((*struct_query))->value = NULL;
 	  ((*struct_query))->timestamp = -1;
