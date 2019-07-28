@@ -172,7 +172,7 @@ void loggearErrorDrop(char * tabla, int flagConsola);
 void gestionarFileSystem();
 
 registro * rutinaFileSystemSelect(char * tabla, int32_t key);
-int * rutinaFileSystemCreate(argumentosQuery * args);
+int rutinaFileSystemCreate(argumentosQuery * args);
 int rutinaFileSystemDrop(char * tabla);
 char * rutinaFileSystemDescribe(char * tabla);
 char * obtenerNombre(char * ruta);

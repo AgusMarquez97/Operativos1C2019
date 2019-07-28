@@ -6,6 +6,7 @@
 #include <string.h>
 #include <regex.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include <commons/string.h>
 
@@ -28,6 +29,9 @@ int tipo_consistencia_valido(char * texto);
 
 char * consistencia_a_string(int32_t consistencia);
 int string_a_consistencia(char * consistencia);
+
+int cantidadSubStrings(char ** string);
+void liberarCadenaSplit(char ** cadena);
 
 
 #endif /* PARSER_H_ */

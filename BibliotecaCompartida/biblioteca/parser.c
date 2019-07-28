@@ -2,17 +2,13 @@
 
 int parsear(char * string_query,query **struct_query)
 {
-	int ERROR = -1;
+	int ERROR = -1, cantidadStrings=0;
 	//char * MENSAJE_ERROR="Sintaxis incorrecta o comando desconocido.";
 
 	//string_append_with_format(&MENSAJE_ERROR,": %s",string_query);
-
+	char ** aux_split, ** auxEspacios;
 	char ** query_split = string_split(string_query, " ");
-/*	printf("La primera palabra es: %s\n",query_split[0]);
-	printf("La segunda palabra es: %s\n",query_split[1]);
-	printf("La tercera palabra es: %s\n",query_split[2]);
-	printf("La cantidad de palabras es: %d\n",string_size(query_split));
-*/
+
 	*struct_query = realloc(*struct_query,sizeof(query));
 	int query_cant_palabras = string_size(query_split);
 //	printf("Llegaron al parser %d palabras\n",query_cant_palabras);
@@ -20,6 +16,7 @@ int parsear(char * string_query,query **struct_query)
 
 	if ( !query_cant_palabras)
 	{
+		liberarCadenaSplit(query_split);
 		return ERROR;
 	}
 
@@ -27,14 +24,12 @@ int parsear(char * string_query,query **struct_query)
 
 	  if ( (query_cant_palabras != 3) )
 	  {
-		//printf("%s\n\n",MENSAJE_ERROR);
-		//printf("El select es INcorrecto\n");
-		return ERROR;
+		  liberarCadenaSplit(query_split);
+		  return ERROR;
 	  }
 
 	  if ( (nombre_tabla_valido(query_split[1])) && (valor_solo_numerico(query_split[2])) )
 	  {
-		//printf("El select es correcto\n");
 		string_to_upper(query_split[1]);
 		((*struct_query))->requestType = SELECT;
 		((*struct_query))->tabla = strdup(query_split[1]);
@@ -42,11 +37,13 @@ int parsear(char * string_query,query **struct_query)
 		((*struct_query))->value = NULL;
 		((*struct_query))->timestamp = -1;
 
+		liberarCadenaSplit(query_split);
 		return SELECT;
 
 	  } else { 
 		   //printf("%s\n\n",MENSAJE_ERROR);
 		   //printf("El select es INcorrecto\n");
+		   liberarCadenaSplit(query_split);
 		   return ERROR;
 		 }
 		
@@ -54,48 +51,57 @@ int parsear(char * string_query,query **struct_query)
 	}
 
 
-	if (!strcasecmp(query_split[0],"insert")) {
+	if (!strcasecmp(query_split[0],"insert"))
+	{
 
-	  if (	(nombre_tabla_valido(query_split[1])) &&
-		(valor_solo_numerico(query_split[2]))
-	     )
-	  {
+			  aux_split = string_split(string_query,"\"");
+			  cantidadStrings = cantidadSubStrings(aux_split);
 
-		switch (query_cant_palabras) {
-			case (4): ((*struct_query))->timestamp = -1;
-				  break;
+			  switch (cantidadStrings) {
+						case (2): ((*struct_query))->timestamp = (int64_t) (time(NULL))*1000;
+							  break;
 
-			case (5): if (!valor_solo_numerico(query_split[4])) {
-					//printf("%s\n\n",MENSAJE_ERROR);
-					//printf("El insert es INcorrecto\n");
-					return ERROR;
-					break;}
-				  else {
-					((*struct_query))->timestamp = (int64_t) atoll(query_split[4]);
-					break;
-				  }
-				  
-			default: //printf("%s\n\n",MENSAJE_ERROR);
-				 //printf("El insert es INcorrectoAAA\n");
-				 return ERROR;
-				 break;
-		}
+						case (3):
+								string_trim(&aux_split[2]);
+								if (!valor_solo_numerico(aux_split[2])) {
+								//printf("%s\n\n",MENSAJE_ERROR);
+								//printf("El insert es INcorrecto\n");
+								liberarCadenaSplit(aux_split);
+								liberarCadenaSplit(query_split);
+								return ERROR;
+								break;}
+							  else {
+								((*struct_query))->timestamp = (int64_t) atoll(aux_split[2]);
+								break;
+							  }
+				default:
+					liberarCadenaSplit(aux_split);
+					liberarCadenaSplit(query_split);
+					 return ERROR;
+					 break;
+			}
+
+	    auxEspacios = string_split(aux_split[0]," ");
+	    if (nombre_tabla_valido(auxEspacios[1]) && valor_solo_numerico(auxEspacios[2]) && cantidadSubStrings(auxEspacios)==3)
+	    {
 
 		//printf("El insert es correcto\n");
-		string_to_upper(query_split[1]);
+		string_to_upper(auxEspacios[1]);
 		((*struct_query))->requestType = INSERT;
-		((*struct_query))->tabla = strdup(query_split[1]);
-		((*struct_query))->key = atoi(query_split[2]);
-		((*struct_query))->value = strdup(query_split[3]);
+		((*struct_query))->tabla = strdup(auxEspacios[1]);
+		((*struct_query))->key = atoi(auxEspacios[2]);
+		((*struct_query))->value = strdup(aux_split[1]);
 
-
+		liberarCadenaSplit(auxEspacios);
+		liberarCadenaSplit(aux_split);
+		liberarCadenaSplit(query_split);
 		return INSERT;
-
-	  } else {
-		   //printf("%s\n\n",MENSAJE_ERROR);
-		   //printf("El insert es INcorrecto\n");
+	    } else {
+	       liberarCadenaSplit(auxEspacios);
+	       liberarCadenaSplit(aux_split);
+	       liberarCadenaSplit(query_split);
 		   return ERROR;
-		 }
+	  	}
 		
 
 	}
@@ -113,7 +119,7 @@ int parsear(char * string_query,query **struct_query)
 	  {
 		//printf("El describe es correcto\n");
 		((*struct_query))->tabla = NULL;
-
+		liberarCadenaSplit(query_split);
 		return DESCRIBE;
 	  }
 
@@ -123,12 +129,11 @@ int parsear(char * string_query,query **struct_query)
 		//printf("El describe es correcto\n");
 		string_to_upper(query_split[1]);
 		((*struct_query))->tabla = strdup(query_split[1]);
-
+		liberarCadenaSplit(query_split);
 		return DESCRIBE;
 
 	  } else { 
-		   //printf("%s\n\n",MENSAJE_ERROR);
-		   //printf("El describe es INcorrecto\n");
+		  liberarCadenaSplit(query_split);
 		   return ERROR;
 		 }
 		
@@ -140,8 +145,7 @@ int parsear(char * string_query,query **struct_query)
 
 	  if ( (query_cant_palabras != 5) )
 	  {
-		//printf("%s\n\n",MENSAJE_ERROR);
-		//printf("El create es INcorrecto\n");
+		liberarCadenaSplit(query_split);
 		return ERROR;
 	  }
 
@@ -160,11 +164,11 @@ int parsear(char * string_query,query **struct_query)
 		((*struct_query))->compactationTime = atoi(query_split[4]); //Luego sacar esto!
 		((*struct_query))->timestamp = -1;
 
+		liberarCadenaSplit(query_split);
 		return CREATE;
 
 	  } else {
-		   //printf("El create es INcorrecto\n");
-		  //printf("%s\n\n",MENSAJE_ERROR);
+		   liberarCadenaSplit(query_split);
 		   return ERROR;
 		 }
 		
@@ -176,28 +180,24 @@ int parsear(char * string_query,query **struct_query)
 
 	  if ( (query_cant_palabras != 2) )
 	  {
-		//printf("El drop es INcorrecto\n");
-		//printf("%s: %s\n\n",string_query,MENSAJE_ERROR);
+	    liberarCadenaSplit(query_split);
 		return ERROR;
 	  }
 
 	  if (	(nombre_tabla_valido(query_split[1]))
 	     )
 	  {
-		//printf("El drop es correcto\n");
 		string_to_upper(query_split[1]);
 		((*struct_query))->requestType = DROP;
 		((*struct_query))->tabla = strdup(query_split[1]);
 		((*struct_query))->key = -1;
 		((*struct_query))->value = NULL;
 		((*struct_query))->timestamp = -1;
-
+		liberarCadenaSplit(query_split);
 		return DROP;
 
 	  } else {
-		   //printf("El drop es INcorrecto\n");
-		   //printf("%s\n\n",MENSAJE_ERROR);
-		//printf("%s: %s\n\n",string_query,MENSAJE_ERROR);
+		  liberarCadenaSplit(query_split);
 		   return ERROR;
 		 }
 		
@@ -210,22 +210,18 @@ int parsear(char * string_query,query **struct_query)
 
 	  if ( (query_cant_palabras != 1) )
 	  {
-		//printf("El journal es INcorrecto\n");
-		//printf("%s\n\n",MENSAJE_ERROR);
+		liberarCadenaSplit(query_split);
 		return ERROR;
 	  } else {
-			//printf("El journal es correcto\n");
-			string_to_upper(query_split[0]);
 			((*struct_query))->requestType = JOURNAL;
 			((*struct_query))->tabla = NULL;
 			((*struct_query))->key = -1;
 			((*struct_query))->value = NULL;
 			((*struct_query))->timestamp = -1;
-
+			liberarCadenaSplit(query_split);
 			return JOURNAL;
 		}
 		
-
 	}
 
 
@@ -233,6 +229,7 @@ int parsear(char * string_query,query **struct_query)
 
 	  if ( (query_cant_palabras != 1) )
 	  {
+		liberarCadenaSplit(query_split);
 		return ERROR;
 	  } else {
 			((*struct_query))->requestType = METRICS;
@@ -240,7 +237,7 @@ int parsear(char * string_query,query **struct_query)
 			((*struct_query))->key = -1;
 			((*struct_query))->value = NULL;
 			((*struct_query))->timestamp = -1;
-
+			liberarCadenaSplit(query_split);
 			return METRICS;
 		}
 		
@@ -253,54 +250,29 @@ int parsear(char * string_query,query **struct_query)
 
 	  if ( (query_cant_palabras != 2) )
 	  {
-		//printf("El run es INcorrecto\n");
-		//printf("%s\n\n",MENSAJE_ERROR);
+		  liberarCadenaSplit(query_split);
 		return ERROR;
 	  } else {
 			printf("El run es correcto\n");
 			((*struct_query))->requestType = RUN;
 			((*struct_query))->script = strdup(query_split[1]);
+			liberarCadenaSplit(query_split);
 			return RUN;
 		 }
 	}
-
-/*
-	  if (	(nombre_tabla_valido(query_split[1]))
-	     )
-	  {
-		printf("El run es correcto\n");
-		string_to_upper(query_split[1]);
-		((*struct_query))->requestType = 8;
-		((*struct_query))->tabla = NULL;
-		((*struct_query))->key = NULL;
-		((*struct_query))->value = NULL;
-		((*struct_query))->timestamp = NULL;
-
-		return RUN;
-
-	  } else { printf("El run es INcorrecto\n");
-		   return 0;
-		 }
-*/		
-
-//	}
-
-	//printf("Comando desconocido.\n\n");MENSAJE_ERROR
-	//printf("%s: %s\n\n",string_query,MENSAJE_ERROR);
+	liberarCadenaSplit(query_split);
 	return ERROR;
 
 }
+
 
 
 int string_size(char ** text)
 {
 	int i= 0;
 
-//	printf("%s\n",text[i]);
-
 	while ((text[i]) != '\0')
 	{
-//	printf("%d\n",i);
 	  i = i+1;
 	}
 
@@ -315,30 +287,24 @@ int nombre_tabla_valido(char * text)
 
 	regex_t regex;
 	int reti;
-		//printf("%s\n",text);
 
 	reti = regcomp(&regex,"^[A-Z0-9]*$",0);
 
 	if (reti) {
-	  //fprintf(stderr,"Error al armar regex\n");
-	  //exit (1);
 		return 0;
 	}
 
 	reti = regexec(&regex,text,0,NULL,0);
 
 	if (!reti) {
-	   //printf("Nombre de tabla correcto\n");
 	   regfree(&regex);
 	   return 1;
 	}
 	else if (reti == REG_NOMATCH) {
-		//printf("Nombre de tabla incorrecto\n");
 		regfree(&regex);
 		return 0;
 	}
 	else {
-		//fprintf(stderr,"Error en regex\n");
 		regfree(&regex);
 		return 0;
 	}
@@ -365,19 +331,15 @@ int valor_solo_numerico(char * text)
 	reti = regexec(&regex,text,0,NULL,0);
 
 	if (!reti) {
-	   //printf("Valor numerico correcto\n");
 	   regfree(&regex);
 	   return 1;
 	}
 	else if (reti == REG_NOMATCH) {
-		//printf("Valor numerico incorrecto\n");
 		regfree(&regex);
 		return 0;
 	}
 	else {
-		//fprintf(stderr,"Error en regex\n");
 		regfree(&regex);
-		//exit (0);
 		return 0;
 	}
 	
@@ -389,11 +351,9 @@ int tipo_consistencia_valido(char * texto)
 
 	if ( (!strcasecmp(texto,"sc")) || (!strcasecmp(texto,"ec")) || (!strcasecmp(texto,"shc")) )
 	{
-		//printf("Consistencia valida\n");
 		return 1;
 	} else
 	{
-		//printf("Consistencia INvalida\n");
 		return 0;
 	}
 }
@@ -428,9 +388,33 @@ int string_a_consistencia(char * consistencia)
 	return -1;
 }
 
+int cantidadSubStrings(char ** string)
+{
+	int i = 0, j= 0;
+	if(string)
+	{
+		while(string[i]!=NULL)
+		{
+			if(strlen(string[i]) > 0)
+				j++;
+			i++;
+		}
+	}
+	return j;
+}
 
-
-
-
+void liberarCadenaSplit(char ** cadena)
+{
+	if(cadena)
+	{
+		int i = 0;
+		while(cadena[i] != NULL)
+		{
+			free(cadena[i]);
+			i++;
+		}
+		free(cadena);
+	}
+}
 
 

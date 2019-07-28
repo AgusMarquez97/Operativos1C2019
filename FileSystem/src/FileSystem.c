@@ -20,7 +20,7 @@ void gestionarFileSystem()
 	limpiarFileSystem();
 	levantarFileSystem();
 	levantarMetadata();
-	//hiloDump = crearHilo(ejecutarDumping,NULL);
+	hiloDump = crearHilo(ejecutarDumping,NULL);
 	//liberarNombres(); //->No liberar que luego no se pueden usar
 }
 
@@ -320,12 +320,10 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola)
 	return 0;
 }
 
-int * rutinaFileSystemCreate(argumentosQuery * args)
+int rutinaFileSystemCreate(argumentosQuery * args)
 {
-	int * aux = malloc(sizeof(int));
 	int retorno = crearCarpetaTabla(args->unaQuery,args->flag);
-	memcpy(aux,&retorno,sizeof(int));
-	return aux;
+	return retorno;
 }
 
 char * asignarUnBloqueBin()
@@ -507,6 +505,7 @@ char * castearBloquesChar(int lista_bloques[])
 	if(indice == 1)
 	{
 		strcat(lista_final,"]");
+		free(aux);
 		return lista_final;
 	}
 
@@ -714,6 +713,7 @@ registro * rutinaFileSystemSelect(char * tabla, int32_t key)
 	strcat(rutaAbs,"/");
 
 	registros=leerTabla(rutaAbs,key);
+	free(rutaAbs);
 	registro * registroMax;
 	if(registros!=NULL)
 	{
@@ -723,7 +723,6 @@ registro * rutinaFileSystemSelect(char * tabla, int32_t key)
 			{
 				registroMax = (registro *)list_remove(registros,0);
 				list_destroy(registros);
-				free(rutaAbs);
 				return registroMax;
 			}
 
@@ -733,20 +732,22 @@ registro * rutinaFileSystemSelect(char * tabla, int32_t key)
 			{
 				if(unRegistro->timestamp > registroMax->timestamp)
 				{
+					free(registroMax->value);
 					free(registroMax);
 					registroMax = unRegistro;
 				}else
 				{
+					free(unRegistro->value);
 					free(unRegistro);
 				}
 			}
 
 			list_iterate(registros,(void*)mayorTimestamp);
-			free(rutaAbs);
 			list_destroy(registros);
 			return registroMax;
 		}
 	}
+	list_destroy(registros); ///VALIDAR POR SI ROMPE
 	return NULL;
 
 	}
@@ -804,12 +805,14 @@ t_list* obtenerRegistros(char * registros, int32_t key){
 
 			if(registroAux->key == key)
 			{
-				registroAux->value=registro[1];
+				registroAux->value=strdup(registro[1]);
 				registroAux->timestamp = (int64_t) atoll(registro[2]);
 				list_add(listaRegistros,registroAux);
+			} else{
+				free(registroAux);
 			}
 
-			free(registro);
+			liberarCadenaSplit(registro);
 			}
 			free(aux[i]);
 			i++;
@@ -857,8 +860,8 @@ int eliminarDirectorio(char * directorio)
                     	free(rutaAbs);
 
                     }
-                    return 1;
                     closedir(dir);
+                    return 1;
                 }
         return 0;
 
@@ -887,6 +890,7 @@ while(bloques[i]!=NULL)
 		bloque =  txt_open_for_append(rutaBloque);
 		txt_close_file(bloque);
 		i++;
+		free(bloques[i]);
 	}
 free(rutaBloque);
 free(bloqueLeido);
@@ -905,11 +909,14 @@ char * rutinaFileSystemDescribe(char * tabla)
 	strcpy(rutaTabla,carpetaTables);
 	strcat(rutaTabla,tabla);
 	metadata = obtenerMetadaTabla(rutaTabla);
+	free(tabla);
+	free(rutaTabla);
 	}
 	else
 	{
 	metadata = obtenerMetadataTablas();
 	}
+
 	return metadata;
 
 }

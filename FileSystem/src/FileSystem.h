@@ -25,7 +25,7 @@
 #include <ftw.h>
 #include <dirent.h>
 
-#define CANTIDAD_MAXIMA_BLOQUES 100000
+#define CANTIDAD_MAXIMA_BLOQUES 1000
 
 
 struct stat estado = {0};
@@ -113,7 +113,7 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola);
  *	Rutina que manda a ejecutar LFS con un hilo frente a CREATE
  */
 
-int * rutinaFileSystemCreate(argumentosQuery * args);
+int rutinaFileSystemCreate(argumentosQuery * args);
 int rutinaFileSystemDrop(char * tabla);
 char * rutinaFileSystemDescribe(char * tabla);
 

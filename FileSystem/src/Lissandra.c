@@ -103,9 +103,7 @@ void monitorearConfig()
 	        {
 	            perror("Error al leer el archivo monitor..");
 	            break;
-	        }
-
-	        if(evento.mask == IN_MODIFY)
+	        }else if(evento.mask == IN_MODIFY)
 	        {
 	        	actualizarConfig();
 	        }
@@ -225,7 +223,6 @@ void consola()
 
 		if(aux != -1)
 		{
-
 				procesarQuery(args);
 		}
 		else
@@ -279,8 +276,7 @@ void temp()
 void procesarQuery(argumentosQuery * args)
 {
 	int flagConsola = args->flag;
-	int * retornoCreate;
-	pthread_t  fsCreate;
+	int retornoCreate;
 	char * cadenaDescribe;
 	logMemTable = retornarLogConPath("Memtable.log","Memtable");
 	registro* selectAuxFS, * selectAuxMT;
@@ -322,14 +318,14 @@ void procesarQuery(argumentosQuery * args)
 					loggearRegistroEncontrado(args->unaQuery->key,selectAuxMT->value,flagConsola);
 				}else
 				{
-				free(selectAuxFS);
 				loggearRegistroEncontrado(args->unaQuery->key,selectAuxFS->value,flagConsola);
+				free(selectAuxFS);
 				}
 			}
 			else
 			{
-				free(selectAuxFS);
 				loggearRegistroEncontrado(args->unaQuery->key,selectAuxFS->value,flagConsola);
+				free(selectAuxFS);
 			}
 		}else if(selectAuxMT != NULL)
 		{
@@ -338,6 +334,7 @@ void procesarQuery(argumentosQuery * args)
 		{
 			loggearRegistroNoEncontrado(args->unaQuery->key,flagConsola);
 		}
+		free(args->unaQuery->tabla);
 		break;
 	case INSERT:
 		if(strlen(args->unaQuery->value) <= maxValue)
@@ -352,9 +349,8 @@ void procesarQuery(argumentosQuery * args)
 		}
 		break;
 	case CREATE:
-		fsCreate = crearHilo(rutinaFileSystemCreate,args);
-		pthread_join(fsCreate,(void*)&retornoCreate);
-		if(*(int*)retornoCreate != -1)
+		retornoCreate = rutinaFileSystemCreate(args);
+		if(retornoCreate != -1)
 		{
 		procesarCreate(args->unaQuery,flagConsola);
 		}
@@ -362,7 +358,6 @@ void procesarQuery(argumentosQuery * args)
 		{
 			loggearErrorTablaExistente(args->unaQuery,flagConsola);
 		}
-		free(retornoCreate);
 		break;
 	case DROP:
 		if(rutinaFileSystemDrop(args->unaQuery->tabla) == 1)
@@ -373,6 +368,7 @@ void procesarQuery(argumentosQuery * args)
 		else{
 		loggearErrorDrop(args->unaQuery->tabla,args->flag);
 		}
+		free(args->unaQuery->tabla);
 		break;
 	default:
 		loggearWarningEnLog(logMemTable,"Request aun no disponible");
@@ -381,11 +377,6 @@ void procesarQuery(argumentosQuery * args)
 
 void procesarInsert(query * unaQuery, int flagConsola)
 {
-
-	if(unaQuery->timestamp == -1)
-	{
-		unaQuery->timestamp = (int64_t) (time(NULL))*1000;//Finalmente se agrega el epoch de linux
-	}
 
 	agregarUnRegistroMemTable(unaQuery,flagConsola);
 }
