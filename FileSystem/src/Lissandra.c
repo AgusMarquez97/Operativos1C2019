@@ -501,12 +501,6 @@ registro * crearRegistro(int32_t key,char * value,int64_t timestamp)
 	return unRegistro;
 }
 
-void liberarRegistro(registro * unRegistro)
-{
-	free(unRegistro->value);
-	free(unRegistro);
-}
-
 
 void imprimirListaRegistros(t_list * unaLista)
 {
@@ -820,7 +814,7 @@ void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
 }
 
 //me falta testear esto:
-int obtenerTamanioRegistrosDeUnaTabla(t_list * registros){
+int obtenerTamanioRegistrosDeUnaLista(t_list * registros){
 
 	int tamanio = 0;
 	char * key = malloc(500), * tmp = malloc(500);
@@ -868,4 +862,12 @@ void loggearErrorDrop(char * tabla, int flagConsola)
 	free(aux);
 }
 
-
+void liberarRegistro(registro * unRegistro)
+{
+	if(unRegistro)
+	{
+		if(unRegistro->value)
+			free(unRegistro->value);
+	free(unRegistro);
+	}
+}

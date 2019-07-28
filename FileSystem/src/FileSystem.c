@@ -182,7 +182,7 @@ void ejecutarDumping()
 		{
 				if(!list_is_empty(listaRegistros))
 			{
-			int tamNecesario = obtenerTamanioRegistrosDeUnaTabla(listaRegistros);
+			int tamNecesario = obtenerTamanioRegistrosDeUnaLista(listaRegistros);
 			char * registros = castearRegistrosChar(tamNecesario,listaRegistros);
 
 			list_clean_and_destroy_elements(listaRegistros,free);
@@ -314,7 +314,7 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola)
 		crearParticonesTabla(directorioTabla,queryCreate,flagConsola);
 
 
-		hiloCompactador = crearHilo(compactar,queryCreate->tabla);
+		hiloCompactador = crearHilo(compactar,queryCreate);
 
 		//Finalmente -> Crear un hilo detacheable que se encargue de la compactacion de esta tabla cada x tiempo
 		loggearTablaCreadaOK(fileSystemLog,queryCreate,flagConsola,1);
@@ -480,7 +480,6 @@ char * asignarBloques(int tamanioNecesario, char * nombreTabla,char * listaRegis
 	escribirBloques(tamanioNecesario - (cantBloques-1)*tamanioBloque,cantBloques,listaBloques,listaRegistros);
 
 	return nombreTemp;
-
 }
 
 char * castearBloquesChar(int lista_bloques[])
@@ -636,6 +635,8 @@ void recorrerDirectorio(char * directorio)
 {
         DIR * dir = opendir(directorio);
         struct dirent *estructuraDir; //Para recorrer y obtener info del directorio
+        query * queryCreate;
+        char ** metadata;
 
         if(dir != NULL)
         {
@@ -645,6 +646,33 @@ void recorrerDirectorio(char * directorio)
                 if(estructuraDir->d_type == DT_DIR && strncmp(estructuraDir->d_name,".",1))
                 {
                 	dictionary_put(memTable,estructuraDir->d_name,NULL);
+
+                	char * rutaAbs = malloc(strlen(directorio) + strlen(estructuraDir->d_name) + strlen("/Metadata") + 1);
+                	strcpy(rutaAbs,directorio);
+                	strcat(rutaAbs,estructuraDir->d_name);
+
+                	char * describe = obtenerMetadaTabla(rutaAbs);
+                	metadata = string_split(describe,";");
+                	char ** cantidadParticiones = string_split(metadata[2],"=");
+                	char ** tiempoCompactacion = string_split(metadata[3],"=");
+                	char * auxTiempoCompactacion = string_substring_until(tiempoCompactacion[1],strlen(tiempoCompactacion[1])-1);
+                	queryCreate = malloc(sizeof(query));
+
+                	queryCreate->compactationTime = atoi(auxTiempoCompactacion);
+                	queryCreate->cantParticiones = atoi(cantidadParticiones[1]);
+                	queryCreate->tabla = strdup(estructuraDir->d_name);
+
+                	hiloCompactador = crearHilo(compactar,queryCreate);
+
+                	free(rutaAbs);
+
+                	liberarCadenaSplit(metadata);
+                	liberarCadenaSplit(cantidadParticiones);
+                	liberarCadenaSplit(tiempoCompactacion);
+
+                	free(auxTiempoCompactacion);
+                	free(describe);
+
                 }
             }
             closedir(dir);
@@ -892,8 +920,8 @@ while(bloques[i]!=NULL)
 		remove(rutaBloque);
 		bloque =  txt_open_for_append(rutaBloque);
 		txt_close_file(bloque);
-		i++;
 		free(bloques[i]);
+		i++;
 	}
 free(rutaBloque);
 free(bloqueLeido);
@@ -978,7 +1006,7 @@ char * obtenerMetadaTabla(char * rutaTabla)
 				cadenaRetorno = malloc(strlen(estructuraDir->d_name) +
 				strlen("TABLE=;CONSISTENCY=;PARTITIONS=;COMPACTION_TIME=;COMPACTION_TIME=\n")
 				+ strlen(obtenerString("CONSISTENCY")) + strlen(obtenerString("PARTITIONS"))
-				+ strlen(obtenerString("COMPACTION_TIME")) + 30);
+				+ strlen(obtenerString("COMPACTION_TIME")) + 10);
 
 				strcpy(cadenaRetorno,"TABLE=");
 				strcat(cadenaRetorno,nombreTabla);
@@ -1069,69 +1097,5 @@ char * obtenerNombre(char * ruta)
 	return NULL;
 }
 
-void compactar(char* nombreTabla){
-	char * metadataTabla = malloc(strlen(carpetaTables)+ strlen(nombreTabla) + strlen("/Metadata") + 1);
-	strcpy(metadataTabla,carpetaTables);
-	strcat(metadataTabla,nombreTabla);
-	strcat(metadataTabla,"/Metadata");
-
-	t_config * metadata;
-	metadata = config_create(metadataTabla);
-	int64_t compactationTime=config_get_double_value(metadata,"COMPACTION_TIME");
-	config_destroy(metadata);
-
-
-	free(metadataTabla);
-
-
-
-	char * directorioTabla = malloc(strlen(carpetaTables) + strlen(nombreTabla) + 2);
-	strcpy(directorioTabla,carpetaTables);
-	strcat(directorioTabla,nombreTabla);
-	strcat(directorioTabla,"/");
-
-	while(1)
-		{
-
-
-		usleep(compactationTime*1000);
-
-		renombrarArchivosTemporales(directorioTabla);
-
-		/*
-		 queda para hacer:
-		obtenerRegistrosActualizados() que compara por los tmpc contra las particiones
-		generarNuevasParticiones() hay que liberar los bloques de los tmpc y los bin viejos, actualizar bitmap,
-									borrar esos archivos y escribir los registrosActualizados en los bloques, considerando
-									segun la key a que particion se escribe cada registro(usar el resto de dividir por cantParticiones)
-
-		*/
-		}
-}
-
-void renombrarArchivosTemporales(char* rutaDirectorioTabla){
-
-		int i = 0;
-		int j = 0;
-		char * old= malloc(strlen(rutaDirectorioTabla)+strlen("999999.tmp")+1);
-		char * new= malloc(strlen(rutaDirectorioTabla)+strlen("999999.tmpc")+1);
-
-
-		while(j!=-1)
-		{
-			strcpy(old,rutaDirectorioTabla);
-			strcat(old,string_itoa(i));
-			strcat(old,".tmp");
-			strcpy(new,rutaDirectorioTabla);
-			strcat(new,string_itoa(i));
-			strcat(new,".tmpc");
-			j=rename(old,new);
-			i++;
-		}
-		free(old);
-		free(new);
-
-
-}
 
 

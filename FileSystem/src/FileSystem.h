@@ -7,25 +7,10 @@
 
 #ifndef FILESYSTEM_H_
 #define FILESYSTEM_H_
-#include <sys/types.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include "commons/bitarray.h"
-#include <sys/mman.h>
-#include <unistd.h>
-#include <sys/stat.h>
 #include "Lissandra.h"
-#include "commons/txt.h"
-#include "commons/string.h"
-#include <signal.h>
-#include"commons/collections/list.h"
-#include <math.h>
-#include <time.h>
-#include <ftw.h>
-#include <dirent.h>
 
-#define CANTIDAD_MAXIMA_BLOQUES 1000
+
+#define CANTIDAD_MAXIMA_BLOQUES 100
 
 
 struct stat estado = {0};
@@ -57,21 +42,7 @@ struct stat estado = {0};
 t_log * fileSystemLog;
 
 pthread_t hiloDump;
-pthread_t hiloCompactador;
 
-char * carpetaMetadata;
-char * carpetaTables;
-char * carpetaBloques;
-char * metadataBin;
-char * bitmapBin;
-
-int tamanioBloque;
-int cantidadBloques;
-
-t_bitarray* unBitarray;
-
-pthread_mutex_t mutex_bloques; //= PTHREAD_MUTEX_INITIALIZER
-pthread_mutex_t mutex_bitarray;
 
 void gestionarFileSystem();
 
@@ -169,7 +140,8 @@ char * obtenerMetadaTabla(char * rutaTabla);
 char * obtenerMetadataTablas();
 char * obtenerNombre(char * ruta);
 
-void compactar(char* nombreTabla);
+void compactar(query * queryCreate);
 void renombrarArchivosTemporales(char* rutaDirectorioTabla);
+
 
 #endif /* FILESYSTEM_H_ */

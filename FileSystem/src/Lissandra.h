@@ -38,6 +38,44 @@
 
 #include <sys/types.h>
 #include <signal.h>
+#include "commons/bitarray.h"
+
+#include <sys/types.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <sys/stat.h>
+
+#include "commons/txt.h"
+#include "commons/string.h"
+#include <signal.h>
+#include "commons/collections/list.h"
+#include <math.h>
+#include <time.h>
+#include <ftw.h>
+#include <dirent.h>
+
+
+
+char * carpetaMetadata;
+char * carpetaTables;
+char * carpetaBloques;
+char * metadataBin;
+char * bitmapBin;
+
+pthread_t hiloCompactador;
+
+
+
+int tamanioBloque;
+int cantidadBloques;
+
+t_bitarray* unBitarray;
+
+pthread_mutex_t mutex_bloques; //= PTHREAD_MUTEX_INITIALIZER
+pthread_mutex_t mutex_bitarray;
 
 
 t_log * logMemTable;
@@ -142,7 +180,7 @@ void agregarListaRegistros(t_list * lista,t_list * listaAgregar);
 registro * obtenerRegistro(t_list * lista, int posicionLista);
 void agregarUnRegistroMemTable(query * unaQuery, int flagConsola);
 void liberarMemTable(t_dictionary ** memTable);
-int obtenerTamanioRegistrosDeUnaTabla(t_list * registros);
+int obtenerTamanioRegistrosDeUnaLista(t_list * registros);
 /*
  * Para casteos query -> registro
  */
@@ -207,6 +245,13 @@ void reenviarConfig();
 void terminarHilo(pthread_t * unHilo);
 
 void levantarMemTable();
+char * obtenerRegistrosArchivo(char * ruta);
+void borrarBloques(char * rutaArchivo);
+char * castearRegistrosChar(int tamanioNecesario,t_list * listaRegistros);
+int obtenerCantidadBloques(int tamanio);
+int  buscarPrimerBloqueLibre();
+char * castearBloquesChar(int lista_bloques[]);
+void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[], char * listaRegistros);
 
 
 
