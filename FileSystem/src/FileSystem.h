@@ -57,6 +57,7 @@ struct stat estado = {0};
 t_log * fileSystemLog;
 
 pthread_t hiloDump;
+pthread_t hiloCompactador;
 
 char * carpetaMetadata;
 char * carpetaTables;
@@ -167,5 +168,8 @@ int cantidadTablas();
 char * obtenerMetadaTabla(char * rutaTabla);
 char * obtenerMetadataTablas();
 char * obtenerNombre(char * ruta);
+
+void compactar(char* nombreTabla);
+void renombrarArchivosTemporales(char* rutaDirectorioTabla);
 
 #endif /* FILESYSTEM_H_ */

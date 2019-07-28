@@ -313,6 +313,9 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola)
 		crearMetadataTabla(directorioTabla,queryCreate,flagConsola);
 		crearParticonesTabla(directorioTabla,queryCreate,flagConsola);
 
+
+		hiloCompactador = crearHilo(compactar,queryCreate->tabla);
+
 		//Finalmente -> Crear un hilo detacheable que se encargue de la compactacion de esta tabla cada x tiempo
 		loggearTablaCreadaOK(fileSystemLog,queryCreate,flagConsola,1);
 		free(directorioTabla);
@@ -1065,4 +1068,70 @@ char * obtenerNombre(char * ruta)
 	}
 	return NULL;
 }
+
+void compactar(char* nombreTabla){
+	char * metadataTabla = malloc(strlen(carpetaTables)+ strlen(nombreTabla) + strlen("/Metadata") + 1);
+	strcpy(metadataTabla,carpetaTables);
+	strcat(metadataTabla,nombreTabla);
+	strcat(metadataTabla,"/Metadata");
+
+	t_config * metadata;
+	metadata = config_create(metadataTabla);
+	int64_t compactationTime=config_get_double_value(metadata,"COMPACTION_TIME");
+	config_destroy(metadata);
+
+
+	free(metadataTabla);
+
+
+
+	char * directorioTabla = malloc(strlen(carpetaTables) + strlen(nombreTabla) + 2);
+	strcpy(directorioTabla,carpetaTables);
+	strcat(directorioTabla,nombreTabla);
+	strcat(directorioTabla,"/");
+
+	while(1)
+		{
+
+
+		usleep(compactationTime*1000);
+
+		renombrarArchivosTemporales(directorioTabla);
+
+		/*
+		 queda para hacer:
+		obtenerRegistrosActualizados() que compara por los tmpc contra las particiones
+		generarNuevasParticiones() hay que liberar los bloques de los tmpc y los bin viejos, actualizar bitmap,
+									borrar esos archivos y escribir los registrosActualizados en los bloques, considerando
+									segun la key a que particion se escribe cada registro(usar el resto de dividir por cantParticiones)
+
+		*/
+		}
+}
+
+void renombrarArchivosTemporales(char* rutaDirectorioTabla){
+
+		int i = 0;
+		int j = 0;
+		char * old= malloc(strlen(rutaDirectorioTabla)+strlen("999999.tmp")+1);
+		char * new= malloc(strlen(rutaDirectorioTabla)+strlen("999999.tmpc")+1);
+
+
+		while(j!=-1)
+		{
+			strcpy(old,rutaDirectorioTabla);
+			strcat(old,string_itoa(i));
+			strcat(old,".tmp");
+			strcpy(new,rutaDirectorioTabla);
+			strcat(new,string_itoa(i));
+			strcat(new,".tmpc");
+			j=rename(old,new);
+			i++;
+		}
+		free(old);
+		free(new);
+
+
+}
+
 
