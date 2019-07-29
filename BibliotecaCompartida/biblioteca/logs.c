@@ -58,6 +58,7 @@ void loggearErrorEnLog(t_log * unLog,char* mensaje)
 	log_error(unLog, mensaje);
 	log_error(unLog, "Error de errno: %s", strerror(errno));
 }
+//
 
 
 void loggearInfo3Mensajes(char * mensajePrincipal, char * mensajeAConcatenar, char * mensajeFinal)

@@ -77,6 +77,14 @@ t_bitarray* unBitarray;
 pthread_mutex_t mutex_bloques; //= PTHREAD_MUTEX_INITIALIZER
 pthread_mutex_t mutex_bitarray;
 
+/*
+ * Con mutex_compactacion se bloquean:
+ * SELECT | DROP => sobre una tabla en particulas
+ * SELECT: Para que no consulte un archivo recien creado que no tiene el formato adecuado (Sin bloques ni tamanio)
+ * DROP: Para que no se pueda borrar un archivo que recien se creo en el compactador
+ */
+pthread_mutex_t mutex_select;
+pthread_mutex_t mutex_drop;
 
 t_log * logMemTable;
 

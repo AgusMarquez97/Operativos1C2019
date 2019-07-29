@@ -36,7 +36,7 @@ void levantarConfig()
 	retardo = obtenerInt("RETARDO"); //en milisegundos  -> puede modificarse (ver cuando y de que forma)
 	dumping = obtenerInt("TIEMPO_DUMP"); //en milisegundos  -> puede modificarse (ver cuando y de que forma)
 
-	puntoMontaje = strdup(eliminarComillas(obtenerString("PUNTO_MONTAJE")));
+	puntoMontaje = eliminarComillas(obtenerString("PUNTO_MONTAJE"));
 
 	hiloMonintor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
 	//Aca voy a querer agregar el hilo a la lista

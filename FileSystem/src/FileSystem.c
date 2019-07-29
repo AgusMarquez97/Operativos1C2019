@@ -167,6 +167,8 @@ void inicializarSemaforos()
 {
 	pthread_mutex_init(&mutex_bloques, NULL);
 	pthread_mutex_init(&mutex_bitarray, NULL);
+	pthread_mutex_init(&mutex_select, NULL);
+	pthread_mutex_init(&mutex_drop, NULL);
 }
 
 void ejecutarDumping()
@@ -316,7 +318,6 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola)
 
 		hiloCompactador = crearHilo(compactar,queryCreate);
 
-		//Finalmente -> Crear un hilo detacheable que se encargue de la compactacion de esta tabla cada x tiempo
 		loggearTablaCreadaOK(fileSystemLog,queryCreate,flagConsola,1);
 		free(directorioTabla);
 
@@ -804,11 +805,14 @@ t_list * leerTabla(char * tabla, int32_t key)
             	else
             	{
 
-            	char * registros = obtenerRegistrosArchivo(rutaAbs);
-            	t_list * registrosAux = obtenerRegistros(registros, key);
-            	list_add_all(listaRegistros,registrosAux);
-            	list_destroy(registrosAux);
-            	free(registros);
+            		pthread_mutex_lock(&mutex_select);
+					char * registros = obtenerRegistrosArchivo(rutaAbs);
+					pthread_mutex_unlock(&mutex_select);
+					t_list * registrosAux = obtenerRegistros(registros, key);
+					list_add_all(listaRegistros,registrosAux);
+					list_destroy(registrosAux);
+					free(registros);
+
             	}
             	free(rutaAbs);
 
@@ -886,7 +890,12 @@ int eliminarDirectorio(char * directorio)
                     	}
                     	else
                     	{
+
+                    		pthread_mutex_lock(&mutex_drop);
                     		borrarBloques(rutaAbs);
+                    		pthread_mutex_unlock(&mutex_drop);
+
+
                     	}
                     	free(rutaAbs);
 

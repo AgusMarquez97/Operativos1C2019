@@ -155,6 +155,8 @@ int parsear(char * string_query,query **struct_query)
 		(valor_solo_numerico(query_split[4]))
 	     )
 	  {
+		  if(atoi(query_split[3]) > 0)
+		  {
 		//printf("El create es correcto\n");
 		string_to_upper(query_split[1]);
 		((*struct_query))->requestType = CREATE;
@@ -166,6 +168,12 @@ int parsear(char * string_query,query **struct_query)
 
 		liberarCadenaSplit(query_split);
 		return CREATE;
+		  }
+		  else
+		  {
+			  liberarCadenaSplit(query_split);
+			  return ERROR;
+		  }
 
 	  } else {
 		   liberarCadenaSplit(query_split);

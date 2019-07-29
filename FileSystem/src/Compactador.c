@@ -10,38 +10,50 @@ void compactar(query * queryCreate){
 	//liberarQueryCreateLevantada(queryCreate);
 
 	char * directorioTabla = malloc(strlen(carpetaTables) + strlen(queryCreate->tabla) + 2);
-	strcpy(directorioTabla,carpetaTables);
-	strcat(directorioTabla,nombreTabla);
-	strcat(directorioTabla,"/");
+
+	struct stat estadoCompactacion = {0};
 
 	while(1)
 		{
+
+		strcpy(directorioTabla,carpetaTables);
+		strcat(directorioTabla,nombreTabla);
+
 		t_list * registrosBinTmpc;
 
 		usleep(tiempoCompactacion*1000);
 
-		renombrarArchivosTemporales(directorioTabla);
+		pthread_mutex_lock(&mutex_drop);
+			if(stat(directorioTabla,&estadoCompactacion) != -1)
+			{
+			strcat(directorioTabla,"/");
+			renombrarArchivosTemporales(directorioTabla);
+			registrosBinTmpc = obtenerRegistrosBinTmpc(directorioTabla);
+			t_list * registrosCompactados = obtenerListaCompactada(registrosBinTmpc);
+			compactarBinarios(directorioTabla,registrosCompactados,cantidadParticiones); // Vuelve a crear los bin
+			/*
+			void liberarCompactados(registro * unReg)
+			{
+				bool condicionReg(registro * registro)
+				{
+					return registro == unReg;
+				}
+				if(!list_any_satisfy(registrosBinTmpc,(void*)condicionReg))
+				{
+					free(unReg);
+				}
+				else
+				{
 
-		registrosBinTmpc = obtenerRegistrosBinTmpc(directorioTabla);
+				}
+			}
+			list_iterate(registrosCompactados,(void*)liberarCompactados);
+			*/
+			list_destroy(registrosBinTmpc);
+			list_destroy(registrosCompactados);
+			}
+		pthread_mutex_unlock(&mutex_drop);
 
-		t_list * registrosCompactados = obtenerListaCompactada(registrosBinTmpc);
-
-		compactarBinarios(directorioTabla,registrosCompactados,cantidadParticiones); // Vuelve a crear los bin
-
-
-
-		/*
-		 queda para hacer:
-
-		obtenerRegistrosActualizados() que compara por los tmpc contra las particiones
-		generarNuevasParticiones() hay que liberar los bloques de los tmpc y los bin viejos, actualizar bitmap,
-									borrar esos archivos y escribir los registrosActualizados en los bloques, considerando
-									segun la key a que particion se escribe cada registro(usar el resto de dividir por cantParticiones)
-
-		*/
-
-		list_destroy(registrosBinTmpc);
-		list_destroy(registrosCompactados);
 		}
 }
 
@@ -52,21 +64,23 @@ void renombrarArchivosTemporales(char* rutaDirectorioTabla){
 		char * old= malloc(strlen(rutaDirectorioTabla)+strlen("999999.tmp")+1);
 		char * new= malloc(strlen(rutaDirectorioTabla)+strlen("999999.tmpc")+1);
 
+		char * nro = malloc(40);
 
 		while(j!=-1)
 		{
+			sprintf(nro,"%d",i);
 			strcpy(old,rutaDirectorioTabla);
-			strcat(old,string_itoa(i));
+			strcat(old,nro);
 			strcat(old,".tmp");
 			strcpy(new,rutaDirectorioTabla);
-			strcat(new,string_itoa(i));
+			strcat(new,nro);
 			strcat(new,".tmpc");
 			j=rename(old,new);
 			i++;
 		}
 		free(old);
 		free(new);
-
+		free(nro);
 }
 
 t_list * obtenerRegistrosBinTmpc(char * tabla) //Patea .tmpc & .bin
@@ -117,8 +131,6 @@ t_list* obtenerRegistrosCompactacion(char * registros)
 		while(aux[i]!=NULL)
 		{
 			if(strcmp(aux[i],"")){
-
-
 		char ** registro =string_split(aux[i],";");
 
 		registroAux=malloc(sizeof(int32_t)+sizeof(int64_t)+1+strlen(registro[1]));
@@ -144,6 +156,8 @@ t_list * obtenerListaCompactada(t_list * listaInicial)
 			t_list * registrosCompactados = list_create();
 			t_list * listaFiltrada;
 			registro * registroFinal,* registroDummy;
+
+			int i = 0;
 
 			void compactarRegistros(registro * unRegistro)
 			{
@@ -184,7 +198,8 @@ t_list * obtenerListaCompactada(t_list * listaInicial)
 					{
 						list_add(registrosCompactados,unRegistro);
 					}
-				list_destroy(listaFiltrada); //Validar!
+				list_destroy(listaFiltrada);
+				i++;
 				}
 			}
 
@@ -232,11 +247,15 @@ void compactarBinarios(char * tabla, t_list * listaRegistros, int cantidadPartic
 
 	limpiarBloquesBitmap(tabla); // Limpia los archivos .bin y .tmpc => Libera sus bloques y borra los archivos
 
+	pthread_mutex_lock(&mutex_select);
+
+	char * nro = malloc(40);
+	rutaBinario = malloc(strlen(tabla) + strlen("999999999.bin") + 1);
 	for(int i = 0;i < cantidadParticiones;i++)
 	{
-		rutaBinario = malloc(strlen(tabla) + strlen("999999999.bin") + 1);
+		sprintf(nro,"%d",i);
 		strcpy(rutaBinario,tabla);
-		strcat(rutaBinario,string_itoa(i));
+		strcat(rutaBinario,nro);
 		strcat(rutaBinario,".bin");
 		temp =  txt_open_for_append(rutaBinario);
 		txt_close_file(temp);
@@ -244,9 +263,9 @@ void compactarBinarios(char * tabla, t_list * listaRegistros, int cantidadPartic
 
 	for(int i = 0;i < cantidadParticiones;i++)
 	{
-		rutaBinario = malloc(strlen(tabla) + strlen("999999999.bin") + 1);
+		sprintf(nro,"%d",i);
 		strcpy(rutaBinario,tabla);
-		strcat(rutaBinario,string_itoa(i));
+		strcat(rutaBinario,nro);
 		strcat(rutaBinario,".bin");
 		bool condicionBinario(registro * unRegistro)
 		{
@@ -275,6 +294,10 @@ void compactarBinarios(char * tabla, t_list * listaRegistros, int cantidadPartic
 		}
 
 	}
+
+	free(nro);
+	free(rutaBinario);
+	pthread_mutex_unlock(&mutex_select);
 }
 
 
@@ -307,7 +330,6 @@ void asignarBloquesABinarios(int tamanioNecesario, char * binario,char * listaRe
 
 	escribirBloques(tamanioNecesario - (cantBloques-1)*tamanioBloque,cantBloques,listaBloques,listaRegistros);
 }
-
 void liberarQueryCreateLevantada(query * queryCreate)
 {
 	if(queryCreate)
