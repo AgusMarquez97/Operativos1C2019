@@ -140,7 +140,8 @@ void iniciarLFS();
 void consola();
 void iniciarServidor();
 void loggearInfoServidor(char * IP, char * Puerto);
-
+void rutinaServidor(int socketCliente);
+void responderQuery(int socketCliente, argumentosQuery * args);
 
 /*
  * Funcion que se encargará de procesar la query mediante el hilo creado on demand

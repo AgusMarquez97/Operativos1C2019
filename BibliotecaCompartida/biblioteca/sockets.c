@@ -292,7 +292,7 @@ int aceptarConexion(int socketServidor)
 	    if(socketCliente == -1)
 	    {
 	    	loggearError("Fallo al aceptar conexion ");
-	        exit(1);
+	    	return -1;
 	    }
 
 	    loggearInfo("\n-----------------Se acepta al cliente: ------------------- \n\n");

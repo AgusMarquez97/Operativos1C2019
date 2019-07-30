@@ -86,6 +86,10 @@ void leerArchivoConfiguracion(){
 
 		loggearArchivoDeConfiguracion();
 
+		memoriaPrincipal = malloc(configuracionMemoria->TAM_MEM);
+
+
+
 
 }
 
@@ -217,7 +221,7 @@ void levantarServidorMemoria(char * servidorIP, char* servidorPuerto)
 
 void procesarQuery(query* query)
 {
-	switch(query>requestType)
+	switch(query->requestType)
 	{
 	case SELECT:
 		loggearSelect(query->tabla,query->key);
@@ -460,3 +464,110 @@ char* getCleanString(char* dirtyString){
 		dirtyString[i-1]='\0';
 		return dirtyString;
 }
+
+
+
+
+
+
+
+/*
+ * Posibles querys:
+ *
+ * SELECT -> BUSCA EN LA TABLA DE SEGMENTOS -> SI NO LA TIENE VA DERECHO A FS Y ESPERA RTA
+ * -> POR ULTIMO RETORNA Y ALMACENA DICHA RTA
+ *
+ * INSERT -> VALIDA SOLO MEMORIA -> FS NO HACE NADA
+ * CREATE -> DERECHO AL FS -> NO HACE NADA EN MEMORIA -> PASAMANOS
+ * DROP -> LIBERA EL SEGMENTO + TABLA DE PAG ASOCIADAS -> ENVIA A FS PARA QUE REPLIQUE
+ * DESCRIBE -> PIDE A FS Y MUESTRA POR PANTALLA -> PASAMANOS
+ * JOURNAL -> VACIA LA MEMORIA PRINCIPAL
+ *
+ * CONSIDERACIONES
+ *
+ * LA INFORMACION DE LOS REGISTROS EN SI NO DEBERIA ESTAR EN EL DICCIONARIO DE SEGMENTOS NI EN UN LISTA DE PAGINAS
+ * ASI COMO LA INFO DE FS ESTA EN BLOQUES, AQUI LA INFO ESTA CONTENIDA EN LA MEMORIA PRINCIPAL. DICHA MEMORIA DEBERIA SER
+ * UN CHAR[TAM_MEMORIA] O ALGUNA VARIANTE QUE RESPETE QUE LA INFO ESTE CONTIGUA. ESTE CHAR HAY QUE DIVIDIRLO EN PAGINAS
+ * DE ALGUNA FORMA. CADA PAGINA DEBE SER IDENTIFICADA
+ *
+ * -> CUANDO UNA MEMORIA SE LLENA HAY QUE EJECUTAR EL JOURNALING
+ * EL JOURNALING CONSISTE EN ITERAR EL DICCIONARIO BUSCANDO PAGINAS MODIFICADAS PARA ENVIAR A FS.
+ * UNA VEZ ENVIADAS SE LIBERA LA MEMORIA DE MEMORIA
+ *
+ * PENSARLO EN PRINCIPIO COMO 1 SOLA MEMORIA => ES IMPORTANTE DEFINIR QUE UNA NUEVA MEMORIA ES UN NUEVO PROCESO, DICHO
+ * PROCESO NACE CON FORK(). LAS MEMORIAS CON GOSSIPING NO ESTARAN COMUNICADAS COMO HILOS NI COMPARTIRAN MEMORIA. ESTAS SE
+ * COMUNICARAN MEDIANTE SOCKETS. => VER ISSUE https://github.com/sisoputnfrba/foro/issues/1311
+ */
+
+/*-------------------------------- IMPORTANTE DEF DE MEMORIA -------------------------------------
+ *
+ * LA MEMORIA TENDRA UN TAMANIO FIJO DEFINIDO EN EL ARCHIVO DE CONFIG. DICHA MEMORIA SERA UN GRAN CHAR *
+ * QUE TENDRA UN MALLOC PARA RESERVAR TODA SU MEMORIA. EN DICHA MEMORIA ESTARAN LOS REGISTROS PER SE.
+ * LOS REGISTROS SE COPIARAN A MEMORIA CON LA FUNCION MEMCPY. LA MEMORIA PRINCIPAL ESTARA DIVIDIDA EN
+ * MARCOS
+ *
+ * PROBLEMA PRINCIPAL -> TAMAÑO DE MARCO:
+ *
+ * ISSUE: https://github.com/sisoputnfrba/foro/issues/1447
+ * EL TAMANIO DEL MARCO = TAM_KEY + TAM_TIMESTAMP + MAX_TAM_VALUE (FS) => PENSAR A LA MEMORIA YA DIVIDIDA POR ESTOS MARCOS
+ *  *
+ * ENTONCES: LOS MARCOS TENDRAN FRAGMENTACION INTERNA. HAY QUE VALIDAR LA FORMA EN ESCRIBIR EN DICHOS MARCOS,
+ * LO IDEAL Y BUSCADO ES QUE LA FRAGMENTACION ESTE SOLO EN EL ULTIMO MARCO.
+ */
+
+
+/*
+ * CASO EN QUE EL BIT DE MODIFICADO SERA 0:
+ * " Si yo te hago select desde el kernel o la memoria, y la memoria no tiene la clave que le pedí,
+ * la va ir a buscar, asignarla en donde tenga que hacerlo y va a tener el bit 0 porque no hubo modificación "
+ *
+ */
+
+
+
+/*
+ * LA MAYOR COMPLEJIDAD PARECERIA ESTAR EN LOS CRITERIOS DE CONSISTENCIA, EL GOSSIPING Y PODER MANTENER A LAS MEMORIAS
+ * AUN CUANDO 1 MUERA
+ */
+
+
+
+
+// POR HACER:
+
+//Antes que nada => releer el drive parte memoria & leer issues como un campeon
+
+//Terminar bien servidor
+
+//Validar estructuras adm
+
+//Ver como seria el offset de memoria => https://github.com/sisoputnfrba/foro/issues/1246
+
+//Levantar hilo monitor
+
+//Hacer el handshake con FS para poder calcular el tamanio de marco por el max tam del value
+
+//Pensar algoritmo de reemplazo de paginas ->
+//LRU => https://github.com/sisoputnfrba/foro/issues/1174 & https://github.com/sisoputnfrba/foro/issues/1171
+
+//Terminar API
+
+//Definir bien el JOURNALING
+
+//Ver criterios de consistencia
+
+//Hacer pruebas hasta romper el mundo
+
+
+void agregarSegmentoYPaginas(query * queryInsert, int flagConsola); // ver logica del drive
+
+void buscarEnMemoria(query * querySelect, int flagConsola); // tiene que patear la tabla y buscar en mem
+
+void ejecutarJournaling(); //Usar variable global & analizar todos los posibles casos cuando ocurra
+
+
+
+
+
+
+

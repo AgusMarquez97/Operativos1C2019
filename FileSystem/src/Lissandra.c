@@ -17,9 +17,9 @@ void iniciarLFS()
 
 
 
-	fileSystem = crearHilo(gestionarFileSystem,NULL);
-	esperarHilo(fileSystem); // Crea las estructuras administrativas
-	levantarMemTable();
+	//fileSystem = crearHilo(gestionarFileSystem,NULL);
+	//esperarHilo(fileSystem); // Crea las estructuras administrativas
+	//levantarMemTable();
 	hiloConsola = crearHilo(consola,NULL);
 	//hiloServidor = crearHilo(iniciarServidor,NULL);
 
@@ -37,27 +37,27 @@ void levantarConfig()
 	dumping = obtenerInt("TIEMPO_DUMP"); //en milisegundos  -> puede modificarse (ver cuando y de que forma)
 
 	puntoMontaje = eliminarComillas(obtenerString("PUNTO_MONTAJE"));
-
-	hiloMonintor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
-	//Aca voy a querer agregar el hilo a la lista
-
 	eliminarEstructuraConfig();
+	hiloMonintor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
 }
 
 void actualizarConfig()
 {
-	actualizarVariablesGlobales();
-	reenviarConfig();
+	//actualizarVariablesGlobales();
+	//reenviarConfig();
 }
 
 void actualizarVariablesGlobales()
 {
+	loggearInfo("UN CAMBIO JE");
+
 	crearConfig("/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt");
 
 	retardo = obtenerInt("RETARDO");
 	dumping = obtenerInt("TIEMPO_DUMP");
 
 	eliminarEstructuraConfig();
+
 }
 
 void reenviarConfig()
@@ -71,7 +71,7 @@ void reenviarConfig()
 void monitorearConfig()
 {
 
-	const char * pathConfig = "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt";
+	const char * pathConfig = "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones";
 
 	int bytes_leidos;
 	struct inotify_event evento;
@@ -90,15 +90,13 @@ void monitorearConfig()
 	    {
 	        perror("No se pudo crear el monitor");
 	    }
-
+	    int lecturas = 0;
 	    while(1)
 	    {
 
-
-	        bytes_leidos = read(archivo_monitor,&evento,sizeof(struct inotify_event)*10);
-
+	    	if(lecturas == 2) lecturas = 0;
+	        bytes_leidos = read(archivo_monitor,&evento,sizeof(struct inotify_event)*20);
 	        //Bloquea al proceso/hilo hasta que ocurra el evento declarado en el monitor
-
 	        if(bytes_leidos <= 0)
 	        {
 	            perror("Error al leer el archivo monitor..");
@@ -114,79 +112,176 @@ void monitorearConfig()
 
 }
 
-
 void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 {
-			argumentosQuery * args = NULL;
-			query * myQuery = NULL;
-	  	  	int socketRespuesta, maximoSocket;
-	  	  	int datosRecibidos = -1;
-			fd_set sockets, clientes;
+	  	  	int socketRespuesta;
+	  	  	pthread_t hiloAtendedor = 0;
 
 	        int socketServidor = levantarServidor(servidorIP,servidorPuerto);
 
-	        LimpiarSet(&sockets);
-	        LimpiarSet(&clientes);
-
-	        agregarASet(socketServidor,&sockets);
-	        maximoSocket = socketServidor;
-
-	        tiempoEspera esperaMaxima;
-	        definirEsperaServidor(&esperaMaxima,30);
-
-	        while(1) // Loop para escuchar conexiones entrantes
-			{
-	        clientes = sockets;
-	        ejecutarSelect(maximoSocket,&clientes,&esperaMaxima); //pasarle null si no importa
-
-	        for(int i = 0;i<=maximoSocket;i++) //Itero hasta el ultimo socket
+	        while(1)
+	        {
+	        	if((socketRespuesta = aceptarConexion(socketServidor)) != -1)
 	        	{
-	        		if (estaEnSet(i, &clientes)) //1 - Tengo un cliente nuevo que quiere leer!
+	        		loggearNuevaConexion(socketRespuesta);
+
+	        		if((hiloAtendedor = crearHilo(rutinaServidor,(void*)socketRespuesta)) != 0)
 	        		{
-	                    if (i == socketServidor) //1-1 - Ese Cliente es el mismo servidor -> Acepto nuevas conexiones
-	                    {
 
-	                    socketRespuesta = aceptarConexion(socketServidor);
-
-	                    agregarASet(socketRespuesta,&sockets); //añado a set de sockets al nuevo cliente
-
-	                        if (socketRespuesta > maximoSocket) // Trackeo el maximo socket
-	                        {
-	                            maximoSocket = socketRespuesta;
-	                        }
-
-	                    loggearNuevaConexion(socketRespuesta);
-
-	                    }
-	                    else
-	                    {
-	                    	datosRecibidos = recibirQuery(i,&myQuery);
-	                    	if(datosRecibidos==0)
-	                    	{
-	                    		close(i);
-	                    		EliminarDeSet(i,&sockets);
-	                    		loggearMemTable(memTable);
-	                    	}else  {
-
-	                    		//crearHiloDetachable(procesarQuery,myQuery);
-	                    		args = malloc(sizeof(argumentosQuery));
-	                    		args->unaQuery = malloc(sizeof(query)); // Ver de eliminar
-	                    		args->unaQuery = myQuery;
-	                    		args->flag = 0;
-	                    		pthread_t h1 = crearHilo(procesarQuery,(void*)args);
-	                    		esperarHilo(h1);
-	                    		free(args);
-	                    		//free(myQuery)-> rompe como arbolito de navidad
-	                    		//loggearDatosRecibidos(i,datosRecibidos);
-	                    	}
-
-
-	                    }
+	        		}
+	        		else
+	        		{
+	        		loggearError("Error al crear un hilo");
 	        		}
 	        	}
-			}
+	        }
 }
 
+void rutinaServidor(int socketCliente)
+{
+	argumentosQuery * args = NULL;
+	query * myQuery = NULL;
+	int datosRecibidos = -1;
+
+	while(datosRecibidos!=0)
+	{
+		datosRecibidos = recibirQuery(socketCliente,&myQuery);
+
+		if(datosRecibidos>0)
+		{
+			if(myQuery)
+			{
+		args = malloc(sizeof(argumentosQuery));
+
+		args->unaQuery = malloc(sizeof(query)); // Ver de eliminar
+		args->unaQuery = myQuery;
+		args->flag = 0;
+		if(args->unaQuery->requestType == INSERT)
+		{
+			procesarQuery(args); // Se procesa la query sin necesidad de notificar el resultado -> JOURNALING !
+		}
+		else
+		{
+			responderQuery(socketCliente,args); //Se envia una respuesta a memoria
+		}
+
+		free(args);
+		free(args->unaQuery);
+			}
+		}
+
+	}
+
+	close(socketCliente);
+
+}
+
+
+void responderQuery(int socketCliente, argumentosQuery * args)
+{
+	query * queryDescribe;
+	query * querySelect;
+	registro * selectAuxMT;
+	registro * selectAuxFS;
+	int retornoCreate;
+	char * cadenaDescribe;
+	switch(args->unaQuery->requestType)
+				{
+				case DESCRIBE:
+						cadenaDescribe = rutinaFileSystemDescribe(args->unaQuery->tabla);
+						if(cadenaDescribe != NULL)
+						{
+						loggearInfo(cadenaDescribe);
+						}else
+						{
+							if(args->unaQuery->tabla == NULL)
+							{
+						char * mensajeErrorTabla = strdup("Error, no hay tablas en el sistema");
+						loggearInfo(mensajeErrorTabla);
+							}
+							else
+							{
+						char * mensajeErrorTablas = strdup("Error, Tabla no existente en el sistema");
+						loggearInfo(mensajeErrorTablas);
+							}
+						}
+						queryDescribe = malloc(sizeof(query));
+						queryDescribe->requestType = DESCRIBE;
+						queryDescribe->tabla = strdup(cadenaDescribe);
+						free(cadenaDescribe);
+						enviarQuery(socketCliente,queryDescribe);
+						break;
+					case SELECT:
+						selectAuxMT = procesarSelectMemTable(args->unaQuery);
+						selectAuxFS = rutinaFileSystemSelect(args->unaQuery->tabla, args->unaQuery->key);
+
+						querySelect = malloc(sizeof(query));
+						querySelect->requestType = SELECT;
+						querySelect->key = args->unaQuery->key;
+						querySelect->timestamp = -1;
+
+						if(selectAuxFS != NULL)
+						{
+							if(selectAuxMT != NULL)
+							{
+								if(selectAuxMT->timestamp > selectAuxFS->timestamp)
+								{
+									querySelect->value = strdup(selectAuxMT->value);
+									loggearRegistroEncontrado(args->unaQuery->key,selectAuxMT->value,0);
+								}else
+								{
+									querySelect->value = strdup(selectAuxFS->value);
+								loggearRegistroEncontrado(args->unaQuery->key,selectAuxFS->value,0);
+								free(selectAuxFS);
+								}
+							}
+							else
+							{
+								querySelect->value = strdup(selectAuxFS->value);
+								loggearRegistroEncontrado(args->unaQuery->key,selectAuxFS->value,0);
+								free(selectAuxFS);
+							}
+						}else if(selectAuxMT != NULL)
+						{
+							querySelect->value = strdup(selectAuxMT->value);
+							loggearRegistroEncontrado(args->unaQuery->key,selectAuxMT->value,0);
+						}else
+						{
+							querySelect->value = NULL;
+							loggearRegistroNoEncontrado(args->unaQuery->key,0);
+						}
+						enviarQuery(socketCliente,querySelect);
+						break;
+
+					case CREATE:
+						retornoCreate = rutinaFileSystemCreate(args);
+						if(retornoCreate != -1)
+						{
+						procesarCreate(args->unaQuery,0);
+						enviarRequest(socketCliente,1);
+						}
+						else
+						{
+							loggearErrorTablaExistente(args->unaQuery,0);
+							enviarRequest(socketCliente,0);
+						}
+						break;
+					case DROP:
+							if(rutinaFileSystemDrop(args->unaQuery->tabla) == 1)
+							{
+								loggearTablaDropeadaOK(args->unaQuery->tabla,0);
+								dictionary_remove(memTable,args->unaQuery->tabla);
+								enviarRequest(socketCliente,1);
+							}
+							else{
+							loggearErrorDrop(args->unaQuery->tabla,0);
+							enviarRequest(socketCliente,0);
+							}
+							break;
+					default:
+						break;
+				}
+}
 
 void consola()
 {

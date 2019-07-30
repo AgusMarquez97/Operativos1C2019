@@ -17,6 +17,11 @@
 #include <biblioteca/levantarConfig.h>
 #include <biblioteca/utils.h>
 
+#include <commons/collections/list.h>
+#include <commons/collections/node.h>
+#include <commons/collections/queue.h>
+#include <commons/collections/dictionary.h>
+
 #include <commons/log.h>
 #include <commons/string.h>
 #include <commons/config.h>
@@ -29,6 +34,7 @@
 
 #define PATHCONFIG "configuraciones/memoria.cfg"
 
+//	---------- DEFINCION DE ESTRUCTURAS DEL SISTEMA: VER ISSUE https://github.com/sisoputnfrba/foro/issues/1319
 
 typedef struct {
 	int32_t PUERTO;
@@ -46,6 +52,28 @@ typedef struct {
 
 // - Puntero para la lectura de los campos del archivo de configuracion
 configuracion *configuracionMemoria;
+
+t_dictionary * tablaSegmentos;
+
+// x cada segmento habra una TP:
+
+typedef struct {
+	int nroPagina; //Nro que referencia a la pagina per se
+	int nroMarco; //Nro de marco que contiene la info en MP
+	int flagModificado; // Usado para validar las paginas mas actuales / luego de insert !
+} tablaPaginas;
+
+
+
+//Concepto de pagina! -> dichas paginas residiran en memoria! -> se hara memcpy de esto en memoria
+typedef struct{
+	int64_t timestamp;
+	char * value;
+	int32_t key;
+} pagina;
+
+char * memoriaPrincipal; //Memoria con tamanio fijo
+
 
 // - Base de la memoria
 char* g_BaseMemoria;
