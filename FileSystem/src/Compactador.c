@@ -49,8 +49,9 @@ void compactar(query * queryCreate){
 			}
 			list_iterate(registrosCompactados,(void*)liberarCompactados);
 			*/
-			list_destroy(registrosBinTmpc);
 			list_destroy(registrosCompactados);
+			list_destroy_and_destroy_elements(registrosBinTmpc,free);
+
 			}
 		pthread_mutex_unlock(&mutex_drop);
 
@@ -277,11 +278,12 @@ void compactarBinarios(char * tabla, t_list * listaRegistros, int cantidadPartic
 		tamNecesario = obtenerTamanioRegistrosDeUnaLista(listaBinario);
 		if(tamNecesario!=0)
 		{
-		registros = castearRegistrosChar(tamNecesario,listaBinario);
-		asignarBloquesABinarios(tamNecesario,rutaBinario,registros);
-		list_destroy(listaBinario);
-		free(registros);
-		}else {
+			registros = castearRegistrosChar(tamNecesario,listaBinario);
+			asignarBloquesABinarios(tamNecesario,rutaBinario,registros);
+
+			free(registros);
+		}else
+		{
 			char * aux = malloc(sizeof(int)*2);
 			char * bloque = asignarUnBloqueBin();
 			sprintf(aux,"%d",0);
@@ -292,7 +294,7 @@ void compactarBinarios(char * tabla, t_list * listaRegistros, int cantidadPartic
 			free(aux);
 			free(bloque);
 		}
-
+		list_destroy(listaBinario);
 	}
 
 	free(nro);
