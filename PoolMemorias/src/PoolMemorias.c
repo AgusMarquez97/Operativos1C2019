@@ -12,6 +12,7 @@
 
 int main(void) {
 	listaSegmentos = list_create();
+	historialPaginas = list_create();
 	remove("Lissandra.log");
 	crearConfig(PATHCONFIG);
 	configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
@@ -29,8 +30,6 @@ int main(void) {
 	pthread_join(hilo_consola,NULL);
 
 	free(configuracionMemoria);
-
-
 
 }
 
@@ -462,6 +461,7 @@ int journal()
 	}
 
 	dictionary_clean_and_destroy_elements(tablaSegmentos,free);
+	list_clean(historialPaginas);
 	free(memoriaPrincipal);
 	return 1;
 }
@@ -487,6 +487,8 @@ void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, in
 	paginaActual->nroMarco = obtenerMarcoLibre();
 	paginaActual->flagModificado = flagModificado;
 
+	agregarAHistorialPags(paginaActual);
+
 	registro * regAgregar = malloc(sizeof(registro));
 	regAgregar->key = key;
 	regAgregar->value = value;
@@ -501,6 +503,22 @@ void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, in
 
 	dictionary_put(tablaSegmentos,tabla,paginas);
 }
+
+void agregarAHistorialPags(pagina * unaPagina)
+{
+	registro * reg = leerMarco(unaPagina->nroMarco);
+	bool yaExiste(pagina * paginaCargada)
+			{
+				registro * unReg = leerMarco(paginaCargada->nroMarco);
+				return reg == unReg;
+
+			}
+
+	list_remove_by_condition(historialPaginas,(void *)yaExiste);
+	list_add(historialPaginas,unaPagina);
+
+}
+
 
 int obtenerMarcoLibre()
 {
@@ -546,7 +564,19 @@ bool estaLibre(int nroMarco)
 
 int ejecutarLRU()
 {
-	return 1;
+	pagina * paginaAReemplazar;
+	for(int i = 0; i< list_size(historialPaginas);i++)
+	{
+		paginaAReemplazar = list_get(historialPaginas,i);
+		if(paginaAReemplazar->flagModificado == 0)
+		{
+			list_remove(historialPaginas,i);
+			return paginaAReemplazar->nroMarco;
+		}
+
+	}
+
+	return -1;	//Si retorna -1 quiere decir que la MEMORIA ESTA FULL
 }
 
 
@@ -985,7 +1015,7 @@ sem_init(semaforoMemoria,0,cantidadMarcos);
 
 //Hacer el handshake con FS para poder calcular el tamanio de marco por el max tam del value => EN TESTING
 
-//Pensar algoritmo de reemplazo de paginas -> PENDIENTE
+//Pensar algoritmo de reemplazo de paginas -> EN TESTING
 //LRU => https://github.com/sisoputnfrba/foro/issues/1174 & https://github.com/sisoputnfrba/foro/issues/1171
 
 //Terminar API => EN TESTING

@@ -99,6 +99,8 @@ typedef struct{
 t_bitarray * marcosMemoria;
 
 t_list * listaSegmentos;
+t_list * historialPaginas;	 // contiene las paginas cargadas en memoria principal, las ultimas de la lista son las que
+						//se usaron más recientemente
 
 void consola();
 void leerArchivoConfiguracion();
@@ -157,7 +159,7 @@ void ejecutarRutinaJournal();
 
 void enviarQuerysFS(char * tabla, t_list * registros);
 
-
+void agregarAHistorialPags(pagina * unaPagina);
 
 
 #endif /* POOLMEMORIAS_H_ */
