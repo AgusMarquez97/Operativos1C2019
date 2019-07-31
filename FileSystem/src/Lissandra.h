@@ -36,7 +36,7 @@
 
 #include <sys/inotify.h>
 
-#include <sys/types.h>
+
 #include <signal.h>
 #include "commons/bitarray.h"
 
@@ -58,6 +58,8 @@
 #include <dirent.h>
 
 
+char * Puerto;
+char * IP;
 
 char * carpetaMetadata;
 char * carpetaTables;
@@ -262,6 +264,9 @@ int  buscarPrimerBloqueLibre();
 char * castearBloquesChar(int lista_bloques[]);
 void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[], char * listaRegistros);
 
+
+//Envia el tam max del value a memoria
+void handshake();
 
 
 #endif /* LISSANDRA_H_ */

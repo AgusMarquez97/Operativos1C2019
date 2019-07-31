@@ -21,6 +21,7 @@
 #include <commons/collections/node.h>
 #include <commons/collections/queue.h>
 #include <commons/collections/dictionary.h>
+#include "commons/bitarray.h"
 
 #include <commons/log.h>
 #include <commons/string.h>
@@ -31,8 +32,14 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <string.h>
+#include <math.h>
+#include <semaphore.h>
+
 
 #define PATHCONFIG "configuraciones/memoria.cfg"
+
+pthread_mutex_t mutex_journal;
+sem_t *  semaforoMemoria;
 
 //	---------- DEFINCION DE ESTRUCTURAS DEL SISTEMA: VER ISSUE https://github.com/sisoputnfrba/foro/issues/1319
 
@@ -61,7 +68,7 @@ typedef struct {
 	int nroPagina; //Nro que referencia a la pagina per se
 	int nroMarco; //Nro de marco que contiene la info en MP
 	int flagModificado; // Usado para validar las paginas mas actuales / luego de insert !
-} tablaPaginas;
+} pagina;
 
 
 
@@ -70,32 +77,44 @@ typedef struct{
 	int64_t timestamp;
 	char * value;
 	int32_t key;
-} pagina;
-
-char * memoriaPrincipal; //Memoria con tamanio fijo
-
+} registro;
 
 // - Base de la memoria
-char* g_BaseMemoria;
+char* memoriaPrincipal;
 
-// Tamaño de la memoria
-int g_TamanioMemoria;
+// Tamaño de la memoria & Tamanio de los marcos / paginas
+int tamanioMemoria;
+int tamanioPag;
+int cantidadMarcos;
+
+//Tamanio max del value obtenido en el handshake
+int tamanioValue;
+
+
+typedef struct{
+	query * unaQuery;
+	int flagConsola;
+}argumentosQuery;
+
+t_bitarray * marcosMemoria;
+
+t_list * listaSegmentos;
 
 void consola();
 void leerArchivoConfiguracion();
 void reservarMemoriaPrincipal();
 
 void conexionKernel();
-void conexionFS();
+int conexionFS();
 void levantarServidorMemoria(char * servidorIP, char* servidorPuerto);
 
-void procesarQuery(query* query);
-void procesarSelect(query* query);
-void procesarInsert(query* query);
-void procesarCreate(query* query);
-void procesarDescribe(query* describeQuery);
-void procesarDrop(query* dropQuery);
-void procesarJournal(query* journalQuery);
+void procesarQuery(argumentosQuery * args);
+int procesarSelect(query* selectQuery, int flagConsola);
+void procesarInsert(query* queryInsert, int flagConsola);
+void procesarCreate(query* queryCreate, int flagConsola);
+void procesarDescribe(query* queryDescribe, int flagConsola);
+void procesarDrop(query* queryDrop, int flagConsola);
+void procesarJournal(query* queryJournal, int flagConsola);
 
 void loggearArchivoDeConfiguracion();
 void loggearInfoServidor(char * IP, char * Puerto);
@@ -103,6 +122,42 @@ void loggearInfoCliente(char * IP, char * Puerto);
 void loggearNuevaConexion(int socket);
 void loggearDatosRecibidos(int socket, int datosRecibidos);
 
+void handshake();
+
 char* getCleanString(char* dirtyString);
+
+void loggearRegistroEncontrado(int key, char * value, int flagConsola);
+void loggearRegistroNoEncontrado(int key, int flagConsola);
+void loggearErrorTablaExistente(query * unaQuery,int flagConsola);
+void loggearTablaCreadaOK(query * unaQuery,int flagConsola);
+void loggearTablaDropeadaOK(char * tabla, int flagConsola);
+void loggearErrorDrop(char * tabla, int flagConsola);
+
+
+void refrescarPagina(char * tabla, int key, char * value, int64_t timestamp);
+
+void levantarMarcos(int cantidadMarcos);
+registro * obtenerRegistro(int nroMarco);
+
+void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, int flagModificado);
+
+bool estaLibre(int nroMarco);
+void escribirMarco(int nroMarco, registro * unReg);
+registro * leerMarco(int nroMarco);
+void liberarMarco(int nroMarco);
+int obtenerMarcoLibre();
+int ejecutarLRU();
+
+void inicializarSemaforos();
+
+void ejecutarJournal(int flagConsola);
+int journal();
+void procesarJournal(query* queryJournal, int flagConsola);
+void ejecutarRutinaJournal();
+
+void enviarQuerysFS(char * tabla, t_list * registros);
+
+
+
 
 #endif /* POOLMEMORIAS_H_ */

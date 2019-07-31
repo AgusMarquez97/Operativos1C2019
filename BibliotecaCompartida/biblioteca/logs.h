@@ -55,5 +55,7 @@ void loggearWarningEnLog(t_log * unLog,char* mensaje);
 
 void loggearInfo3Mensajes(char * mensajePrincipal, char * mensajeAConcatenar, char * mensajeFinal);
 
+void loggearInfoConcatenandoDosMensajes(char* mensaje1, char* mensaje2);
+
 
 #endif /* LOGS_H_ */

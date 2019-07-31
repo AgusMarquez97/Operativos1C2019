@@ -11,36 +11,36 @@
 #include "PoolMemorias.h"
 
 int main(void) {
+	listaSegmentos = list_create();
 	remove("Lissandra.log");
 	crearConfig(PATHCONFIG);
 	configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
 	leerArchivoConfiguracion();
+	handshake();
 	reservarMemoriaPrincipal();
 
-	pthread_t hilo_consola, hilo_conexionKernel, hilo_conexionFS;
+	pthread_t hilo_consola, hilo_conexionKernel;
 
-	//pthread_create(&hilo_conexionFS, NULL, (void*) conexionFS, NULL);
+
 	pthread_create(&hilo_conexionKernel, NULL, (void*) conexionKernel, NULL);
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 
-	pthread_join(hilo_conexionFS,NULL);
 	pthread_join(hilo_conexionKernel,NULL);
 	pthread_join(hilo_consola,NULL);
 
 	free(configuracionMemoria);
 
-	return 1;
+
 
 }
 
 void consola(){
-	printf("Inicializando consola...");
-	sleep(2);
 	system("clear");
 	puts("Bienvenido a la consola de la memoria...");
-	query* query;
+	argumentosQuery * args;
+	query* query = NULL;
+	char* comando;
 	while(1){
-		char* comando = malloc(50);
 		comando = readline(">");
 		if(strncmp(comando,"exit",4) == 0){
 			break;
@@ -51,20 +51,21 @@ void consola(){
 			system("clear");
 		}else{
 			int aux = parsear(comando,&query);
+			args = malloc(sizeof(argumentosQuery));
+			args->unaQuery = query;
+			args->flagConsola = 1;
 			if(aux != -1)
 			{
-				loggearInfo("Query enviada por consola!!");
-				procesarQuery(query);
+				procesarQuery(args);
 			}
 			else
 			{
 		    	printf("Request no valida\n");
 		    }
-			system("clear");
+
 		}
 		free(comando);
 	}
-
 
 	return;
 
@@ -85,50 +86,68 @@ void leerArchivoConfiguracion(){
 		configuracionMemoria->TAM_MEM = obtenerInt("TAM_MEM");
 
 		loggearArchivoDeConfiguracion();
+}
 
-		memoriaPrincipal = malloc(configuracionMemoria->TAM_MEM);
-
-
-
-
+int obtenerCantidadMarcos(int tamanioPagina, int tamanioMemoria)
+{
+	float tam_nec = (float)tamanioMemoria/tamanioPagina;
+	if(tam_nec == (int)tam_nec)
+	return (int)tam_nec;
+	return (int)round(tam_nec + 0.5);
 }
 
 void reservarMemoriaPrincipal(){
 	// Reservamos la memoria
-		g_TamanioMemoria = configuracionMemoria->TAM_MEM;
-		g_BaseMemoria = (char*) malloc(g_TamanioMemoria);
+
+
+		tamanioMemoria = configuracionMemoria->TAM_MEM;
+		memoriaPrincipal = (char*) malloc(tamanioMemoria);
+		tamanioPag = sizeof(int32_t) + sizeof(int64_t) + tamanioValue;
+		cantidadMarcos = obtenerCantidadMarcos(tamanioPag,tamanioMemoria);
+
+		levantarMarcos(cantidadMarcos);
+
 	// Rellenamos con ceros.
-		memset(g_BaseMemoria, '0', g_TamanioMemoria * sizeof(char));
+		memset(memoriaPrincipal, 0, tamanioMemoria * sizeof(char));
 
-	// si no podemos salimos y cerramos el programa.
-		if (g_BaseMemoria == NULL )
-		{
-			loggearInfo("No se pudo reservar la memoria.");
-		}
-		else
-		{
+		char* tammem= malloc(7*sizeof(char));
+		sprintf(tammem,"%d",tamanioMemoria);
+		loggearInfoConcatenandoDosMensajes("MEMORIA RESERVADA. Tamaño de la memoria ", tammem);
+		free(tammem);
 
-			char* tammem= malloc(7*sizeof(char));
-			sprintf(tammem,"%d",g_TamanioMemoria);
-			loggearInfoConcatenandoDosMensajes("MEMORIA RESERVADA. Tamaño de la memoria ", tammem);
-			free(tammem);
-		}
 }
+
+
+void levantarMarcos(int cantidadMarcos)
+{
+	char * bitmap = calloc(1,cantidadMarcos);
+	marcosMemoria = bitarray_create_with_mode(bitmap, cantidadMarcos/8, LSB_FIRST);
+
+	for(int i = 0; i<cantidadMarcos;i++)
+	{
+	bitarray_clean_bit(marcosMemoria,i); //seteo todos los bits en 0 (al principio todos los bloques están libres)
+	}
+}
+
 
 //-----------------------------------------------------------------------
 //----------------------------CONEXIONES---------------------------------
 //-----------------------------------------------------------------------
 
-void conexionFS(){
+int conexionFS(){
 
-		char* IP = strdup("127.0.0.1");
+		char* IP = strdup(configuracionMemoria->IP_FS);
 		//char * IP = strdup(obtenerString("IP_FS"));
-		char * Puerto = strdup(obtenerString("PUERTO_FS"));
+		char * Puerto =string_itoa(configuracionMemoria->PUERTO_FS);
+
 		loggearInfoCliente(IP,Puerto);
-		int cliente = levantarCliente(IP,Puerto);
+
+		int clienteFS = levantarCliente(IP,Puerto);
 
 		free(IP);
 		free(Puerto);
+
+		return clienteFS;
 }
 
 
@@ -155,63 +174,30 @@ void conexionKernel(){
 
 void levantarServidorMemoria(char * servidorIP, char* servidorPuerto)
 {
-			query * myQuery;
-	  	  	int socketRespuesta, maximoSocket;
-	  	  	int datosRecibidos = -1;
-			fd_set sockets, clientes;
+				int socketRespuesta;
+				pthread_t hiloAtendedor = 0;
+		        int socketServidor = levantarServidor(servidorIP,servidorPuerto);
 
-	        int socketServidor = levantarServidor(servidorIP,servidorPuerto);
+		        argumentosQuery * args = malloc(sizeof(argumentosQuery));
+		        args->unaQuery = NULL;
+		        args->flagConsola = 0;
 
-	        LimpiarSet(&sockets);
-	        LimpiarSet(&clientes);
+		        while(1)
+		        {
+		        	if((socketRespuesta = aceptarConexion(socketServidor)) != -1)
+		        	{
+		        		loggearNuevaConexion(socketRespuesta);
 
-	        agregarASet(socketServidor,&sockets);
-	        maximoSocket = socketServidor;
+		        		if((hiloAtendedor = crearHilo(procesarQuery,(void*)args)) != 0)
+		        		{
 
-	        tiempoEspera esperaMaxima;
-	        definirEsperaServidor(&esperaMaxima,300);
-
-	        while(1) // Loop para escuchar conexiones entrantes
-			{
-	        clientes = sockets;
-	        ejecutarSelect(maximoSocket,&clientes,&esperaMaxima); //pasarle null si no importa
-
-	        for(int i = 0;i<=maximoSocket;i++) //Itero hasta el ultimo socket
-	        	{
-	        		if (estaEnSet(i, &clientes)) //1 - Tengo un cliente nuevo que quiere leer!
-	        		{
-	                    if (i == socketServidor) //1-1 - Ese Cliente es el mismo servidor -> Acepto nuevas conexiones
-	                    {
-
-	                    socketRespuesta = aceptarConexion(socketServidor);
-
-	                    agregarASet(socketRespuesta,&sockets); //añado a set de sockets al nuevo cliente
-
-	                        if (socketRespuesta > maximoSocket) // Trackeo el maximo socket
-	                        {
-	                            maximoSocket = socketRespuesta;
-	                        }
-
-	                    loggearNuevaConexion(socketRespuesta);
-
-	                    }
-	                    else
-	                    {
-	                    	datosRecibidos = recibirQuery(i,&myQuery);
-	                    	if(datosRecibidos==0)
-	                    	{
-	                    		close(i);
-	                    		EliminarDeSet(i,&sockets);
-	                    	}else  {
-	                    		loggearDatosRecibidos(i,datosRecibidos);
-	                    		pthread_t procesarQ = crearHilo(procesarQuery,(void*)myQuery);
-	                    		esperarHilo(procesarQ);
-	                    	}
-
-	                    }
-	        		}
-	        	}
-			}
+		        		}
+		        		else
+		        		{
+		        		loggearError("Error al crear un hilo");
+		        		}
+		        	}
+		        }
 }
 
 
@@ -219,63 +205,386 @@ void levantarServidorMemoria(char * servidorIP, char* servidorPuerto)
 //-------------------PROCESAMIENTO DE QUERYS-----------------------------
 //-----------------------------------------------------------------------
 
-void procesarQuery(query* query)
+void procesarQuery(argumentosQuery * args)
 {
-	switch(query->requestType)
+	int flagConsola = args->flagConsola;
+	switch(args->unaQuery->requestType)
 	{
-	case SELECT:
-		loggearSelect(query->tabla,query->key);
-		loggearInfo("El comando ingresado fue SELECT");
-		loggearInfoConcatenandoDosMensajes("La tabla del select fue:", query->tabla);
-		procesarSelect(query);
-		break;
-	case INSERT:
-		loggearInsert(query->tabla,query->key,query->value,query->timestamp);
-		loggearInfo("El comando ingresado fue INSERT");
-		loggearInfoConcatenandoDosMensajes("La tabla al que se realizara el insert es:", query->tabla);
-		procesarInsert(query);
-		break;
-	case CREATE:
-		procesarCreate(query);
-		break;
-	case DESCRIBE:
-		procesarDescribe(query);
-		break;
-	case DROP:
-		procesarDrop(query);
-		break;
-	case JOURNAL:
-		procesarJournal(query);
-		break;
+			case SELECT:
+				loggearSelect(args->unaQuery->tabla,args->unaQuery->key);
+				procesarSelect(args->unaQuery,flagConsola);
+				break;
+			case INSERT:
+				loggearInsert(args->unaQuery->tabla,args->unaQuery->key,args->unaQuery->value,args->unaQuery->timestamp);
+				procesarInsert(args->unaQuery,flagConsola);
+				break;
+			case CREATE:
+				procesarCreate(args->unaQuery,flagConsola);
+				break;
+			case DESCRIBE:
+				procesarDescribe(args->unaQuery,flagConsola);
+				break;
+			case DROP:
+				procesarDrop(args->unaQuery,flagConsola);
+				break;
+			case JOURNAL:
+				procesarJournal(args->unaQuery,flagConsola);
+				break;
 	default:
 		loggearInfo("Request Aun No Disponible");
+	}
+	free(args); //Validar
+}
+
+
+int procesarSelect(query* selectQuery, int flagConsola)
+{
+	char * nombreTabla;
+	query * queryInsertFS;
+	int key = selectQuery->key;
+	int socketFS;
+	int datosRecibidos;
+	t_list * listaPaginas;
+	registro * registroRetorno = NULL,* registroFinal = NULL;
+	if(dictionary_has_key(tablaSegmentos,selectQuery->tabla)) //Valida que exista el segmento !
+	{
+		listaPaginas = (t_list *) dictionary_get(tablaSegmentos,selectQuery->tabla);
+		void buscarKey(pagina * pagina)
+		{
+			registroRetorno = leerMarco(pagina->nroMarco);
+			if(registroRetorno->key==key)
+			{
+				registroFinal = registroRetorno;
+			}else{
+				free(registroRetorno->value);
+				free(registroRetorno);
+			}
+		}
+
+		list_iterate(listaPaginas,(void*)buscarKey);
+		if(registroFinal != NULL)
+		{
+		loggearRegistroEncontrado(key,registroFinal->value,flagConsola);
+		free(registroFinal->value);
+		free(registroFinal);
+		return 1;
+		}
+	}
+		socketFS = conexionFS();
+		enviarQuery(socketFS,selectQuery);
+		datosRecibidos = recibirQuery(socketFS,&queryInsertFS);
+		if(datosRecibidos > 0 && queryInsertFS->requestType == INSERT && !strcmp(queryInsertFS->tabla,tabla) &&queryInsertFS->key == key)
+		{
+		loggearRegistroEncontrado(key,queryInsertFS->value,flagConsola);
+		t_list * listaNula = list_create();
+		dictionary_put(tablaSegmentos,queryInsertFS->tabla,listaNula);
+		nombreTabla = strdup(queryInsertFS->tabla);
+		list_add(listaSegmentos,nombreTabla);
+		agregarPagina(queryInsertFS->tabla,queryInsertFS->key,queryInsertFS->value,queryInsertFS->timestamp,0);
+		}else{
+		loggearRegistroNoEncontrado(key,flagConsola);}
+
+		return 2;
+
+}
+
+void procesarInsert(query* queryInsert, int flagConsola)
+{
+	t_list * listaPaginas;
+	registro * registroRetorno, *registroFinal = NULL;
+	int key = queryInsert->key;
+	int nroMarco = -1;
+
+	if(dictionary_has_key(tablaSegmentos,queryInsert->tabla))
+	{
+			listaPaginas = (t_list*) dictionary_get(tablaSegmentos,queryInsert->tabla);
+
+			void buscarKey(pagina * pagina)
+			{
+					registroRetorno = leerMarco(pagina->nroMarco);
+
+					if(registroRetorno->key==key)
+					{
+					registroFinal = registroRetorno;
+					nroMarco = pagina->nroMarco;
+					}else{
+					free(registroRetorno->value);
+					free(registroRetorno);
+					}
+
+			}
+			if(registroFinal != NULL && nroMarco != -1)
+			{
+			memset(memoriaPrincipal + nroMarco*tamanioPag,0,tamanioPag);
+			escribirMarco(nroMarco,registroFinal);
+			}
+			else
+			{
+			agregarPagina(queryInsert->tabla,queryInsert->key,queryInsert->value,queryInsert->timestamp,1);
+			}
+		list_iterate(listaPaginas,(void*)buscarKey);
+	} else
+	{
+		t_list * listaNula = list_create();
+		char * nombreTabla = strdup(queryInsert->tabla);
+		dictionary_put(tablaSegmentos,tabla,listaNula);
+		list_add(listaSegmentos,nombreTabla);
+		agregarPagina(queryInsert->tabla,queryInsert->key,queryInsert->value,queryInsert->timestamp,1);
+	}
+}
+void procesarCreate(query* queryCreate, int flagConsola)
+{
+	int estadoResultado;
+	int socketFS;
+	int datosRecibidos;
+	socketFS = conexionFS();
+	enviarQuery(socketFS,queryCreate);
+	datosRecibidos = recibirInt(socketFS,&estadoResultado);
+
+	if(datosRecibidos>0 && estadoResultado == 1)
+	{
+		loggearTablaCreadaOK(queryCreate,flagConsola);
+	}else
+	{
+		loggearErrorTablaExistente(queryCreate,flagConsola);
+	}
+
+}
+
+void procesarDescribe(query* queryDescribe, int flagConsola)
+{
+	char * describe = NULL;
+	int socketFS;
+	int datosRecibidos;
+	socketFS = conexionFS();
+	enviarQuery(socketFS,queryDescribe);
+	datosRecibidos = recibirString(socketFS,&describe);
+
+	if(datosRecibidos>0 && describe)
+	{
+		loggearInfo(describe);
+		if(flagConsola)
+			printf("%s",describe);
+	}else
+	{
+		if(queryDescribe->tabla)
+		loggearInfo("Tabla no existente en el sistema");
+		else
+		loggearInfo("No existen tablas en FS");
+	}
+
+}
+
+void procesarDrop(query* queryDrop, int flagConsola)
+{
+	t_list * paginas;
+	if(dictionary_has_key(tablaSegmentos,queryDrop->tabla))
+	{
+		paginas = (t_list*) dictionary_remove(tablaSegmentos,queryDrop->tabla);
+
+		void liberarPagina(pagina * unaPagina)
+		{
+
+			liberarMarco(unaPagina->nroMarco);
+		}
+
+		list_iterate(paginas,(void*)liberarPagina);
+		list_destroy_and_destroy_elements(paginas,free);
+	}
+	int estadoResultado;
+	int socketFS;
+	int datosRecibidos;
+	socketFS = conexionFS();
+	enviarQuery(socketFS,queryDrop);
+	datosRecibidos = recibirInt(socketFS,&estadoResultado);
+
+	if(datosRecibidos>0 && estadoResultado == 1)
+	{
+		loggearTablaDropeadaOK(queryDrop->tabla,flagConsola);
+	}else
+	{
+		loggearErrorDrop(queryDrop->tabla,flagConsola);
+	}
+}
+
+void procesarJournal(query* queryJournal, int flagConsola)
+{
+	ejecutarJournal(flagConsola);
+}
+
+void ejecutarJournal(int flagConsola)
+{
+	//Cuando este ocurriendo un journal no debe accederse a la memoria principal!
+
+	int resultadoJournal = journal();
+	if(resultadoJournal == 1)
+	{
+	loggearInfo("Journal exitoso");
+	if(flagConsola)
+		printf("Journal exitoso");
+	}else
+	{
+		loggearInfo("Error en Journal");
+		if(flagConsola)
+			printf("Error en Journal");
+	}
+}
+
+void ejecutarRutinaJournal()
+{
+	while(1)
+	{
+		usleep(configuracionMemoria->RETARDO_JOURNAL*1000);
+
+		ejecutarJournal(0);
 	}
 }
 
 
-void procesarSelect(query* selectQuery){
+int journal()
+{
+
+	int indice = 0;
+	t_list * registros = list_create();
+	t_list * paginas;
+
+	while(dictionary_has_key(tablaSegmentos,list_get(listaSegmentos,indice)))
+	{
+		paginas = (t_list *) dictionary_get(tablaSegmentos,list_get(listaSegmentos,indice));
+		void agregarRegistro(pagina * unaPagina)
+		{
+			list_add(registros,leerMarco(unaPagina->nroMarco));
+		}
+		list_iterate(paginas,(void*)agregarRegistro);
+
+		enviarQuerysFS(list_get(listaSegmentos,indice),registros);
+		indice++;
+	}
+
+	dictionary_clean_and_destroy_elements(tablaSegmentos,free);
+	free(memoriaPrincipal);
+	return 1;
+}
+
+void liberarMarco(int nroMarco)
+{
+	int offset = nroMarco*tamanioPag;
+	pthread_mutex_lock(&mutex_journal);
+	memset(memoriaPrincipal + offset,0,tamanioPag); // dudosa
+	bitarray_clean_bit(marcosMemoria,nroMarco); // Se libera el marco para poder ser usado
+	pthread_mutex_unlock(&mutex_journal);
+	sem_post(semaforoMemoria);
+}
+
+void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, int flagModificado)
+{
+	t_list * paginas;
+	pagina * paginaActual = malloc(sizeof(pagina));
+
+	paginas = (t_list*) dictionary_remove(tablaSegmentos,tabla);
+
+	paginaActual->nroPagina = list_size(paginas);
+	paginaActual->nroMarco = obtenerMarcoLibre();
+	paginaActual->flagModificado = flagModificado;
+
+	registro * regAgregar = malloc(sizeof(registro));
+	regAgregar->key = key;
+	regAgregar->value = value;
+	regAgregar->timestamp = timestamp;
+
+	escribirMarco(paginaActual->nroMarco,regAgregar);
+
+	free(regAgregar->value); // VER SI ROMPE ESTA LINEA!
+	free(regAgregar);
+
+	list_add(paginas,paginaActual);
+
+	dictionary_put(tablaSegmentos,tabla,paginas);
+}
+
+int obtenerMarcoLibre()
+{
+	int marco = -1;
+	for(int i = 0; i < cantidadMarcos;i++)
+	{
+		if(estaLibre(i))
+		marco = i;
+	}
+	if(marco == -1)
+	{
+		return ejecutarLRU();
+	}
+	sem_wait(semaforoMemoria);
+	bitarray_set_bit(marcosMemoria,marco);
+	return marco;
+}
+
+registro * leerMarco(int nroMarco)
+{
+	 int offset = nroMarco * tamanioPag;
+	 registro * unReg = malloc(sizeof(registro));
+
+	 deserializarInt(memoriaPrincipal,&unReg->key,&offset);
+	 deserializarString(memoriaPrincipal,&unReg->value,&offset);
+	 deserializarDouble(memoriaPrincipal,&unReg->timestamp,&offset);
+
+	 return unReg;
+}
+
+void escribirMarco(int nroMarco, registro * unReg)
+{
+	 int offset = nroMarco * tamanioPag;
+	 serializarInt(memoriaPrincipal,unReg->key,&offset);
+	 serializarString(memoriaPrincipal, unReg->value,&offset);
+	 serializarDouble(memoriaPrincipal,unReg->timestamp,&offset);
+}
+
+bool estaLibre(int nroMarco)
+{
+	return bitarray_test_bit(marcosMemoria,nroMarco) == 0;
+}
+
+int ejecutarLRU()
+{
+	return 1;
+}
+
+
+void enviarQuerysFS(char * tabla, t_list * registros)
+{
+	t_list * querys = list_create();
+	query * unaQuery;
+	int socketFS;
+	void agregarQuery(registro * unRegistro)
+	{
+		unaQuery = malloc(sizeof(query));
+
+		unaQuery->requestType = INSERT;
+		unaQuery->tabla = tabla;
+		unaQuery->key = unRegistro->key;
+		unaQuery->value = strdup(unRegistro->value);
+		unaQuery->timestamp = unRegistro->timestamp;
+
+		list_add(querys,unaQuery);
+		free(unRegistro->value); // VALIDAR
+	}
+	list_iterate(registros,(void *)agregarQuery);
+
+	void enviarUnaQuery(query * unaQuery)
+	{
+		socketFS = conexionFS();
+		enviarQuery(socketFS,unaQuery);
+		free(unaQuery->value);
+
+	}
+
+	list_iterate(querys,(void *)enviarUnaQuery);
+
+	list_destroy_and_destroy_elements(registros,free);
+	list_destroy_and_destroy_elements(querys,free);
 
 }
 
-void procesarInsert(query* insertQuery){
-
-}
-
-void procesarCreate(query* createQuery){
-
-}
-
-void procesarDescribe(query* describeQuery){
-
-}
-
-void procesarDrop(query* dropQuery){
-
-}
-
-void procesarJournal(query* journalQuery){
-
-}
 
 //-----------------------------------------------------------------------
 //--------------------------------LOGS-----------------------------------
@@ -321,7 +630,7 @@ void loggearArchivoDeConfiguracion(){
 					int cantidad_puertos= sizeof(configuracionMemoria->PUERTO_SEEDS);
 					aux4= (char*) malloc(25+(cantidad_puertos*sizeof(int)));
 					strcpy(aux4,"Puertos de Seeds:");
-					while((*(aux3+j)) != NULL){
+					while(((aux3+j)) != NULL){
 						if(j ==0){
 							strcat(aux4,(char*) (*(aux3+j)));
 							//strcat(aux4, ", ");
@@ -467,9 +776,138 @@ char* getCleanString(char* dirtyString){
 
 
 
+void handshake()
+{
+	int datosRecibidos;
+	char * puerto = malloc(40);
+	sprintf(puerto,"%d",configuracionMemoria->PUERTO);
+	int socketCliente = levantarCliente(configuracionMemoria->IP_FS,puerto);
+	tamanioValue = -1;
+
+	enviarInt(socketCliente,HANDSHAKE);
+
+	datosRecibidos = recibirInt(socketCliente,&tamanioValue);
+
+	if(datosRecibidos > 0 && tamanioValue != -1)
+	{
+		loggearInfo("Handshake exitoso");
+	}
+	else
+	{
+		loggearError("Error al realizar el handshake");
+	}
+
+	free(puerto);
+
+}
 
 
+void loggearRegistroEncontrado(int key, char * value, int flagConsola)
+{
+	char * nro = malloc(100);
+	char * aux = malloc(strlen("Key buscada: s'' value: ''") + strlen(value) + 5);
 
+	sprintf(nro,"%d",key);
+
+	strcpy(aux,"Key buscada: '");
+	strcat(aux,nro);
+	strcat(aux,"'");
+	strcat(aux," value: '");
+	strcat(aux,value);
+	strcat(aux,"'");
+
+	loggearInfo(aux);
+
+	if(flagConsola)
+	printf("%s\n",aux);
+
+	free(nro);
+	free(aux);
+}
+
+void loggearRegistroNoEncontrado(int key, int flagConsola)
+{
+	char * nro = malloc(100);
+	sprintf(nro,"%d",key);
+	char * aux = malloc(strlen("No se encontro value para la siguiente key ''") + 5);
+	strcpy(aux,"No se encontro value para la siguiente key '");
+	strcat(aux,nro);
+	strcat(aux,"'");
+
+	loggearInfo(aux);
+
+	if(flagConsola)
+	printf("%s\n",aux);
+
+	free(aux);
+	free(nro);
+}
+
+
+void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
+{
+	char * aux = malloc(strlen("Error la tabla  '' ya existe en el sistema") + strlen(unaQuery->tabla) + 10);
+	strcpy(aux,"Error la tabla '");
+	strcat(aux,unaQuery->tabla);
+	strcat(aux,"' ya existe en el sistema");
+	loggearInfo(aux);
+	if(flagConsola)
+	printf("%s\n",aux);
+	free(aux);
+}
+
+void loggearTablaCreadaOK(query * unaQuery,int flagConsola)
+{
+		char * aux = malloc(strlen("Se creo correctamente la tabla  ''") + strlen(unaQuery->tabla) + 30);
+		strcpy(aux,"Se creo correctamente la tabla '");
+		strcat(aux,unaQuery->tabla);
+		strcat(aux,"'");
+
+		loggearInfo(aux);
+		if(flagConsola)
+		printf("%s\n",aux);
+		free(aux);
+}
+
+void loggearTablaDropeadaOK(char * tabla, int flagConsola)
+{
+	char * aux = malloc(strlen("Tabla '' eliminada Correctamente") + strlen(tabla) + 10);
+	strcpy(aux,"Tabla '");
+	strcat(aux,tabla);
+	strcat(aux,"' eliminada Correctamente");
+	loggearInfo(aux);
+	if(flagConsola)
+	printf("%s\n",aux);
+	free(aux);
+}
+void loggearErrorDrop(char * tabla, int flagConsola)
+{
+	char * aux = malloc(strlen("La tabla '' no existe en el Sistema") + strlen(tabla) + 10);
+	strcpy(aux,"Tabla '");
+	strcat(aux,tabla);
+	strcat(aux,"' no existe en el Sistema");
+	loggearInfo(aux);
+	if(flagConsola)
+	printf("%s\n",aux);
+	free(aux);
+}
+
+void liberarRegistro(registro * unRegistro)
+{
+	if(unRegistro)
+	{
+		if(unRegistro->value)
+			free(unRegistro->value);
+	free(unRegistro);
+	}
+}
+
+
+void inicializarSemaforos()
+{
+pthread_mutex_init(&mutex_journal, NULL);
+sem_init(semaforoMemoria,0,cantidadMarcos);
+}
 
 /*
  * Posibles querys:
@@ -535,35 +973,32 @@ char* getCleanString(char* dirtyString){
 
 // POR HACER:
 
-//Antes que nada => releer el drive parte memoria & leer issues como un campeon
+//Antes que nada => releer el drive parte memoria & leer issues como un campeon => OK
 
-//Terminar bien servidor
+//Terminar bien servidor => PONELE
 
-//Validar estructuras adm
+//Validar estructuras adm => OK
 
-//Ver como seria el offset de memoria => https://github.com/sisoputnfrba/foro/issues/1246
+//Ver como seria el offset de memoria => https://github.com/sisoputnfrba/foro/issues/1246 => OK
 
-//Levantar hilo monitor
+//Levantar hilo monitor => PENDIENTE
 
-//Hacer el handshake con FS para poder calcular el tamanio de marco por el max tam del value
+//Hacer el handshake con FS para poder calcular el tamanio de marco por el max tam del value => EN TESTING
 
-//Pensar algoritmo de reemplazo de paginas ->
+//Pensar algoritmo de reemplazo de paginas -> PENDIENTE
 //LRU => https://github.com/sisoputnfrba/foro/issues/1174 & https://github.com/sisoputnfrba/foro/issues/1171
 
-//Terminar API
+//Terminar API => EN TESTING
 
-//Definir bien el JOURNALING
+//Definir bien el JOURNALING => EN TESTING
 
-//Ver criterios de consistencia
+//Ver gossiping => PENDIENTE
 
-//Hacer pruebas hasta romper el mundo
+//Ver criterios de consistencia => PENDIENTE
+
+//Hacer pruebas hasta romper el mundo => PENDIENTE
 
 
-void agregarSegmentoYPaginas(query * queryInsert, int flagConsola); // ver logica del drive
-
-void buscarEnMemoria(query * querySelect, int flagConsola); // tiene que patear la tabla y buscar en mem
-
-void ejecutarJournaling(); //Usar variable global & analizar todos los posibles casos cuando ocurra
 
 
 

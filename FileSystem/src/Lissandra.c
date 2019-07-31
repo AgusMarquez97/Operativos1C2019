@@ -11,6 +11,8 @@ void iniciarLFS()
 
 	levantarConfig();
 
+	handshake();
+
 	memTable = dictionary_create();
 
 	//levantarMemTable();
@@ -41,6 +43,8 @@ void levantarConfig()
 	hiloMonintor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
 }
 
+
+
 void actualizarConfig()
 {
 	//actualizarVariablesGlobales();
@@ -58,6 +62,30 @@ void actualizarVariablesGlobales()
 
 	eliminarEstructuraConfig();
 
+}
+
+void handshake()
+{
+	int socketRespuesta;
+    int socketServidor = levantarServidor(IP,Puerto);
+
+    int nroRecibido;
+
+    if((socketRespuesta = aceptarConexion(socketServidor)) != -1)
+	{
+    		loggearInfo("Realizando el handshake");
+    		recibirInt(socketRespuesta,&nroRecibido);
+
+    		if(nroRecibido == HANDSHAKE)
+    		{
+    			enviarInt(socketRespuesta,maxValue);
+    		}
+    		else
+    		{
+    		loggearError("No se pudo realizar el handshake");
+    		}
+
+	}
 }
 
 void reenviarConfig()
@@ -156,6 +184,7 @@ void rutinaServidor(int socketCliente)
 		args->unaQuery = malloc(sizeof(query)); // Ver de eliminar
 		args->unaQuery = myQuery;
 		args->flag = 0;
+
 		if(args->unaQuery->requestType == INSERT)
 		{
 			procesarQuery(args); // Se procesa la query sin necesidad de notificar el resultado -> JOURNALING !
@@ -179,12 +208,11 @@ void rutinaServidor(int socketCliente)
 
 void responderQuery(int socketCliente, argumentosQuery * args)
 {
-	query * queryDescribe;
-	query * querySelect;
 	registro * selectAuxMT;
 	registro * selectAuxFS;
 	int retornoCreate;
 	char * cadenaDescribe;
+	query * queryInsert = malloc(sizeof(query));
 	switch(args->unaQuery->requestType)
 				{
 				case DESCRIBE:
@@ -205,20 +233,11 @@ void responderQuery(int socketCliente, argumentosQuery * args)
 						loggearInfo(mensajeErrorTablas);
 							}
 						}
-						queryDescribe = malloc(sizeof(query));
-						queryDescribe->requestType = DESCRIBE;
-						queryDescribe->tabla = strdup(cadenaDescribe);
-						free(cadenaDescribe);
-						enviarQuery(socketCliente,queryDescribe);
+						enviarString(socketCliente,cadenaDescribe);
 						break;
 					case SELECT:
 						selectAuxMT = procesarSelectMemTable(args->unaQuery);
 						selectAuxFS = rutinaFileSystemSelect(args->unaQuery->tabla, args->unaQuery->key);
-
-						querySelect = malloc(sizeof(query));
-						querySelect->requestType = SELECT;
-						querySelect->key = args->unaQuery->key;
-						querySelect->timestamp = -1;
 
 						if(selectAuxFS != NULL)
 						{
@@ -226,31 +245,39 @@ void responderQuery(int socketCliente, argumentosQuery * args)
 							{
 								if(selectAuxMT->timestamp > selectAuxFS->timestamp)
 								{
-									querySelect->value = strdup(selectAuxMT->value);
+									queryInsert->value = strdup(selectAuxMT->value);
+									queryInsert->timestamp = selectAuxMT->timestamp;
 									loggearRegistroEncontrado(args->unaQuery->key,selectAuxMT->value,0);
 								}else
 								{
-									querySelect->value = strdup(selectAuxFS->value);
-								loggearRegistroEncontrado(args->unaQuery->key,selectAuxFS->value,0);
-								free(selectAuxFS);
+									queryInsert->value = strdup(selectAuxFS->value);
+									queryInsert->timestamp = selectAuxFS->timestamp;
+									loggearRegistroEncontrado(args->unaQuery->key,selectAuxFS->value,0);
+									free(selectAuxFS);
 								}
 							}
 							else
 							{
-								querySelect->value = strdup(selectAuxFS->value);
+								queryInsert->value = strdup(selectAuxFS->value);
+								queryInsert->timestamp = selectAuxFS->timestamp;
 								loggearRegistroEncontrado(args->unaQuery->key,selectAuxFS->value,0);
 								free(selectAuxFS);
 							}
 						}else if(selectAuxMT != NULL)
 						{
-							querySelect->value = strdup(selectAuxMT->value);
+							queryInsert->value = strdup(selectAuxMT->value);
+							queryInsert->timestamp = selectAuxMT->timestamp;
 							loggearRegistroEncontrado(args->unaQuery->key,selectAuxMT->value,0);
 						}else
 						{
-							querySelect->value = NULL;
+							queryInsert->value = NULL;
+							queryInsert->timestamp = -1;
 							loggearRegistroNoEncontrado(args->unaQuery->key,0);
 						}
-						enviarQuery(socketCliente,querySelect);
+						queryInsert->requestType = SELECT;
+						queryInsert->tabla = args->unaQuery->tabla;
+						queryInsert->key = args->unaQuery->key;
+						enviarQuery(socketCliente,queryInsert);
 						break;
 
 					case CREATE:
@@ -258,12 +285,12 @@ void responderQuery(int socketCliente, argumentosQuery * args)
 						if(retornoCreate != -1)
 						{
 						procesarCreate(args->unaQuery,0);
-						enviarRequest(socketCliente,1);
+						enviarInt(socketCliente,1);
 						}
 						else
 						{
 							loggearErrorTablaExistente(args->unaQuery,0);
-							enviarRequest(socketCliente,0);
+							enviarInt(socketCliente,0);
 						}
 						break;
 					case DROP:
@@ -271,11 +298,11 @@ void responderQuery(int socketCliente, argumentosQuery * args)
 							{
 								loggearTablaDropeadaOK(args->unaQuery->tabla,0);
 								dictionary_remove(memTable,args->unaQuery->tabla);
-								enviarRequest(socketCliente,1);
+								enviarInt(socketCliente,1);
 							}
 							else{
 							loggearErrorDrop(args->unaQuery->tabla,0);
-							enviarRequest(socketCliente,0);
+							enviarInt(socketCliente,0);
 							}
 							break;
 					default:
@@ -337,8 +364,6 @@ void iniciarServidor()
 {
 	crearConfig("/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt");
 
-	char * IP;
-
 	if(obtenerString("DIRECCION_IP"))
 	{
 			IP = strdup(obtenerString("DIRECCION_IP"));
@@ -347,7 +372,7 @@ void iniciarServidor()
 			IP = strdup("127.0.0.1");
 	}
 
-	char * Puerto = strdup(obtenerString("PUERTO_ESCUCHA"));
+	Puerto = strdup(obtenerString("PUERTO_ESCUCHA"));
 
 	loggearInfoServidor(IP,Puerto);
 
@@ -894,8 +919,8 @@ void loggearTablaCreadaOK(t_log * loggeador,query * unaQuery,int flagConsola, in
 		if(flagConsola)
 		printf("%s\n",aux);
 		free(aux);
-
 }
+
 void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
 {
 	char * aux = malloc(strlen("Error la tabla  '' ya existe en el sistema") + strlen(unaQuery->tabla) + 10);

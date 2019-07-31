@@ -7,7 +7,6 @@ void serializarInt(void* buffer, int32_t entero, int* desplazamiento) {
 
 	memcpy(buffer + *desplazamiento, &entero, sizeof(int32_t));
 	*desplazamiento += sizeof(int32_t);
-
 }
 
 void serializarDouble(void* buffer, int64_t numero, int* desplazamiento) {
