@@ -24,6 +24,13 @@ char * eliminarComillas(char * cadena)
 	return "";
 }
 
+char * eliminarComillasMemoria(char * cadena)
+{
+	if(strlen(cadena) > 2)
+	return string_substring(cadena,1,strlen(cadena) - 2);
+	return "";
+}
+
 /*
 void loggearTrace(char* mensaje) {
 

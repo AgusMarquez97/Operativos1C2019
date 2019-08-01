@@ -15,6 +15,7 @@ int main(void) {
 	listaSegmentos = list_create();
 	historialPaginas = list_create();
 	tablaSegmentos = dictionary_create();
+
 	remove("Lissandra.log");
 	iniciarLog("Memoria");
 	leerArchivoConfiguracion();
@@ -30,12 +31,36 @@ int main(void) {
 	//pthread_create(&hilo_conexionKernel, NULL, (void*) conexionKernel, NULL);
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 
+	//hiloServidor = crearHilo(levantarServidorMemoria,NULL);
+
+
 	//pthread_join(hilo_conexionKernel,NULL);
 	pthread_join(hilo_consola,NULL);
+
+	//esperarHilo(hiloServidor);
 
 	free(configuracionMemoria);
 	return 0;
 
+}
+
+void levantarMemoriaComoServidor()
+{
+	tamanioValue = 52;
+
+	listaSegmentos = list_create();
+	historialPaginas = list_create();
+	tablaSegmentos = dictionary_create();
+
+	//iniciarLog("Memoria"); -> PENSAR LOG
+
+	leerArchivoConfiguracion();
+	reservarMemoriaPrincipal();
+	inicializarSemaforos();
+
+	hiloJournal = crearHilo(ejecutarRutinaJournal,NULL);
+
+	levantarServidorMemoria();
 }
 
 void consola(){
@@ -68,7 +93,6 @@ void consola(){
 		    }
 
 		}
-		free(args);
 		free(comando);
 	}
 
@@ -83,9 +107,9 @@ void leerArchivoConfiguracion(){
 
 		configuracionMemoria->IP_FS = getCleanString(obtenerString("IP_FS"));
 		configuracionMemoria->IP_SEEDS = obtenerArray("IP_SEEDS");
-		configuracionMemoria->PUERTO_FS = obtenerInt("PUERTO_FS");
-		configuracionMemoria->PUERTO_SEEDS = (int*) obtenerArray("PUERTO_SEEDS");
-		configuracionMemoria->PUERTO = obtenerInt("PUERTO");
+		configuracionMemoria->PUERTO_FS = obtenerString("PUERTO_FS");
+		configuracionMemoria->PUERTO_SEEDS = obtenerArray("PUERTO_SEEDS");
+		configuracionMemoria->PUERTO = obtenerString("PUERTO");
 		configuracionMemoria->MEMORY_NUMBER = obtenerInt("MEMORY_NUMBER");
 		configuracionMemoria->RETARDO_FS = obtenerInt("RETARDO_FS");
 		configuracionMemoria->RETARDO_GOSSIPING = obtenerDouble("RETARDO_GOSSIPING");
@@ -149,11 +173,12 @@ void levantarMarcos(int cantidadMarcos)
 int conexionFS(){
 
 		char* IP = strdup(configuracionMemoria->IP_FS);
-		//char * IP = strdup(obtenerString("IP_FS"));
-		char * Puerto =string_itoa(configuracionMemoria->PUERTO_FS);
+		char * Puerto = strdup(configuracionMemoria->PUERTO_FS);
 
 		loggearInfoCliente(IP,Puerto);
+
 		int clienteFS = levantarCliente(IP,Puerto);
+
 		free(IP);
 		free(Puerto);
 
@@ -161,53 +186,44 @@ int conexionFS(){
 }
 
 
-void conexionKernel(){
-	char * IP;
-
-	if(obtenerString("IP"))
-	{
-			IP = strdup(obtenerString("DIRECCION_IP"));
-	}else
-	{
-			IP = strdup("127.0.0.1");
-	}
-		char * Puerto = strdup(obtenerString("PUERTO"));
-		loggearInfoServidor(IP,Puerto);
-
-		levantarServidorMemoria(IP,Puerto);
-
-		free(IP);
-		free(Puerto);
-}
-
-
-
-void levantarServidorMemoria(char * servidorIP, char* servidorPuerto)
+void levantarServidorMemoria()
 {
-				int socketRespuesta;
-				pthread_t hiloAtendedor = 0;
-		        int socketServidor = levantarServidor(servidorIP,servidorPuerto);
+			IPMemoria = eliminarComillasMemoria(configuracionMemoria->IP_SEEDS[configuracionMemoria->MEMORY_NUMBER]);
+			puertoMemoria = configuracionMemoria->PUERTO;
 
-		        argumentosQuery * args = malloc(sizeof(argumentosQuery));
-		        args->unaQuery = NULL;
-		        args->flagConsola = 0;
+			loggearInfoServidor(IPMemoria,puertoMemoria);
 
-		        while(1)
-		        {
-		        	if((socketRespuesta = aceptarConexion(socketServidor)) != -1)
-		        	{
-		        		loggearNuevaConexion(socketRespuesta);
+			int socketRespuesta;
+			pthread_t hiloAtendedor = 0;
+			int socketServidor = levantarServidor(IPMemoria,puertoMemoria);
 
-		        		if((hiloAtendedor = crearHilo(procesarQuery,(void*)args)) != 0)
-		        		{
+			argumentosQuery * args = malloc(sizeof(argumentosQuery));
+			args->unaQuery = NULL;
+			args->flagConsola = 0;
 
-		        		}
-		        		else
-		        		{
-		        		loggearError("Error al crear un hilo");
-		        		}
-		        	}
-		        }
+			while(1)
+			{
+				if((socketRespuesta = aceptarConexion(socketServidor)) != -1)
+				{
+					loggearNuevaConexion(socketRespuesta);
+					if(recibirQuery(socketRespuesta,&args->unaQuery) != -1 && recibirQuery(socketRespuesta,&args->unaQuery) != 0)
+					{
+
+						if((hiloAtendedor = crearHilo(procesarQuery,(void*)args)) != 0)
+						{
+
+						}
+						else
+						{
+						loggearError("Error al crear un hilo");
+						}
+					}
+					else
+					{
+						loggearError("Query no valida recibida");
+					}
+				}
+			}
 }
 
 
@@ -222,20 +238,27 @@ void procesarQuery(argumentosQuery * args)
 	{
 			case SELECT:
 				procesarSelect(args->unaQuery,flagConsola);
+				free(args->unaQuery->tabla);
 				break;
 			case INSERT:
 				procesarInsert(args->unaQuery,flagConsola);
 				loggearInfo("Se inserto un registro correctamente");
 				printf("Se inserto un registro correctamente\n");
+				free(args->unaQuery->tabla);
+				free(args->unaQuery->value);
 				break;
 			case CREATE:
 				procesarCreate(args->unaQuery,flagConsola);
+				free(args->unaQuery->tabla);
 				break;
 			case DESCRIBE:
 				procesarDescribe(args->unaQuery,flagConsola);
+				if(args->unaQuery->tabla)
+					free(args->unaQuery->tabla);
 				break;
 			case DROP:
 				procesarDrop(args->unaQuery,flagConsola);
+				free(args->unaQuery->tabla);
 				break;
 			case JOURNAL:
 				procesarJournal(args->unaQuery,flagConsola);
@@ -243,7 +266,8 @@ void procesarQuery(argumentosQuery * args)
 	default:
 		loggearInfo("Request Aun No Disponible");
 	}
-
+	free(args->unaQuery);
+	free(args);
 }
 
 
@@ -280,6 +304,9 @@ void procesarSelect(query* selectQuery, int flagConsola)
 								loggearRegistroEncontrado(key,registroFinalMemoria->value,flagConsola);
 								free(registroFinalMemoria->value);
 								free(registroFinalMemoria);
+								free(queryInsertFS->tabla);
+								free(queryInsertFS->value);
+								free(queryInsertFS);
 							}
 							else // MAX FS
 							{
@@ -337,11 +364,14 @@ void buscarRegistroFS(query * selectQuery, int flagConsola)
 		if(datosRecibidos > 0 && queryInsertFS->requestType == INSERT && queryInsertFS->key == selectQuery->key)
 		{
 			loggearRegistroEncontrado(key,queryInsertFS->value,flagConsola);
-			t_list * listaNula = list_create();
-			dictionary_put(tablaSegmentos,queryInsertFS->tabla,listaNula);
+			dictionary_put(tablaSegmentos,queryInsertFS->tabla,NULL);
 			nombreTabla = strdup(queryInsertFS->tabla);
 			list_add(listaSegmentos,nombreTabla);
 			agregarPagina(queryInsertFS->tabla,queryInsertFS->key,queryInsertFS->value,queryInsertFS->timestamp,0);
+
+			free(queryInsertFS->tabla);
+			free(queryInsertFS->value);
+			free(queryInsertFS);
 		}
 
 		else
@@ -501,6 +531,15 @@ void procesarDrop(query* queryDrop, int flagConsola)
 
 		list_iterate(paginas,(void*)liberarPagina);
 		list_destroy_and_destroy_elements(paginas,free);
+
+		bool condicionSegmentoExistente(char * segmento)
+		{
+			return !(strcmp(segmento,queryDrop->tabla));
+		}
+
+		list_remove_and_destroy_by_condition(listaSegmentos,(void*)condicionSegmentoExistente,free);
+
+
 		loggearTablaDropeadaOK(queryDrop->tabla,flagConsola);
 	}else
 	{
@@ -605,6 +644,7 @@ int journal()
 			list_destroy_and_destroy_elements(paginas,free);
 		}
 		dictionary_clean_and_destroy_elements(tablaSegmentos,(void*)limpiarPaginas);
+		list_clean_and_destroy_elements(listaSegmentos,free);
 
 	}
 
@@ -669,7 +709,7 @@ void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, in
 
 	registro * regAgregar = malloc(sizeof(registro));
 	regAgregar->key = key;
-	regAgregar->value = value;
+	regAgregar->value = strdup(value);
 	regAgregar->timestamp = timestamp;
 
 	escribirMarco(paginaActual->nroMarco,regAgregar);
@@ -761,6 +801,7 @@ int ejecutarLRU()
 		}
 
 	}
+	loggearInfo("MEMORIA FULL -> SE PROCEDE A REALIZAR UN JOURNAL");
 	pthread_mutex_lock(&mutex_journal);
 	journal(); // SI NO HAY PAGINAS DISPONIBLES => SE LIBERA TODA LA MEMORIA
 	pthread_mutex_unlock(&mutex_journal);
@@ -816,99 +857,6 @@ void enviarQuerysFS(char * tabla, t_list * registros)
 //--------------------------------LOGS-----------------------------------
 //-----------------------------------------------------------------------
 
-/*
-void loggearArchivoDeConfiguracion()
-{
-			int n = configuracionMemoria->PUERTO_FS;
-			char* puertoFS = malloc(4*sizeof(char));
-			sprintf(puertoFS,"%d",n);
-			loggearInfoConcatenandoDosMensajes("El IP del FS es: ", (char*) configuracionMemoria->IP_FS);
-			loggearInfoConcatenandoDosMensajes("El puerto del FS es: ", puertoFS);
-			free(puertoFS);
-
-			char ** aux = configuracionMemoria->IP_SEEDS;
-			int i =0;
-			char* aux2;
-			int longitud = 0;
-			while((*(aux+i)) != NULL){
-			  longitud+=strlen((*(aux+i)))+1;
-			  i++;
-			 }
-			i=0;
-			aux2 = malloc(longitud+20);
-			strcpy(aux2,"Direcciones de IP de Seeds:");
-			while((*(aux+i)) != NULL){
-
-				strcat(aux2,(char*) (*(aux+i)));
-			 i++;
-			}
-			loggearInfo(aux2);
-			free(aux2);
-
-					int j =0;
-					char* aux4;
-					int* aux3=configuracionMemoria->PUERTO_SEEDS;
-					int cantidad_puertos= sizeof(configuracionMemoria->PUERTO_SEEDS);
-					aux4= (char*) malloc(25+(cantidad_puertos*sizeof(int)));
-					strcpy(aux4,"Puertos de Seeds:");
-					while((*(aux3+j)) != NULL){
-						if(j ==0){
-							strcat(aux4,(char*) (*(aux3+j)));
-							//strcat(aux4, ", ");
-						}
-						else{
-							strcat(aux4, ",");
-					 strcat(aux4,(char*) (*(aux3+j)));
-						}
-					 j++;
-					}
-					log_info(logger,aux4);
-					free(aux4);
-
-					int nropuerto = configuracionMemoria->PUERTO;
-					char* puerto = malloc(4*sizeof(char));
-					sprintf(puerto,"%d",nropuerto);
-					loggearInfoConcatenandoDosMensajes("El puerto de la memoria es: ", puerto);
-					free(puerto);
-
-					int mnum =configuracionMemoria->MEMORY_NUMBER;
-					char* memorynumber= malloc(5*sizeof(char));
-					sprintf(memorynumber,"%d",mnum);
-					loggearInfoConcatenandoDosMensajes("El numero de la memoria es: ", memorynumber);
-					free(memorynumber);
-
-
-					int rfs =configuracionMemoria->RETARDO_FS;
-					char* retardofs= malloc(5*sizeof(char));
-					sprintf(retardofs,"%d",rfs);
-					loggearInfoConcatenandoDosMensajes("El retardo de FS es: ", retardofs);
-					free(retardofs);
-
-					int rGos =configuracionMemoria->RETARDO_GOSSIPING;
-					char* retardogos= malloc(7*sizeof(char));
-					sprintf(retardogos,"%d",rGos);
-					loggearInfoConcatenandoDosMensajes("El retardo de Gossiping es: ", retardogos);
-					free(retardogos);
-
-					int rjou =configuracionMemoria->RETARDO_JOURNAL;
-					char* retardojou= malloc(7*sizeof(char));
-					sprintf(retardojou,"%d",rjou);
-					loggearInfoConcatenandoDosMensajes("El retardo de Journal es: ", retardojou);
-					free(retardojou);
-
-					int rmem =configuracionMemoria->RETARDO_MEM;
-					char* retardomem= malloc(7*sizeof(char));
-					sprintf(retardomem,"%d",rmem);
-					loggearInfoConcatenandoDosMensajes("El retardo de Memoria es: ", retardomem);
-					free(retardomem);
-
-					int tam =configuracionMemoria->TAM_MEM;
-					char* tammem= malloc(7*sizeof(char));
-					sprintf(tammem,"%d",tam);
-					loggearInfoConcatenandoDosMensajes("El tamaño de Memoria es: ", tammem);
-					free(tammem);
-}
-*/
 
 void loggearInfoServidor(char * IP, char * Puerto)
 {
@@ -1002,12 +950,12 @@ char* getCleanString(char* dirtyString)
 void handshake()
 {
 	int datosRecibidos;
-	char * puerto = malloc(40);
-	sprintf(puerto,"%d",configuracionMemoria->PUERTO);
-	int socketCliente = levantarCliente(configuracionMemoria->IP_FS,puerto);
+	int socketCliente = levantarCliente(configuracionMemoria->IP_FS,configuracionMemoria->PUERTO_FS);
 	tamanioValue = -1;
 
 	enviarInt(socketCliente,HANDSHAKE);
+
+	loggearInfo("Iniciando HANDSHAKE");
 
 	datosRecibidos = recibirInt(socketCliente,&tamanioValue);
 
@@ -1020,7 +968,7 @@ void handshake()
 		loggearError("Error al realizar el handshake");
 	}
 
-	free(puerto);
+	close(socketCliente);
 
 }
 
@@ -1202,6 +1150,35 @@ void actualizarConfig()
 	eliminarEstructuraConfig();
 }
 
+void crearMemoria()
+{
+	sumarNumeroMemoria();
+
+	 if (fork() == 0)
+	 {
+		 	 levantarMemoriaComoServidor();
+	 }
+	 else
+	 {
+
+	 }
+
+
+}
+
+void sumarNumeroMemoria()
+{
+	/*
+	 * Actualizar config
+	 */
+	int nroMemoria = configuracionMemoria->MEMORY_NUMBER + 1;
+	char * nroMemoriaChar = string_itoa(nroMemoria);
+	crearConfig(PATHCONFIG);
+
+	cambiarValorConfig("MEMORY_NUMBER",nroMemoriaChar);
+
+	eliminarEstructuraConfig();
+}
 
 
 

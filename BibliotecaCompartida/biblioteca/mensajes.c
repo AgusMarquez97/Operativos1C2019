@@ -283,7 +283,7 @@ int recibirQuery(int socketEmisor, query ** myQuery) {
 
 	cantidadRecibida += recibir(socketEmisor,buffer,tamanioBuffer);
 
-	*myQuery = realloc(*myQuery,tamanioQuery);
+	*myQuery = malloc(tamanioQuery);
 
 	switch(tipoQuery) {
 		case SELECT:
@@ -354,7 +354,7 @@ void loggearSelect(char * tabla, int32_t key)
 void loggearInsert(char * tabla, int32_t key, char * value, int64_t timestamp)
 {
 	char * aux = malloc(200);
-	char * log = malloc(strlen("Se recibio la siguiente query: {INSERT ") + strlen(tabla) + strlen(value) + 12);
+	char * log = malloc(strlen("Se recibio la siguiente query: {INSERT ") + strlen(tabla) + strlen(value) + 100);
 
 	strcpy(log,"Se recibio la siguiente query: {INSERT ");
 	strcat(log,tabla);

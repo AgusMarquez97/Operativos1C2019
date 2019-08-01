@@ -24,6 +24,7 @@ int ObtenerProceso();
 char * ObtenerTimeStamp();
 
 char * eliminarComillas(char * cadena);
+char * eliminarComillasMemoria(char * cadena);
 
 
 

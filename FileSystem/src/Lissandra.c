@@ -7,6 +7,8 @@ void iniciarLFS()
 	remove("Memtable.log");
 	remove("Lissandra.log");
 
+	system("clear");
+
 	rutaConfig = "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt";
 
 	iniciarLog("FileSystem");
@@ -19,16 +21,16 @@ void iniciarLFS()
 
 	memTable = dictionary_create();
 
-	levantarMemTable();
-
 	gestionarFileSystem();
 
+	levantarMemTable();
 
-	//hiloConsola = crearHilo(consola,NULL);
+	loggearInfo("POR INICIAR EL SERVER");
+
+	hiloConsola = crearHilo(consola,NULL);
 	hiloServidor = crearHilo(iniciarServidor,NULL);
 
-	//esperarHilo(hiloConsola);
-	esperarHilo(hiloServidor);
+	esperarHilo(hiloConsola);
 }
 
 
@@ -73,6 +75,7 @@ void handshake()
     		if(nroRecibido == HANDSHAKE)
     		{
     			enviarInt(socketRespuesta,maxValue);
+    			close(socketRespuesta);
     		}
     		else
     		{
@@ -80,6 +83,7 @@ void handshake()
     		}
 
 	}
+    close(socketServidor);
 }
 
 
@@ -111,7 +115,6 @@ void monitorearConfig()
 		    }
 
 		    length = read(file_descriptor,buffer,BUF_LEN);
-		    loggearInfo("Activado hilo monitor");
 		    while(offset < length){
 			struct inotify_event * evento = (struct inotify_event *) &buffer[offset];
 
@@ -309,10 +312,11 @@ void consola()
 {
 	 int aux;
 	 char * linea;
-	 query * myQuery = malloc(100);
+	 query * myQuery = NULL;
 	 argumentosQuery * args;
 	 logMemTable = retornarLogConPath("Memtable.log","Memtable");
 	 system("clear");
+	 puts("Bienvenido a la consola del Filesystem...");
 	  while(1) {
 	    linea = readline(">");
 	    if (!linea)
@@ -346,10 +350,8 @@ void consola()
 		{
 	    	printf("Request no valida\n");
 	    }
-	    free(args);
-	    free(linea);
-	    //free(myQuery);
 
+	    free(linea);
 	  }
 	  }
 	  exit(1);
@@ -488,6 +490,9 @@ void procesarQuery(argumentosQuery * args)
 	default:
 		loggearWarningEnLog(logMemTable,"Request aun no disponible");
 	}
+
+	free(args->unaQuery);
+	free(args);
 }
 
 void procesarInsert(query * unaQuery, int flagConsola)

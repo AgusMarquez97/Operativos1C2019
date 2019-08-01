@@ -9,7 +9,7 @@ int parsear(char * string_query,query **struct_query)
 	char ** aux_split, ** auxEspacios;
 	char ** query_split = string_split(string_query, " ");
 
-	*struct_query = realloc(*struct_query,sizeof(query));
+	*struct_query = malloc(sizeof(query));
 	int query_cant_palabras = string_size(query_split);
 //	printf("Llegaron al parser %d palabras\n",query_cant_palabras);
 //	printf("Request a parsear: %s\n",string_query);

@@ -65,8 +65,11 @@
 #define EVENT_SIZE (sizeof(struct inotify_event)+24)
 #define BUF_LEN (1024*EVENT_SIZE)
 
+char * IPMemoria;
+char * puertoMemoria;
 
-pthread_t hiloMonitor, hiloJournal;
+
+pthread_t hiloMonitor, hiloJournal, hiloServidor;
 
 pthread_mutex_t mutex_marcos_libres;
 pthread_mutex_t mutex_journal;
@@ -75,11 +78,11 @@ sem_t semaforoMemoria;
 //	---------- DEFINCION DE ESTRUCTURAS DEL SISTEMA: VER ISSUE https://github.com/sisoputnfrba/foro/issues/1319
 
 typedef struct {
-	int32_t PUERTO;
+	char * PUERTO;
 	char* IP_FS;
-	int32_t PUERTO_FS;
+	char * PUERTO_FS;
 	char** IP_SEEDS;
-	int32_t * PUERTO_SEEDS;
+	char** PUERTO_SEEDS;
 	int32_t RETARDO_MEM;
 	int32_t RETARDO_FS;
 	int64_t TAM_MEM;
@@ -140,7 +143,7 @@ void reservarMemoriaPrincipal();
 
 void conexionKernel();
 int conexionFS();
-void levantarServidorMemoria(char * servidorIP, char* servidorPuerto);
+void levantarServidorMemoria();
 
 void procesarQuery(argumentosQuery * args);
 
@@ -232,5 +235,9 @@ void buscarRegistroFS(query * selectQuery, int flagConsola);
 
 void monitorearConfig();
 void actualizarConfig();
+
+
+void crearMemoria();
+void sumarNumeroMemoria();
 
 #endif /* POOLMEMORIAS_H_ */

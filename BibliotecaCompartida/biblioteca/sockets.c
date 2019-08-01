@@ -262,7 +262,6 @@ void levantarSocketListening(char * servidorIP, char* servidorPuerto)
 
 //------------------ SERVIDOR-------------
 
-
 void asociarPuerto(int *socketServidor,estructuraConexion* estructuraServidor)
 {
     int yes = 1;
@@ -270,7 +269,55 @@ void asociarPuerto(int *socketServidor,estructuraConexion* estructuraServidor)
 
     if(bind(*socketServidor,estructuraServidor->ai_addr,estructuraServidor->ai_addrlen)==-1)
         {
-            loggearError("No se pudo asociar el socket al puerto");
+            //loggearError("No se pudo asociar el socket al puerto");
+
+            switch(errno)
+                	{
+                	case EACCES:
+                		loggearError("EACCES");
+                		break;
+                	case EADDRINUSE:
+                	    		loggearError("EADDRINUSE");
+                	    		break;
+                	case EBADF:
+                    	    		loggearError("EBADF");
+                    	    		break;
+                	case EINVAL:
+                    	    		loggearError("EINVAL");
+                    	    		break;
+                	case ENOTSOCK:
+                					loggearError("ENOTSOCK");
+                	        	    break;
+
+                	case EADDRNOTAVAIL:
+                	    					loggearError("EADDRNOTAVAIL");
+                	    	        	    break;
+                   	case EFAULT:
+                    	    					loggearError("EFAULT");
+                    	    	        	    break;
+
+                   	case ELOOP:
+                    	    					loggearError("ELOOP");
+                    	    	        	    break;
+                   	case ENAMETOOLONG:
+                    	    					loggearError("ENAMETOOLONG");
+                    	    	        	    break;
+                   	case ENOENT:
+                   	        	    					loggearError("ENOENT");
+                   	        	    	        	    break;
+                   	case ENOMEM:
+                   	        	    					loggearError("ENOMEM");
+                   	        	    	        	    break;
+                   	case ENOTDIR:
+                   	        	    					loggearError("ENOTDIR");
+                   	        	    	        	    break;
+                 	case EROFS:
+                   	        	    					loggearError("EROFS");
+                   	        	    	        	    break;
+                 	default:
+                 		loggearError("asd");
+
+                	}
             exit(1);
         }
 }
