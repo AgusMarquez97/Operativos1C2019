@@ -57,6 +57,11 @@
 #include <ftw.h>
 #include <dirent.h>
 
+#define EVENT_SIZE (sizeof(struct inotify_event)+24)
+#define BUF_LEN (1024*EVENT_SIZE)
+
+char * rutaConfig;
+
 
 char * Puerto;
 char * IP;
@@ -95,9 +100,7 @@ t_log * logMemTable;
  * Se recibirán requests por consola y por el servidor
  */
 
-pthread_t hiloConsola, hiloServidor, hiloMonintor; // Todos estos pertenecen a la memTable
-
-pthread_t fileSystem;
+pthread_t hiloConsola, hiloServidor, hiloMonitor; // Todos estos pertenecen a la memTable
 
 
 /*
@@ -135,6 +138,7 @@ char * puntoMontaje;
 void levantarConfig();
 
 void iniciarLFS();
+void levantarVariablesServidor();
 
 /*
  * Funciones que tendrán los hilos de consola y server.
@@ -240,8 +244,6 @@ void monitorearConfig();
  *		2) Refrescar variables globales locales
  */
 void actualizarConfig();
-void actualizarVariablesGlobales();
-void reenviarConfig();
 /*
  	 	 Estructura del evento:
    	   	   struct inotify_event {

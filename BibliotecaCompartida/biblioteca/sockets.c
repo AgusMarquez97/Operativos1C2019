@@ -4,6 +4,8 @@ int levantarCliente(char* servidorIP,char* servidorPuerto)
 {
 		int socketCliente;
 
+		int retorno;
+
 		estructuraConexion* servidorObjetivo;
 
 		socketCliente = levantarSocketGenerico(servidorIP,servidorPuerto,&servidorObjetivo);
@@ -16,7 +18,10 @@ int levantarCliente(char* servidorIP,char* servidorPuerto)
 
 		loggearInfo(mensaje);
 
-		conectarConServidor(&socketCliente,servidorObjetivo);
+		retorno = conectarConServidor(&socketCliente,servidorObjetivo);
+
+		if(retorno == -1)
+			return retorno;
 
 		strcpy(mensaje,"El socket ");
 		strcat(mensaje,aux);
@@ -89,7 +94,7 @@ int conectarConServidor(int* socketCliente,estructuraConexion* estructuraServido
             //perror("No se pudo realizar la conexion");
             loggearError("No se pudo realizar la conexion");
             //close(socketCliente);
-            exit(1);
+            return -1;
         }
     return conexionAServidor;
 

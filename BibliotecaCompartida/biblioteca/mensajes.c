@@ -30,6 +30,11 @@ void enviarString(int socketReceptor, char* cadena){
 
 	int desplazamiento = 0;
 
+	if(cadena == NULL)
+	{
+		cadena = strdup("VOID");
+	}
+
 	int32_t tamanioCadena = sizeof(int32_t) + strlen(cadena) + 1;
 	int32_t tamanioBuffer = sizeof(int32_t) + tamanioCadena;
 
@@ -42,6 +47,8 @@ void enviarString(int socketReceptor, char* cadena){
 	enviar(socketReceptor, buffer, tamanioBuffer);
 
 	free(buffer);
+	free(cadena);
+
 
 }
 
@@ -142,40 +149,49 @@ void enviarRequest(int socketReceptor, int32_t request)
 	free(buffer);
 }
 
-void enviarQuery(int socketReceptor, query* myQuery) {
+void enviarQuery(int socketReceptor, query* myQuery)
+{
+	int32_t nroViajar = -1;
 
-	switch(myQuery->requestType) {
-		case SELECT:
-			enviarSelect(socketReceptor, myQuery->tabla, myQuery->key);
-			break;
-		case INSERT:
-			enviarInsert(socketReceptor, myQuery->tabla, myQuery->key, myQuery->value, myQuery->timestamp);
-			break;
-		case CREATE:
-			enviarCreate(socketReceptor, myQuery->tabla, myQuery->consistencyType, myQuery->cantParticiones, myQuery->compactationTime);
-			break;
-		case DESCRIBE:
-			if(myQuery->tabla) // !=  NULL
-			{
-			enviarDescribe(socketReceptor,myQuery->tabla);
-			}
-			else
-			{
-			enviarRequest(socketReceptor,DESCRIBE);
-			}
-			break;
-		case DROP:
-			enviarDrop(socketReceptor,myQuery->tabla);
-			break;
-		case JOURNAL:
-			enviarRequest(socketReceptor,JOURNAL);
-			break;
-		case HANDSHAKE:
-			enviarRequest(socketReceptor,HANDSHAKE);
-			break;
-		default:
-			loggearError("Request no valido");
-			break;
+	if(myQuery == NULL)
+	{
+		enviarInt(socketReceptor,nroViajar);
+	}
+	else
+	{
+		switch(myQuery->requestType) {
+			case SELECT:
+				enviarSelect(socketReceptor, myQuery->tabla, myQuery->key);
+				break;
+			case INSERT:
+				enviarInsert(socketReceptor, myQuery->tabla, myQuery->key, myQuery->value, myQuery->timestamp);
+				break;
+			case CREATE:
+				enviarCreate(socketReceptor, myQuery->tabla, myQuery->consistencyType, myQuery->cantParticiones, myQuery->compactationTime);
+				break;
+			case DESCRIBE:
+				if(myQuery->tabla) // !=  NULL
+				{
+				enviarDescribe(socketReceptor,myQuery->tabla);
+				}
+				else
+				{
+				enviarRequest(socketReceptor,DESCRIBE);
+				}
+				break;
+			case DROP:
+				enviarDrop(socketReceptor,myQuery->tabla);
+				break;
+			case JOURNAL:
+				enviarRequest(socketReceptor,JOURNAL);
+				break;
+			case HANDSHAKE:
+				enviarRequest(socketReceptor,HANDSHAKE);
+				break;
+			default:
+				loggearError("Request no valido");
+				break;
+		}
 	}
 }
 
@@ -258,6 +274,10 @@ int recibirQuery(int socketEmisor, query ** myQuery) {
 	}
 	cantidadRecibida += recibirInt(socketEmisor, &tipoQuery);
 
+	if(tipoQuery == -1)
+	{
+		return -1;
+	}
 	tamanioBuffer = tamanioQuery - sizeof(int32_t);
 	void * buffer = malloc(tamanioBuffer); //Se le resta el tamanio del tipo de query
 
@@ -306,7 +326,7 @@ int recibirQuery(int socketEmisor, query ** myQuery) {
 		loggearInfo("Se realiza un Handshake");
 			break;
 		default:
-			loggearInfo("Request no valida");
+			return -1;
 	}
 	//free(*myQuery);
 	return cantidadRecibida;

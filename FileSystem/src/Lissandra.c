@@ -7,32 +7,34 @@ void iniciarLFS()
 	remove("Memtable.log");
 	remove("Lissandra.log");
 
+	rutaConfig = "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt";
+
 	iniciarLog("FileSystem");
 
 	levantarConfig();
+
+	levantarVariablesServidor();
 
 	handshake();
 
 	memTable = dictionary_create();
 
-	//levantarMemTable();
+	levantarMemTable();
+
+	gestionarFileSystem();
 
 
+	//hiloConsola = crearHilo(consola,NULL);
+	hiloServidor = crearHilo(iniciarServidor,NULL);
 
-	//fileSystem = crearHilo(gestionarFileSystem,NULL);
-	//esperarHilo(fileSystem); // Crea las estructuras administrativas
-	//levantarMemTable();
-	hiloConsola = crearHilo(consola,NULL);
-	//hiloServidor = crearHilo(iniciarServidor,NULL);
-
-	esperarHilo(hiloConsola);
-	//esperarHilo(hiloServidor);
+	//esperarHilo(hiloConsola);
+	esperarHilo(hiloServidor);
 }
 
 
 void levantarConfig()
 {
-	crearConfig("/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt");
+	crearConfig(rutaConfig);
 
 	maxValue =  obtenerInt("TAMAÑO_VALUE");
 	retardo = obtenerInt("RETARDO"); //en milisegundos  -> puede modificarse (ver cuando y de que forma)
@@ -40,29 +42,21 @@ void levantarConfig()
 
 	puntoMontaje = eliminarComillas(obtenerString("PUNTO_MONTAJE"));
 	eliminarEstructuraConfig();
-	hiloMonintor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
+	hiloMonitor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
 }
 
 
 
 void actualizarConfig()
 {
-	//actualizarVariablesGlobales();
-	//reenviarConfig();
-}
-
-void actualizarVariablesGlobales()
-{
-	loggearInfo("UN CAMBIO JE");
-
-	crearConfig("/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt");
+	crearConfig(rutaConfig);
 
 	retardo = obtenerInt("RETARDO");
 	dumping = obtenerInt("TIEMPO_DUMP");
 
 	eliminarEstructuraConfig();
-
 }
+
 
 void handshake()
 {
@@ -88,57 +82,58 @@ void handshake()
 	}
 }
 
-void reenviarConfig()
-{
-	/*
-	 * Hay que crear un cliente que le envie a memoria los nuevos datos del config
-	 */
-	return;
-}
 
 void monitorearConfig()
 {
 
-	const char * pathConfig = "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones";
+		const char * pathConfig = "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones";
+		char buffer[BUF_LEN];
+		while(1)
+		{
+		int length = 0;
+		int offset = 0;
+		//struct inotify_event * evento = malloc(sizeof(*evento));
 
-	int bytes_leidos;
-	struct inotify_event evento;
+	    int file_descriptor = inotify_init();
 
+		if(file_descriptor == -1)
+		{
+		 perror("No se pudo crear el archivo monitor");
+		 exit(-1);
+		}
 
-    int archivo_monitor = inotify_init();
+		    int watch_descriptor = inotify_add_watch(file_descriptor,pathConfig,IN_MODIFY|IN_CREATE|IN_DELETE|IN_CLOSE_WRITE);//Ver mask
 
-	if(archivo_monitor == -1)
-	{
-	 perror("No se pudo crear el archivo monitor");
-	}
+		    if(watch_descriptor == -1)
+		    {
+		        perror("No se pudo crear el monitor");
+			exit(-1);
+		    }
 
-	    int monitor = inotify_add_watch(archivo_monitor,pathConfig,IN_MODIFY);//Ver mask
+		    length = read(file_descriptor,buffer,BUF_LEN);
+		    loggearInfo("Activado hilo monitor");
+		    while(offset < length){
+			struct inotify_event * evento = (struct inotify_event *) &buffer[offset];
 
-	    if(monitor == -1)
-	    {
-	        perror("No se pudo crear el monitor");
-	    }
-	    int lecturas = 0;
-	    while(1)
-	    {
+		        if(length <= 0)
+		        {
+		            perror("Error al leer el archivo monitor.");exit(-1);
+		            break;
+		        }
 
-	    	if(lecturas == 2) lecturas = 0;
-	        bytes_leidos = read(archivo_monitor,&evento,sizeof(struct inotify_event)*20);
-	        //Bloquea al proceso/hilo hasta que ocurra el evento declarado en el monitor
-	        if(bytes_leidos <= 0)
-	        {
-	            perror("Error al leer el archivo monitor..");
-	            break;
-	        }else if(evento.mask == IN_MODIFY)
-	        {
-	        	actualizarConfig();
-	        }
-
-
-
-	    }
-
+		    if(evento->len) {
+				 if ((evento->mask & IN_CLOSE_WRITE) && !strcasecmp(evento->name,"configuracion.txt"))
+			    {
+					 actualizarConfig();
+					 loggearInfo("Variables de configuracion actualizadas");
+			    }
+		    }
+			offset += sizeof (struct inotify_event) + evento->len;
+		    }
+		}
 }
+
+
 
 void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 {
@@ -181,7 +176,7 @@ void rutinaServidor(int socketCliente)
 			{
 		args = malloc(sizeof(argumentosQuery));
 
-		args->unaQuery = malloc(sizeof(query)); // Ver de eliminar
+		args->unaQuery = malloc(sizeof(query));
 		args->unaQuery = myQuery;
 		args->flag = 0;
 
@@ -194,8 +189,8 @@ void rutinaServidor(int socketCliente)
 			responderQuery(socketCliente,args); //Se envia una respuesta a memoria
 		}
 
-		free(args);
 		free(args->unaQuery);
+		free(args);
 			}
 		}
 
@@ -360,28 +355,28 @@ void consola()
 	  exit(1);
 }
 
+void levantarVariablesServidor()
+{
+	crearConfig(rutaConfig);
+
+		if(obtenerString("DIRECCION_IP"))
+		{
+				IP = strdup(obtenerString("DIRECCION_IP"));
+		}else
+		{
+				IP = strdup("127.0.0.1");
+		}
+
+		Puerto = strdup(obtenerString("PUERTO_ESCUCHA"));
+
+		loggearInfoServidor(IP,Puerto);
+
+		eliminarEstructuraConfig();
+}
+
 void iniciarServidor()
 {
-	crearConfig("/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/FileSystem/configuraciones/configuracion.txt");
-
-	if(obtenerString("DIRECCION_IP"))
-	{
-			IP = strdup(obtenerString("DIRECCION_IP"));
-	}else
-	{
-			IP = strdup("127.0.0.1");
-	}
-
-	Puerto = strdup(obtenerString("PUERTO_ESCUCHA"));
-
-	loggearInfoServidor(IP,Puerto);
-
 	levantarServidorLFS(IP,Puerto);
-
-	free(IP);
-	free(Puerto);
-
-	eliminarEstructuraConfig();
 }
 
 void temp()

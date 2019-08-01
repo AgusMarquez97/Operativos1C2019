@@ -8,6 +8,7 @@
 #ifndef POOLMEMORIAS_H_
 #define POOLMEMORIAS_H_
 
+
 #include <biblioteca/sockets.h>
 #include <biblioteca/serializacion.h>
 #include <biblioteca/mensajes.h>
@@ -16,30 +17,60 @@
 #include <biblioteca/hilos.h>
 #include <biblioteca/levantarConfig.h>
 #include <biblioteca/utils.h>
+#include <biblioteca/parser.h>
 
+#include <commons/string.h>
 #include <commons/collections/list.h>
 #include <commons/collections/node.h>
 #include <commons/collections/queue.h>
 #include <commons/collections/dictionary.h>
-#include "commons/bitarray.h"
 
-#include <commons/log.h>
-#include <commons/string.h>
-#include <commons/config.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
+#include <time.h>
+
 #include <readline/readline.h>
 #include <readline/history.h>
-#include <string.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <sys/inotify.h>
+
+
+#include <signal.h>
+#include "commons/bitarray.h"
+
+#include <sys/types.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <sys/stat.h>
+
+#include "commons/txt.h"
+#include "commons/string.h"
+#include <signal.h>
+#include "commons/collections/list.h"
 #include <math.h>
+#include <time.h>
+#include <ftw.h>
+#include <dirent.h>
+
 #include <semaphore.h>
 
 
-#define PATHCONFIG "configuraciones/memoria.cfg"
+#define PATHCONFIG "/home/utnso/workspace/Segmentation-Fault/tp-2019-1c-Segmentation-Fault/PoolMemorias/configuraciones/memoria.cfg"
 
+#define EVENT_SIZE (sizeof(struct inotify_event)+24)
+#define BUF_LEN (1024*EVENT_SIZE)
+
+
+pthread_t hiloMonitor, hiloJournal;
+
+pthread_mutex_t mutex_marcos_libres;
 pthread_mutex_t mutex_journal;
-sem_t *  semaforoMemoria;
+sem_t semaforoMemoria;
 
 //	---------- DEFINCION DE ESTRUCTURAS DEL SISTEMA: VER ISSUE https://github.com/sisoputnfrba/foro/issues/1319
 
@@ -99,8 +130,9 @@ typedef struct{
 t_bitarray * marcosMemoria;
 
 t_list * listaSegmentos;
-t_list * historialPaginas;	 // contiene las paginas cargadas en memoria principal, las ultimas de la lista son las que
-						//se usaron más recientemente
+t_list * historialPaginas;
+// contiene las paginas cargadas en memoria principal, las ultimas de la lista son las que
+// se usaron más recientemente
 
 void consola();
 void leerArchivoConfiguracion();
@@ -111,11 +143,41 @@ int conexionFS();
 void levantarServidorMemoria(char * servidorIP, char* servidorPuerto);
 
 void procesarQuery(argumentosQuery * args);
-int procesarSelect(query* selectQuery, int flagConsola);
+
+/*
+ * Nos llega un select (EVENTUAL CONSISTENCY) =>
+ * CASO A:
+ * 		EL SEGMENTO YA EXISTE EN LA TABLA DE SEGMENTOS
+ * 			CASO A1:
+ * 				LA KEY SE ENCUENTRA EN MEMORIA => SE RETORNA EL VALUE & SE AGREGAN LAS PAGINAS USADAS
+ * 			CASO A2:
+ * 				LA KEY NO SE ENCUENTRA EN MEMORIA => SE BUSCA EN FS
+ * 					CASO A2.1:
+ * 						LA KEY ESTA EN FS => SE RETORNA EL RESULTADO & SE AGREGAN LAS PAGINAS USADAS & SE AGREGA LA PAG A MEM
+ * 					CASO A2.2:
+ * 						INFORMAR QUE LA KEY NO EXISTE O NO TIENE VALUE ASOCIADO
+ * 	CASO B
+ * 		SE BUSCA EN FS -> SE RETORNA EL RESULTADO & SE CARGA EN MEMORIA CON FLAG DE MOD = 0
+ * 			{Se crea el segmento y se agrega la pagina al seg (Y A MP) + se carga al historial de paginas}
+ *
+ * 	STRONG CONSISTENCY:
+ *	BUSCAR LA KEY EN MP Y EN FS:
+ *		CASO 1: EXISTE LA KEY EN AMBOS => RETORNAMOS LA DE MAYOR TIMESTAMP
+ *		CASO 2: EXISTE LA KEY EN ALGUNO => RETORNAMOS LA ENCONTRADA
+ *		CASO 3: INFORMAMOS EL ERROR
+ *
+ */
+
+void procesarSelect(query* selectQuery, int flagConsola);
+
 void procesarInsert(query* queryInsert, int flagConsola);
+
 void procesarCreate(query* queryCreate, int flagConsola);
+
 void procesarDescribe(query* queryDescribe, int flagConsola);
+
 void procesarDrop(query* queryDrop, int flagConsola);
+
 void procesarJournal(query* queryJournal, int flagConsola);
 
 void loggearArchivoDeConfiguracion();
@@ -139,7 +201,7 @@ void loggearErrorDrop(char * tabla, int flagConsola);
 void refrescarPagina(char * tabla, int key, char * value, int64_t timestamp);
 
 void levantarMarcos(int cantidadMarcos);
-registro * obtenerRegistro(int nroMarco);
+registro * obtenerRegistro(char * tabla, int key);
 
 void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, int flagModificado);
 
@@ -161,5 +223,14 @@ void enviarQuerysFS(char * tabla, t_list * registros);
 
 void agregarAHistorialPags(pagina * unaPagina);
 
+bool existeEnMemoria(char * tabla);
+void eliminarDeHistorial(pagina * unaPagina);
+
+int obtenerCriterioConsistencia(char * tabla);
+
+void buscarRegistroFS(query * selectQuery, int flagConsola);
+
+void monitorearConfig();
+void actualizarConfig();
 
 #endif /* POOLMEMORIAS_H_ */
