@@ -19,7 +19,7 @@ int main(void) {
 	remove("Lissandra.log");
 	iniciarLog("Memoria");
 	leerArchivoConfiguracion();
-	handshake();
+	//handshake();
 	reservarMemoriaPrincipal();
 	inicializarSemaforos();
 
