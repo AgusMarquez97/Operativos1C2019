@@ -84,7 +84,7 @@ int ejecutar_add(query * query_struct /*char * string_memoria*/)
 	  if (query_struct->consistencyType == SC/*!strcasecmp(memoria[2],"SC")*/) {
 		printf("El criterio de la memoria es SC.\n");
 
-	  char * IP = strdup("");
+	  char * IP = strdup("127.0.0.1");
 	  char * Puerto = strdup("1366");
 
 	  //loggearInfoCliente(IP,Puerto);
