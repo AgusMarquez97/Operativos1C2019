@@ -77,19 +77,32 @@ int derivar_request(query * query_struct)
 }
 
 
-int ejecutar_add(char * string_memoria)
+int ejecutar_add(query * query_struct /*char * string_memoria*/)
 {
-	  char ** memoria = string_split(string_memoria,":");
+	  //char ** memoria = string_split(string_memoria,":");
 
-	  if (!strcasecmp(memoria[2],"SC")) {
-		printf("El criterio de la memoria es SC.\n"); 
-	  } else if (!strcasecmp(memoria[2],"SHC")) {
+	  if (query_struct->consistencyType == SC/*!strcasecmp(memoria[2],"SC")*/) {
+		printf("El criterio de la memoria es SC.\n");
+
+	  char * IP = strdup("127.0.0.1");
+	  char * Puerto = strdup("1366");
+
+	  //loggearInfoCliente(IP,Puerto);
+
+	  int socket_memoria = levantarCliente(IP,Puerto);
+
+	  enviarRequest(socket_memoria,RUN);
+
+	  free(IP);
+	  free(Puerto);
+
+	  } else if (query_struct->consistencyType == SHC/*!strcasecmp(memoria[2],"SHC")*/) {
 		printf("El criterio de la memoria es SHC.\n");
-	  } else if (!strcasecmp(memoria[2],"EC")) {
+	  }/* else if (!strcasecmp(memoria[2],"EC")) {
 		printf("El criterio de la memoria es EC.\n");
 	  } else {
 		   printf("%s: Criterio inexistente.\n",memoria[2]);
-		 }
+		 }*/
 
 }
 

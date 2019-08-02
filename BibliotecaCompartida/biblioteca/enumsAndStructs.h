@@ -28,6 +28,7 @@ typedef struct {
 	char * script;
 	int32_t cantParticiones;
 	int64_t compactationTime;
+	int32_t numeroMemoria;
 	
 }query;
 

@@ -268,6 +268,27 @@ int parsear(char * string_query,query **struct_query)
 			return RUN;
 		 }
 	}
+/*	liberarCadenaSplit(query_split);
+	return ERROR;*/
+
+
+	if (!strcasecmp(query_split[0],"add")) {
+
+	  if ( (query_cant_palabras != 5) || (strcasecmp(query_split[1],"memory")) || (strcasecmp(query_split[3],"to")) ||
+		 (!valor_solo_numerico(query_split[2])) || (!tipo_consistencia_valido(query_split[4])))
+	  {
+		liberarCadenaSplit(query_split);
+		return ERROR;
+	  } else {
+			printf("El add es correcto\n");
+			((*struct_query))->requestType = ADD;
+			((*struct_query))->numeroMemoria = query_split[2];
+			((*struct_query))->consistencyType = string_a_consistencia(query_split[4]);
+			liberarCadenaSplit(query_split);
+			return ADD;
+		 }
+	}
+
 	liberarCadenaSplit(query_split);
 	return ERROR;
 

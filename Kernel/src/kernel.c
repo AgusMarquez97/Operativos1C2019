@@ -253,7 +253,7 @@ int ejecutar_request(query * query_struct)
 			 	break;
 
 	  case (ADD): 		printf("Se recibio un ADD...\n");
-				//resultado_ejecucion_request = ejecutar_add(query_struct);
+				resultado_ejecucion_request = ejecutar_add(query_struct);
 			 	break;
 
 	  case (RUN): 		printf("Se recibio un RUN...\n");
@@ -711,7 +711,7 @@ void *consola()
 				break;
 		  case JOURNAL: ejecutar_request(query_struct);
 				break;
-		  case ADD: 	ejecutar_request(query_struct);
+		  case ADD: 	ejecutar_add(query_struct);
 				break;
 		  default: {
 				t_queue* request_queue = armar_request_queue(*query_struct); //CUIDADO: le pongo un *

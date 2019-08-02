@@ -20,7 +20,7 @@ int main(void) {
 	remove("Lissandra.log");
 	iniciarLog("Memoria");
 	leerArchivoConfiguracion();
-	handshake();
+	//handshake();
 	reservarMemoriaPrincipal();
 	inicializarSemaforos();
 	loggearInfoFileSystem(configuracionMemoria->IP_FS,configuracionMemoria->PUERTO_FS);
