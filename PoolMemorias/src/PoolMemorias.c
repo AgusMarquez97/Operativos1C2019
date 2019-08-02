@@ -20,7 +20,7 @@ int main(void) {
 	remove("Lissandra.log");
 	iniciarLog("Memoria");
 	leerArchivoConfiguracion();
-	//handshake();
+	handshake();
 	reservarMemoriaPrincipal();
 	inicializarSemaforos();
 	loggearInfoFileSystem(configuracionMemoria->IP_FS,configuracionMemoria->PUERTO_FS);
@@ -379,7 +379,7 @@ void procesarQuery(argumentosQuery * args)
 				cambiarConsistencia();
 				break;
 			case HANDSHAKE:
-				enviarPool(args->socketCliente);
+				//enviarPool(args->socketCliente);
 				break;
 	default:
 		loggearInfo("Request Aun No Disponible");
@@ -496,6 +496,7 @@ void procesarInsert(query* queryInsert, int flagConsola)
 						}
 
 				}
+				list_iterate(listaPaginas,(void*)buscarKey);
 				if(registroFinal != NULL && nroMarco != -1)
 				{
 				memset(memoriaPrincipal + nroMarco*tamanioPag,0,tamanioPag);
@@ -507,7 +508,7 @@ void procesarInsert(query* queryInsert, int flagConsola)
 				{
 				agregarPagina(queryInsert->tabla,queryInsert->key,queryInsert->value,queryInsert->timestamp,1);
 				}
-			list_iterate(listaPaginas,(void*)buscarKey);
+
 		} else
 		{
 			char * nombreTabla = strdup(queryInsert->tabla);
@@ -802,11 +803,11 @@ int obtenerCriterioConsistencia(char * tabla)
 void liberarMarco(int nroMarco)
 {
 	int offset = nroMarco*tamanioPag;
-	pthread_mutex_lock(&mutex_marcos_libres);
 	memset(memoriaPrincipal + offset,0,tamanioPag); // dudosa
+	pthread_mutex_lock(&mutex_marcos_libres);
 	bitarray_clean_bit(marcosMemoria,nroMarco); // Se libera el marco para poder ser usado
 	pthread_mutex_unlock(&mutex_marcos_libres);
-	sem_post(&semaforoMemoria);
+
 }
 
 void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, int flagModificado)
@@ -867,17 +868,23 @@ void eliminarDeHistorial(pagina * unaPagina)
 
 int obtenerMarcoLibre()
 {
-	int marco = -1;
+	int sacame = 0;
 	for(int i = 0; i < cantidadMarcos;i++)
 	{
 		if(estaLibre(i))
 		{
-		sem_wait(&semaforoMemoria);
-		bitarray_set_bit(marcosMemoria,marco);
+		pthread_mutex_lock(&mutex_marcos_libres);
+		bitarray_set_bit(marcosMemoria,i);
+		pthread_mutex_unlock(&mutex_marcos_libres);
 		return i;
 		}
 	}
-	return ejecutarLRU();
+	loggearInfo("Marcos completos: se inicia el LRU");
+	int LRU = ejecutarLRU();
+	if(LRU==-1)
+		return obtenerMarcoLibre();
+	else
+		return LRU;
 }
 
 registro * leerMarco(int nroMarco)
@@ -902,7 +909,7 @@ void escribirMarco(int nroMarco, registro * unReg)
 
 bool estaLibre(int nroMarco)
 {
-	return bitarray_test_bit(marcosMemoria,nroMarco);
+	return bitarray_test_bit(marcosMemoria,nroMarco)==0;
 }
 
 int ejecutarLRU()
@@ -920,10 +927,10 @@ int ejecutarLRU()
 
 	}
 	loggearInfo("MEMORIA FULL -> SE PROCEDE A REALIZAR UN JOURNAL");
-	pthread_mutex_lock(&mutex_journal);
+
 	journal(); // SI NO HAY PAGINAS DISPONIBLES => SE LIBERA TODA LA MEMORIA
-	pthread_mutex_unlock(&mutex_journal);
-	return obtenerMarcoLibre();
+
+	return -1;
 }
 
 
@@ -1187,7 +1194,7 @@ void inicializarSemaforos()
 {
 pthread_mutex_init(&mutex_marcos_libres, NULL);
 pthread_mutex_init(&mutex_journal, NULL);
-sem_init(&semaforoMemoria,0,cantidadMarcos);
+
 }
 
 
@@ -1283,9 +1290,9 @@ void actualizarConfig()
 
 // -> VA A NACER UN HILO AL INICIAR LA MEMORIA QUE LLAME A EJECUTAR_GOSSIPING CADA X CANTIDAD DE TIEMPO
 
-void crearMemoria()
+void ejecutarGossping()
 {
-	while(1)
+	/*while(1)
 	{
 
 
@@ -1301,11 +1308,11 @@ void crearMemoria()
 
 
 
-	}
+	}*/
 
 }
 
-void sumarNumeroMemoria()
+void sumarMemoriaAlPool()
 {
 	/*
 	 * Actualizar config

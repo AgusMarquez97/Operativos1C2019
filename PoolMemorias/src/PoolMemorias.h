@@ -80,7 +80,6 @@ pthread_t hiloMonitor, hiloJournal, hiloServidor;
 
 pthread_mutex_t mutex_marcos_libres;
 pthread_mutex_t mutex_journal;
-sem_t semaforoMemoria;
 
 //	---------- DEFINCION DE ESTRUCTURAS DEL SISTEMA: VER ISSUE https://github.com/sisoputnfrba/foro/issues/1319
 
@@ -245,8 +244,8 @@ void monitorearConfig();
 void actualizarConfig();
 
 
-void crearMemoria();
-void sumarNumeroMemoria();
+void ejecutarGossping();
+void sumarMemoriaAlPool();
 
 int obtenerCantidadMarcos(int tamanioPagina, int tamanioMemoria);
 

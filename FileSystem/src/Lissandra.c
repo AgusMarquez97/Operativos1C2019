@@ -17,7 +17,7 @@ void iniciarLFS()
 
 	levantarConfig();
 
-	//handshake();
+	handshake();
 
 	gestionarFileSystem();
 
@@ -26,7 +26,7 @@ void iniciarLFS()
 	hiloDump = makeDetachableThread(ejecutarDumping,NULL);
 
 	hiloConsola = crearHilo(consola,NULL);
-	//hiloServidor = makeDetachableThread(iniciarServidor,NULL);
+	hiloServidor = makeDetachableThread(iniciarServidor,NULL);
 
 	esperarHilo(hiloConsola);
 
