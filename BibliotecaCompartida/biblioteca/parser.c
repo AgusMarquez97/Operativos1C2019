@@ -163,7 +163,7 @@ int parsear(char * string_query,query **struct_query)
 		((*struct_query))->tabla = strdup(query_split[1]);
 		((*struct_query))->consistencyType = string_a_consistencia(query_split[2]);
 		((*struct_query))->cantParticiones = atoi(query_split[3]);
-		((*struct_query))->compactationTime = atoi(query_split[4]); //Luego sacar esto!
+		((*struct_query))->compactationTime = atoll(query_split[4]); //Luego sacar esto!
 		((*struct_query))->timestamp = -1;
 
 		liberarCadenaSplit(query_split);

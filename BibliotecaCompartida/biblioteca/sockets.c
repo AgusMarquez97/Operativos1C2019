@@ -195,6 +195,9 @@ int enviar(int socketConexion, void* datosAEnviar, int32_t tamanioAEnviar){
 
 int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 
+	if(tamanioARecibir == 0)
+		return 0;
+
 	 char * info = malloc(300);
 	 char * aux = malloc(50);
 

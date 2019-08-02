@@ -90,6 +90,21 @@ void enviarInsert(int socketReceptor, char* tabla, int32_t key, char* value, int
 
 }
 
+
+/*
+ * enviarCreate:
+ * DIVISION DE TAMANIOS DEL BUFFER:
+ * 1° POSICION: 4 BYTES -> TAMANIO_BUFFER (int32_t)
+ * 2° POSICION: 4 BYTES -> TIPO_QUERY (int32_t)
+ * 3° POSICION: 4 BYTES -> TAMANIO_NOMBRE_TABLA (int32_t)
+ * 4° POSICION: N BYTES (DEFINIDOS EN 3°) -> NOMBRE_TABLA (CHAR *)
+ * 5° POSICION: 4 BYTES -> CONSISTENCYTYPE (int32_t)
+ * 6° POSICION: 4 BYTES -> CANTPARTICIONES (int32_t)
+ * 8° POSICION: 8 BYTES -> COMPACTATIONTIME (int64_t) -> VER DE CAMBIAR A CHAR *
+ * EN TOTAL: SIZEOF(int32_t)*5 + SIZEOF((int64_t) + N BYTES DE STRING (STRLEN(NOMBRE_TABLA) + 1)
+ * */
+
+
 void enviarCreate(int socketReceptor,char* tabla,int32_t consistencyType,int32_t cantParticiones,int64_t compactationTime)
 {
 	int desplazamiento = 0;
@@ -265,8 +280,10 @@ int recibirQuery(int socketEmisor, query ** myQuery) {
 	int32_t tamanioQuery = 0;
 	int32_t tipoQuery;
 	int32_t tamanioBuffer = 0;
+	void * buffer;
 
-	cantidadRecibida = recibirInt(socketEmisor, &tamanioQuery); //Se recibe el tam del buffer
+	cantidadRecibida = recibirInt(socketEmisor, &tamanioQuery); //Se recibe el tam del buffer => asd
+
 
 	if(cantidadRecibida == 0)
 	{
@@ -278,12 +295,17 @@ int recibirQuery(int socketEmisor, query ** myQuery) {
 	{
 		return -1;
 	}
+
 	tamanioBuffer = tamanioQuery - sizeof(int32_t);
-	void * buffer = malloc(tamanioBuffer); //Se le resta el tamanio del tipo de query
 
+	if(tamanioBuffer > 0)
+	{
+	buffer = malloc(tamanioBuffer); //Se le resta el tamanio del tipo de query
 	cantidadRecibida += recibir(socketEmisor,buffer,tamanioBuffer);
+	}
 
-	*myQuery = malloc(tamanioQuery);
+	*myQuery = malloc(sizeof(query) + tamanioQuery);
+	memset(*myQuery,0,sizeof(query) + tamanioQuery);
 
 	switch(tipoQuery) {
 		case SELECT:
@@ -299,16 +321,18 @@ int recibirQuery(int socketEmisor, query ** myQuery) {
 		case CREATE:
 		((*myQuery))->requestType = CREATE;
 		deserializarCreate(&(*myQuery)->tabla, &(*myQuery)->consistencyType, &(*myQuery)->cantParticiones, &(*myQuery)->compactationTime, buffer, &desplazamiento);
-		loggearCreate((*myQuery)->tabla,(*myQuery)->consistencyType, (*myQuery)->cantParticiones, (*myQuery)->compactationTime);
+		//loggearCreate((*myQuery)->tabla,(*myQuery)->consistencyType, (*myQuery)->cantParticiones, (*myQuery)->compactationTime);
 		break;
 		case DESCRIBE:
 		((*myQuery))->requestType = DESCRIBE;
-		if(cantidadRecibida > sizeof(int32_t))
+		if(tamanioQuery > sizeof(int32_t))
 		{
 		deserializarDescribe(&(*myQuery)->tabla, buffer, &desplazamiento);
 		loggearInfo3Mensajes("Se recibio la siguiente query: {DESCRIBE ",(*myQuery)->tabla,"}");
 		}else
 		{
+			*myQuery = realloc(*myQuery,sizeof(query));
+			(*myQuery)->tabla = NULL;
 			loggearInfo("Se recibio la siguiente query: {DESCRIBE}");
 		}
 			break;
@@ -324,11 +348,18 @@ int recibirQuery(int socketEmisor, query ** myQuery) {
 		case HANDSHAKE:
 		((*myQuery))->requestType = HANDSHAKE;
 		loggearInfo("Se realiza un Handshake");
+		break;
+		case RUN:
+		((*myQuery))->requestType = RUN;
+		loggearInfo("Se obtiene la consistencia de la memoria");
 			break;
 		default:
 			return -1;
 	}
+	if(tamanioBuffer > 0)
+	{
 	free(buffer);
+	}
 	return cantidadRecibida;
 }
 
@@ -377,9 +408,9 @@ void loggearInsert(char * tabla, int32_t key, char * value, int64_t timestamp)
 }
 
 
-void loggearCreate(char *tabla,int32_t consistencyType, int32_t cantParticiones, int64_t compactationTime){
+void loggearCreate(char * tabla,int32_t consistencyType, int32_t cantParticiones, int64_t compactationTime){
 
-	char * log = malloc(strlen("Se recibio la siguiente query: {CREATE         ") + strlen(tabla) + 1 + sizeof(int32_t)*2 + sizeof(int64_t));
+	char * log = malloc(500);
 	char * aux = malloc(100);
 
 	strcpy(log,"Se recibio la siguiente query: {CREATE ");

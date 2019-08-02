@@ -15,7 +15,7 @@ void compactar(query * queryCreate){
 
 	//liberarQueryCreateLevantada(queryCreate);
 
-	char * directorioTabla = malloc(strlen(carpetaTables) + strlen(queryCreate->tabla) + 2);
+	char * directorioTabla = malloc(strlen(carpetaTables) + strlen(nombreTabla) + 2);
 
 	struct stat estadoCompactacion = {0};
 

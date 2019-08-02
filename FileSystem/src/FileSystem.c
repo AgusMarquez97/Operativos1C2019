@@ -18,7 +18,7 @@ void gestionarFileSystem()
 
 	inicializarSemaforos();
 
-	hiloDump = crearHilo(ejecutarDumping,NULL);
+	hiloDump = makeDetachableThread(ejecutarDumping,NULL);
 
 	//liberarNombres(); //->No liberar que luego no se pueden usar
 }
@@ -300,8 +300,13 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola)
 		crearMetadataTabla(directorioTabla,queryCreate,flagConsola);
 		crearParticonesTabla(directorioTabla,queryCreate,flagConsola);
 
+		query * queryCreateDummy = malloc(sizeof(query)+ 200);
 
-		hiloCompactador = crearHilo(compactar,queryCreate);
+		queryCreateDummy->compactationTime = queryCreate->compactationTime;
+		queryCreateDummy->cantParticiones = queryCreate->cantParticiones;
+		queryCreateDummy->tabla = strdup(queryCreate->tabla);
+
+		hiloCompactador = makeDetachableThread(compactar,queryCreateDummy);
 
 		loggearTablaCreadaOK(queryCreate->tabla,flagConsola);
 		free(directorioTabla);
@@ -482,8 +487,8 @@ char * castearBloquesChar(int lista_bloques[])
 	if(indice == 0)
 		return NULL;
 
-	char * lista_final = malloc(indice*2 + 10);
-	char * aux = malloc(indice + 10); //Ver de eliminar y probar
+	char * lista_final = malloc(strlen("999999")*indice + 100);
+	char * aux = malloc(indice + 30); //Ver de eliminar y probar
 	//La correcta deberia ser cantidad_elementos + (cantidad_elementos - 1) + 2 + 1 pero para asegurar se da mas
 
 	strcpy(lista_final,"[");
@@ -641,13 +646,14 @@ void recorrerDirectorio(char * directorio)
                 	char ** cantidadParticiones = string_split(metadata[2],"=");
                 	char ** tiempoCompactacion = string_split(metadata[3],"=");
                 	char * auxTiempoCompactacion = string_substring_until(tiempoCompactacion[1],strlen(tiempoCompactacion[1])-1);
-                	queryCreate = malloc(sizeof(query));
 
-                	queryCreate->compactationTime = atoi(auxTiempoCompactacion);
+                	queryCreate = malloc(sizeof(query)+ 200);
+
+                	queryCreate->compactationTime = atoll(auxTiempoCompactacion);
                 	queryCreate->cantParticiones = atoi(cantidadParticiones[1]);
                 	queryCreate->tabla = strdup(estructuraDir->d_name);
 
-                	hiloCompactador = crearHilo(compactar,queryCreate);
+                	hiloCompactador = makeDetachableThread(compactar,queryCreate);
 
                 	free(rutaAbs);
 
@@ -1016,7 +1022,7 @@ char * obtenerMetadaTabla(char * rutaTabla)
 				strcat(cadenaRetorno,obtenerString("COMPACTION_TIME"));
 				strcat(cadenaRetorno,"\n");
 				eliminarEstructuraConfig();
-
+							//TABLE=NOM_TABLA
 				free(rutaMetadata);
 				free(nombreTabla);
 				}

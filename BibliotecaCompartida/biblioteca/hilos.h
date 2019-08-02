@@ -9,5 +9,5 @@
 pthread_t crearHilo(void* funcion, void* param);
 void crearHiloDetachable(void* funcion, void* param);
 int esperarHilo(pthread_t hilo);
-
+pthread_t makeDetachableThread(void* funcion, void* param);
 #endif /* HILOS_H_ */

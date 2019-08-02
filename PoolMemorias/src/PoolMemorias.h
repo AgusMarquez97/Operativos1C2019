@@ -65,6 +65,10 @@
 #define EVENT_SIZE (sizeof(struct inotify_event)+24)
 #define BUF_LEN (1024*EVENT_SIZE)
 
+
+int criterioConsistencia = EC;
+
+
 char * IPMemoria;
 char * puertoMemoria;
 
@@ -185,7 +189,7 @@ void procesarJournal(query* queryJournal, int flagConsola);
 
 void loggearArchivoDeConfiguracion();
 void loggearInfoServidor(char * IP, char * Puerto);
-void loggearInfoCliente(char * IP, char * Puerto);
+void loggearInfoFileSystem(char * IP, char * Puerto);
 void loggearNuevaConexion(int socket);
 void loggearDatosRecibidos(int socket, int datosRecibidos);
 
@@ -245,6 +249,8 @@ int obtenerCantidadMarcos(int tamanioPagina, int tamanioMemoria);
 
 void handshakeKernel();
 void handshakeFS();
+
+void cambiarConsistencia();
 
 
 

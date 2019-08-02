@@ -23,10 +23,8 @@ void iniciarLFS()
 
 	levantarMemTable();
 
-	loggearInfo("POR INICIAR EL SERVER");
-
 	hiloConsola = crearHilo(consola,NULL);
-	hiloServidor = crearHilo(iniciarServidor,NULL);
+	hiloServidor = makeDetachableThread(iniciarServidor,NULL);
 
 	esperarHilo(hiloConsola);
 }
@@ -58,7 +56,7 @@ void levantarConfig()
 
 	puntoMontaje = eliminarComillas(obtenerString("PUNTO_MONTAJE"));
 	eliminarEstructuraConfig();
-	hiloMonitor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
+	hiloMonitor = makeDetachableThread(monitorearConfig,NULL); //Va a ser hilo detacheable
 }
 
 
@@ -112,7 +110,7 @@ void levantarServidorLFS(char * servidorIP, char* servidorPuerto)
 	        	{
 	        		loggearNuevaConexion(socketRespuesta);
 
-	        		if((hiloAtendedor = crearHilo(rutinaServidor,(void*)socketRespuesta)) != 0)
+	        		if((hiloAtendedor = makeDetachableThread(rutinaServidor,(void*)socketRespuesta)) != 0)
 	        		{
 
 	        		}
@@ -239,8 +237,8 @@ void procesarQuery(argumentosQuery * args)
 	case DESCRIBE:
 		pthread_mutex_lock(&mutex_describe_drop);
 		procesarDescribe(args->unaQuery,flagConsola,args->socketCliente);
-		if(args->unaQuery->tabla)
-			free(args->unaQuery->tabla);
+		//if(args->unaQuery->tabla)
+		//	free(args->unaQuery->tabla);
 		pthread_mutex_unlock(&mutex_describe_drop);
 		break;
 	case DROP:
@@ -312,6 +310,10 @@ void procesarSelect(query * unaQuery, int flagConsola, int socketCliente)
 			}
 			if(socketCliente != -1)
 			enviarQuery(socketCliente,insert);
+
+			free(insert->tabla);
+			free(insert->value);
+			free(insert);
 }
 
 
@@ -357,9 +359,16 @@ void procesarDescribe(query * unaQuery, int flagConsola, int socketCliente)
 {
 		char * mensajeErrorTabla;
 		query * cadenaDescribe = malloc(sizeof(query));
-
 		cadenaDescribe->requestType = DESCRIBE;
+
+		if(unaQuery->tabla)
+		{
 		cadenaDescribe->tabla = rutinaFileSystemDescribe(unaQuery->tabla);
+		}
+		else
+		{
+			cadenaDescribe->tabla = rutinaFileSystemDescribe(NULL);
+		}
 
 		if(cadenaDescribe->tabla != NULL)
 		{
@@ -711,7 +720,7 @@ void loggearRegistroNoEncontrado(int key, int flagConsola)
 
 void loggearTablaCreadaOK(char * tabla,int flagConsola){
 
-		char * aux = malloc(strlen("Se creo correctamente la tabla  ''") + strlen(tabla) + 15);
+		char * aux = malloc(strlen("Se creo correctamente la tabla  en el FileSystem ''") + strlen(tabla) + 35);
 		strcpy(aux,"Se creo correctamente la tabla '");
 		strcat(aux,tabla);
 		strcat(aux,"'");

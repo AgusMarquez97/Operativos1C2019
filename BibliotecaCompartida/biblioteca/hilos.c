@@ -21,6 +21,13 @@ void crearHiloDetachable(void* funcion, void* param){
 
 }
 
+pthread_t makeDetachableThread(void* funcion, void* param)
+{
+	pthread_t hiloDetacheable = crearHilo(funcion,param);
+	pthread_detach(hiloDetacheable);
+	return hiloDetacheable;
+}
+
 int esperarHilo(pthread_t hilo){
 	return pthread_join(hilo, NULL);
 }

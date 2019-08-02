@@ -11,7 +11,8 @@
 #include "PoolMemorias.h"
 
 int main(void) {
-	tamanioValue = 52;
+	tamanioValue = 20;
+
 	listaSegmentos = list_create();
 	historialPaginas = list_create();
 	tablaSegmentos = dictionary_create();
@@ -22,8 +23,9 @@ int main(void) {
 	handshake();
 	reservarMemoriaPrincipal();
 	inicializarSemaforos();
+	loggearInfoFileSystem(configuracionMemoria->IP_FS,configuracionMemoria->PUERTO_FS);
 
-	hiloJournal = crearHilo(ejecutarRutinaJournal,NULL);
+	hiloJournal = makeDetachableThread(ejecutarRutinaJournal,NULL);
 
 	pthread_t hilo_consola;//, hilo_conexionKernel;
 
@@ -66,7 +68,9 @@ void leerArchivoConfiguracion(){
 		configuracionMemoria->RETARDO_MEM = obtenerInt("RETARDO_MEM");
 		configuracionMemoria->TAM_MEM = obtenerInt("TAM_MEM");
 
-		hiloMonitor = crearHilo(monitorearConfig,NULL); //Va a ser hilo detacheable
+		hiloMonitor = makeDetachableThread(monitorearConfig,NULL); //Va a ser hilo detacheable
+
+		//eliminarEstructuraConfig();
 
 		//loggearArchivoDeConfiguracion();
 }
@@ -85,7 +89,7 @@ void levantarMemoriaComoServidor()
 	reservarMemoriaPrincipal();
 	inicializarSemaforos();
 
-	hiloJournal = crearHilo(ejecutarRutinaJournal,NULL);
+	hiloJournal = makeDetachableThread(ejecutarRutinaJournal,NULL);
 
 	levantarServidorMemoria();
 }
@@ -223,14 +227,24 @@ int conexionFS(){
 		char* IP = strdup(configuracionMemoria->IP_FS);
 		char * Puerto = strdup(configuracionMemoria->PUERTO_FS);
 
-		loggearInfoCliente(IP,Puerto);
-
 		int clienteFS = levantarCliente(IP,Puerto);
 
 		free(IP);
 		free(Puerto);
 
 		return clienteFS;
+}
+
+
+void enviarConsistencia()
+{
+	char* IP = strdup(configuracionMemoria->IP_FS);
+	char * Puerto = strdup(configuracionMemoria->PUERTO_FS);
+
+	int clienteMemoria = levantarCliente(IP,Puerto);
+
+	enviarRequest(clienteMemoria,RUN);
+
 }
 
 
@@ -257,7 +271,7 @@ void levantarServidorMemoria()
 					if(recibirQuery(socketRespuesta,&args->unaQuery) != -1 && recibirQuery(socketRespuesta,&args->unaQuery) != 0)
 					{
 
-						if((hiloAtendedor = crearHilo(procesarQuery,(void*)args)) != 0)
+						if((hiloAtendedor = makeDetachableThread(procesarQuery,(void*)args)) != 0)
 						{
 
 						}
@@ -308,6 +322,7 @@ void enviarQuerysFS(char * tabla, t_list * registros)
 		}
 
 		list_iterate(querys,(void *)enviarUnaQuery);
+		close(socketFS);
 	}
 	else
 	{
@@ -360,6 +375,9 @@ void procesarQuery(argumentosQuery * args)
 			case JOURNAL:
 				procesarJournal(args->unaQuery,flagConsola);
 				break;
+			case RUN:
+				cambiarConsistencia();
+				break;
 	default:
 		loggearInfo("Request Aun No Disponible");
 	}
@@ -375,8 +393,6 @@ void procesarSelect(query* selectQuery, int flagConsola)
 	int socketFS;
 	int datosRecibidos;
 	registro * registroFinalMemoria = NULL;
-
-	int criterioConsistencia = EC;
 
 	if(criterioConsistencia == -1)
 		printf("TABLA NO EXISTE EN FS");
@@ -394,6 +410,7 @@ void procesarSelect(query* selectQuery, int flagConsola)
 				{
 					enviarQuery(socketFS,selectQuery);
 					datosRecibidos = recibirQuery(socketFS,&queryInsertFS);
+					close(socketFS);
 					if(datosRecibidos > 0)
 					{
 							if(registroFinalMemoria->timestamp >= queryInsertFS->timestamp) // MAX MP
@@ -442,6 +459,13 @@ void procesarSelect(query* selectQuery, int flagConsola)
 		}
 
 }
+
+void cambiarConsistencia()
+{
+	criterioConsistencia = SC;
+}
+
+
 void procesarInsert(query* queryInsert, int flagConsola)
 {
 	if(strlen(queryInsert->value) <= tamanioValue)
@@ -473,6 +497,8 @@ void procesarInsert(query* queryInsert, int flagConsola)
 				{
 				memset(memoriaPrincipal + nroMarco*tamanioPag,0,tamanioPag);
 				escribirMarco(nroMarco,registroFinal);
+				free(registroFinal->value);
+				free(registroFinal);
 				}
 				else
 				{
@@ -490,9 +516,12 @@ void procesarInsert(query* queryInsert, int flagConsola)
 			if(flagConsola)
 			printf("Se inserto un registro correctamente\n");
 	}
-	loggearError("Error: Valor maximo del value superado");
+	else
+	{
+		loggearError("Error: Valor maximo del value superado");
 		if(flagConsola)
 				printf("Error: Valor maximo del value superado\n");
+	}
 }
 void procesarCreate(query* queryCreate, int flagConsola)
 {
@@ -504,7 +533,7 @@ void procesarCreate(query* queryCreate, int flagConsola)
 	{
 		enviarQuery(socketFS,queryCreate);
 		datosRecibidos = recibirInt(socketFS,&estadoResultado);
-
+		close(socketFS);
 		if(datosRecibidos>0 && estadoResultado == 1)
 		{
 			loggearTablaCreadaOK(queryCreate,flagConsola);
@@ -532,20 +561,34 @@ void procesarDescribe(query* queryDescribe, int flagConsola)
 	{
 			enviarQuery(socketFS,queryDescribe);
 			datosRecibidos = recibirQuery(socketFS,&describe);
+			close(socketFS);
 			if(datosRecibidos > 0 && strncmp(describe->tabla,"VOID",4))
 			{
 				loggearInfo(describe->tabla);
 				if(flagConsola)
 					printf("%s",describe->tabla);
+				free(describe->tabla);
+				free(describe);
 			}else
 			{
 				if(queryDescribe->tabla)
+				{
 				loggearInfo("Tabla no existente en el sistema");
+					if(flagConsola)
+						printf("Tabla no existente en el sistema\n");
+				}
 				else
-				loggearInfo("No existen tablas en FS");
+				{
+				loggearInfo("No existen tablas en el FS");
+					if(flagConsola)
+						printf("No existen tablas en el FS\n");
+				}
+				if(datosRecibidos > 0)
+				{
+					free(describe->tabla);
+					free(describe);
+				}
 			}
-			free(describe->tabla);
-			free(describe);
 	}
 	else{
 			if(flagConsola)
@@ -595,7 +638,7 @@ void procesarDrop(query* queryDrop, int flagConsola)
 		{
 			enviarQuery(socketFS,queryDrop);
 			datosRecibidos = recibirInt(socketFS,&estadoResultado);
-
+			close(socketFS);
 			if(datosRecibidos>0 && estadoResultado == 1)
 			{
 				loggearInfo("Tabla Dropeada en FS");
@@ -607,6 +650,7 @@ void procesarDrop(query* queryDrop, int flagConsola)
 				if(flagConsola)
 					printf("%s\n","Tabla no existente en FS");
 			}
+
 		}
 	else{
 			if(flagConsola)
@@ -731,6 +775,8 @@ int obtenerCriterioConsistencia(char * tabla)
 
 	cantidadRecibida = recibirQuery(socket,&describe);
 
+	close(socket);
+
 	if(cantidadRecibida <= 0 || !strcmp(describe->tabla,"VOID"))
 		return -1;
 
@@ -744,6 +790,7 @@ int obtenerCriterioConsistencia(char * tabla)
 
 		free(describe->tabla);
 		free(describe);
+
 
 	return tipoConsistencia;
 
@@ -828,8 +875,6 @@ int obtenerMarcoLibre()
 		}
 	}
 	return ejecutarLRU();
-	sem_wait(&semaforoMemoria);
-	bitarray_set_bit(marcosMemoria,marco);
 }
 
 registro * leerMarco(int nroMarco)
@@ -854,7 +899,7 @@ void escribirMarco(int nroMarco, registro * unReg)
 
 bool estaLibre(int nroMarco)
 {
-	return bitarray_test_bit(marcosMemoria,nroMarco) == 0;
+	return bitarray_test_bit(marcosMemoria,nroMarco);
 }
 
 int ejecutarLRU()
@@ -899,8 +944,8 @@ void buscarRegistroFS(query * selectQuery, int flagConsola)
 	if(socketFS != -1)
 	{
 		enviarQuery(socketFS,selectQuery);
-
 		datosRecibidos = recibirQuery(socketFS,&queryInsertFS);
+		close(socketFS);
 		if(datosRecibidos > 0 && strcmp(queryInsertFS->value,"VOID"))
 		{
 			loggearRegistroEncontrado(queryInsertFS->key,queryInsertFS->value,flagConsola);
@@ -980,7 +1025,7 @@ void loggearInfoServidor(char * IP, char * Puerto)
 	free(puertoServidor);
 }
 
-void loggearInfoCliente(char * IP, char * Puerto)
+void loggearInfoFileSystem(char * IP, char * Puerto)
 {
 
 	char * ipServidor = malloc(strlen("IP del Servidor de FS es: ") + strlen(IP) + 1);
@@ -1081,7 +1126,7 @@ void loggearErrorTablaExistente(query * unaQuery,int flagConsola)
 	char * aux = malloc(strlen("Error la tabla  '' ya existente en el FS   ") + strlen(unaQuery->tabla) + 10);
 	strcpy(aux,"Error la tabla '");
 	strcat(aux,unaQuery->tabla);
-	strcat(aux,"' ya existente en el FS");
+	strcat(aux,"' ya existe en el FS");
 	loggearInfo(aux);
 	if(flagConsola)
 	printf("%s\n",aux);
