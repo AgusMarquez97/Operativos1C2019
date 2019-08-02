@@ -74,6 +74,7 @@ char * carpetaBloques;
 char * metadataBin;
 char * bitmapBin;
 
+pthread_t hiloDump;
 pthread_t hiloCompactador;
 
 
@@ -90,7 +91,7 @@ t_bitarray* unBitarray;
  * DROP: Para que no se pueda borrar un archivo que recien se creo en el compactador => para no joder compac
  * DESCRIBE_DROP: Para que en el medio de un describe no me tiren un drop
  */
-pthread_mutex_t mutex_select_compactacion, mutex_drop_compactacion, mutex_describe_drop;
+pthread_mutex_t mutex_select_compactacion, mutex_drop_compactacion, mutex_describe_drop, mutex_memTable, mutex_bitarray;
 
 /*
  * Busca evitar asignar un bloque cuando se acabaron hasta que se realice un drop o una compactacion
@@ -285,6 +286,8 @@ void escribirBloques(int cantidadFinal,int cantidadDeBloques,int listaBloques[],
 
 //Envia el tam max del value a memoria
 void handshake();
+
+void ejecutarDumping();
 
 
 #endif /* LISSANDRA_H_ */

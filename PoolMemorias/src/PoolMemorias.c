@@ -267,10 +267,10 @@ void levantarServidorMemoria()
 			{
 				if((socketRespuesta = aceptarConexion(socketServidor)) != -1)
 				{
+					args->socketCliente = socketRespuesta;
 					loggearNuevaConexion(socketRespuesta);
 					if(recibirQuery(socketRespuesta,&args->unaQuery) != -1 && recibirQuery(socketRespuesta,&args->unaQuery) != 0)
 					{
-
 						if((hiloAtendedor = makeDetachableThread(procesarQuery,(void*)args)) != 0)
 						{
 
@@ -377,6 +377,9 @@ void procesarQuery(argumentosQuery * args)
 				break;
 			case RUN:
 				cambiarConsistencia();
+				break;
+			case HANDSHAKE:
+				enviarPool(args->socketCliente);
 				break;
 	default:
 		loggearInfo("Request Aun No Disponible");
@@ -1282,17 +1285,23 @@ void actualizarConfig()
 
 void crearMemoria()
 {
-	sumarNumeroMemoria();
+	while(1)
+	{
 
-	 if (fork() == 0)
-	 {
-		 	 levantarMemoriaComoServidor();
-	 }
-	 else
-	 {
 
-	 }
+		usleep(configuracionMemoria->RETARDO_GOSSIPING);
 
+
+		bool conectarConMemoria(char * ipPuerto)
+		{
+			return conectarConMemoria();
+		}
+
+		t_list * listaMemoriasActivas = filter(listaMemoriasConfig,conectarConMemoria);
+
+
+
+	}
 
 }
 

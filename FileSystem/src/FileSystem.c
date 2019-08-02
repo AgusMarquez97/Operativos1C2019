@@ -18,8 +18,6 @@ void gestionarFileSystem()
 
 	inicializarSemaforos();
 
-	hiloDump = makeDetachableThread(ejecutarDumping,NULL);
-
 	//liberarNombres(); //->No liberar que luego no se pueden usar
 }
 
@@ -150,38 +148,55 @@ void limpiarTabla(char * rutaTabla)
 
 void inicializarSemaforos()
 {
+	pthread_mutex_init(&mutex_bitarray, NULL);
 	pthread_mutex_init(&mutex_select_compactacion, NULL);
 	pthread_mutex_init(&mutex_drop_compactacion, NULL);
 	pthread_mutex_init(&mutex_describe_drop, NULL);
+	pthread_mutex_init(&mutex_memTable, NULL);
+
 	sem_init(&bitarray_bloques,0,cantidadBloques);
 }
 
 void ejecutarDumping()
 {
+
+	char * mensajeDumping = malloc(strlen("Tabla '' Dumpeada OK") + 400);
 	while(1)
 	{
+
 	usleep(dumping*1000);
+
+	pthread_mutex_lock(&mutex_memTable);
 
 	void dumpearTabla(char * tabla, t_list * listaRegistros)
 	{
 		//Luego crear un hilo detacheable por cada una de estas
+
+
 		if(listaRegistros)
 		{
 				if(!list_is_empty(listaRegistros))
 			{
+
 			int tamNecesario = obtenerTamanioRegistrosDeUnaLista(listaRegistros);
 			char * registros = castearRegistrosChar(tamNecesario,listaRegistros);
-
 			list_clean_and_destroy_elements(listaRegistros,free);
 
 			char * aux = asignarBloques(tamNecesario,tabla,registros); // Libera la memoria
 			free(aux);
 			free(registros);
+
+			strcpy(mensajeDumping,"Tabla '");
+			strcat(mensajeDumping,tabla);
+			strcat(mensajeDumping,"' Dumpeada OK");
+
+			loggearInfo(mensajeDumping);
 			}
 		}
 	}
 	dictionary_iterator(memTable,(void*)dumpearTabla);
-	loggearInfo("Dumpeo OK");
+
+	pthread_mutex_unlock(&mutex_memTable);
 
 	}
 }
@@ -231,11 +246,13 @@ void crearMetadataTabla(char * directorioTabla, query * queryCreate, int flagCon
 			char * tiempoCompactacion = malloc(50);
 			sprintf(tiempoCompactacion,"%lli",queryCreate->compactationTime);
 
-			crearConfig(metadataTabla);
-			cambiarValorConfig("CONSISTENCY",consistencia);
-			cambiarValorConfig("PARTITIONS",particiones);
-			cambiarValorConfig("COMPACTION_TIME",tiempoCompactacion);
-			eliminarEstructuraConfig();
+			t_config * configLocal = config_create(metadataTabla);
+			config_set_value(configLocal,"CONSISTENCY",consistencia);
+			config_set_value(configLocal,"PARTITIONS",particiones);
+			config_set_value(configLocal,"COMPACTION_TIME",tiempoCompactacion);
+			config_save(configLocal);
+			config_destroy(configLocal);
+
 
 			free(consistencia);
 			free(particiones);
@@ -269,10 +286,12 @@ void crearParticonesTabla(char * directorioTabla, query * queryCreate, int flagC
 
 			sprintf(aux,"%d",0);
 
-			crearConfig(nroParticion);
-			cambiarValorConfig("SIZE",aux);
-			cambiarValorConfig("BLOCKS",bloque);
-			eliminarEstructuraConfig();
+
+			t_config * configLocal = config_create(nroParticion);
+			config_set_value(configLocal,"SIZE",aux);
+			config_set_value(configLocal,"BLOCKS",bloque);
+			config_save(configLocal);
+			config_destroy(configLocal);
 
 			free(nroParticion);
 			free(nroAux);
@@ -308,7 +327,6 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola)
 
 		hiloCompactador = makeDetachableThread(compactar,queryCreateDummy);
 
-		loggearTablaCreadaOK(queryCreate->tabla,flagConsola);
 		free(directorioTabla);
 
 	return 0;
@@ -460,10 +478,13 @@ char * asignarBloques(int tamanioNecesario, char * nombreTabla,char * listaRegis
 
 	sprintf(aux_tmp,"%d",tamanioNecesario);
 
-	crearConfig(nombreTemp);
-	cambiarValorConfig("SIZE",aux_tmp);
-	cambiarValorConfig("BLOCKS",bloques);
-	eliminarEstructuraConfig();
+
+	t_config * configLocal = config_create(nombreTemp);
+	config_set_value(configLocal,"SIZE",aux_tmp);
+	config_set_value(configLocal,"BLOCKS",bloques);
+	config_save(configLocal);
+	config_destroy(configLocal);
+
 
 	free(aux_tmp);
 	free(bloques);
@@ -552,6 +573,7 @@ int  buscarPrimerBloqueLibre()
 
 	sem_wait(&bitarray_bloques);
 
+	pthread_mutex_lock(&mutex_bitarray);
 	while(bitarray_test_bit(unBitarray,aux))
 	{
 
@@ -564,6 +586,7 @@ int  buscarPrimerBloqueLibre()
 		}
 	}
 	bitarray_set_bit(unBitarray,aux);
+	pthread_mutex_unlock(&mutex_bitarray);
 
 
 	return aux;
@@ -696,10 +719,11 @@ char * leerBloque(char * numeroBloque,int bytesALeer) // "5"
 
 char * obtenerRegistrosArchivo(char * ruta)
 {
-	crearConfig(ruta);
-	char ** bloques = obtenerArray("BLOCKS"); // devuelve ["5","64","17",NULL]
-	int tamanioArchivo = obtenerInt("SIZE");
-	eliminarEstructuraConfig();
+
+	t_config * configLocal = config_create(ruta);
+	char ** bloques = config_get_array_value(configLocal,"BLOCKS");  // devuelve ["5","64","17",NULL]
+	int tamanioArchivo = config_get_int_value(configLocal,"SIZE");
+	config_destroy(configLocal);
 
 	char* aux = malloc(tamanioArchivo+10);
 	strcpy(aux,"");
@@ -904,9 +928,11 @@ int eliminarDirectorio(char * directorio)
 void borrarBloques(char * rutaArchivo)
 {
 FILE * bloque;
-crearConfig(rutaArchivo);
-char ** bloques = obtenerArray("BLOCKS"); // devuelve ["5","64","17",NULL]
-eliminarEstructuraConfig();
+
+t_config * configLocal = config_create(rutaArchivo);
+char ** bloques = config_get_array_value(configLocal,"BLOCKS"); // devuelve ["5","64","17",NULL]
+config_destroy(configLocal);
+
 
 char * rutaBloque = malloc(strlen(carpetaBloques) + CANTIDAD_MAXIMA_BLOQUES + strlen(".bin") + 1);
 
@@ -918,7 +944,9 @@ while(bloques[i]!=NULL)
 		strcpy(bloqueLeido,bloques[i]);
 		strcat(bloqueLeido,".bin");
 		strcpy(rutaBloque,carpetaBloques);
+		pthread_mutex_lock(&mutex_bitarray);
 		bitarray_clean_bit(unBitarray,atoi(bloques[i]));
+		pthread_mutex_unlock(&mutex_bitarray);
 		strcat(rutaBloque,bloqueLeido);
 		remove(rutaBloque);
 		bloque =  txt_open_for_append(rutaBloque);
@@ -1003,25 +1031,27 @@ char * obtenerMetadaTabla(char * rutaTabla)
 				strcat(rutaMetadata,"/");
 				strcat(rutaMetadata,"Metadata");
 
-				crearConfig(rutaMetadata);
 
 				nombreTabla = obtenerNombre(rutaTabla);
 
+				t_config * configLocal = config_create(rutaMetadata);
+
 				cadenaRetorno = malloc(strlen(estructuraDir->d_name) +
 				strlen("TABLE=;CONSISTENCY=;PARTITIONS=;COMPACTION_TIME=;COMPACTION_TIME=\n")
-				+ strlen(obtenerString("CONSISTENCY")) + strlen(obtenerString("PARTITIONS"))
-				+ strlen(obtenerString("COMPACTION_TIME")) + 10);
+				+ strlen(config_get_string_value(configLocal,"CONSISTENCY")) + strlen(config_get_string_value(configLocal,"PARTITIONS"))
+				+ strlen(config_get_string_value(configLocal,"COMPACTION_TIME")) + 10);
 
 				strcpy(cadenaRetorno,"TABLE=");
 				strcat(cadenaRetorno,nombreTabla);
 				strcat(cadenaRetorno,";CONSISTENCY=");
-				strcat(cadenaRetorno,obtenerString("CONSISTENCY"));
+				strcat(cadenaRetorno,config_get_string_value(configLocal,"CONSISTENCY"));
 				strcat(cadenaRetorno,";PARTITIONS=");
-				strcat(cadenaRetorno,obtenerString("PARTITIONS"));
+				strcat(cadenaRetorno,config_get_string_value(configLocal,"PARTITIONS"));
 				strcat(cadenaRetorno,";COMPACTION_TIME=");
-				strcat(cadenaRetorno,obtenerString("COMPACTION_TIME"));
+				strcat(cadenaRetorno,config_get_string_value(configLocal,"COMPACTION_TIME"));
 				strcat(cadenaRetorno,"\n");
-				eliminarEstructuraConfig();
+
+				config_destroy(configLocal);
 							//TABLE=NOM_TABLA
 				free(rutaMetadata);
 				free(nombreTabla);

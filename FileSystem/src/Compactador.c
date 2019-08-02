@@ -17,15 +17,17 @@ void compactar(query * queryCreate){
 
 	char * directorioTabla = malloc(strlen(carpetaTables) + strlen(nombreTabla) + 2);
 
+	char * rutaTmpCero = malloc(strlen(carpetaTables) + strlen(nombreTabla) + strlen("0.bin") + 10);
+
 	struct stat estadoCompactacion = {0};
+
+	t_list * registrosBinTmpc;
 
 	while(1)
 		{
 
 		strcpy(directorioTabla,carpetaTables);
 		strcat(directorioTabla,nombreTabla);
-
-		t_list * registrosBinTmpc;
 
 		usleep(tiempoCompactacion*1000);
 
@@ -34,17 +36,31 @@ void compactar(query * queryCreate){
 			{
 
 			strcat(directorioTabla,"/");
+
+			strcpy(rutaTmpCero,directorioTabla);
+			strcat(rutaTmpCero,"0.tmp");
+
 			pthread_mutex_lock(&mutex_drop_compactacion);
-			renombrarArchivosTemporales(directorioTabla);
-			registrosBinTmpc = obtenerRegistrosBinTmpc(directorioTabla);
-			t_list * registrosCompactados = obtenerListaCompactada(registrosBinTmpc);
-			compactarBinarios(directorioTabla,registrosCompactados,cantidadParticiones); // Vuelve a crear los bin
+				if(existeCeroTmp(rutaTmpCero) != -1)
+				{
+					renombrarArchivosTemporales(directorioTabla);
+					registrosBinTmpc = obtenerRegistrosBinTmpc(directorioTabla);
+					t_list * registrosCompactados = obtenerListaCompactada(registrosBinTmpc);
+					compactarBinarios(directorioTabla,registrosCompactados,cantidadParticiones); // Vuelve a crear los bin
+
+					list_destroy(registrosCompactados);
+					list_destroy_and_destroy_elements(registrosBinTmpc,free);
+					loggearInfo(logCompactacion);
+				}
 			pthread_mutex_unlock(&mutex_drop_compactacion);
-			list_destroy(registrosCompactados);
-			list_destroy_and_destroy_elements(registrosBinTmpc,free);
+
+			}
+			else
+			{
+				break;
 			}
 
-		loggearInfo(logCompactacion);
+
 		}
 }
 
@@ -277,10 +293,12 @@ void compactarBinarios(char * tabla, t_list * listaRegistros, int cantidadPartic
 			char * aux = malloc(sizeof(int)*2);
 			char * bloque = asignarUnBloqueBin();
 			sprintf(aux,"%d",0);
-			crearConfig(rutaBinario);
-			cambiarValorConfig("SIZE",aux);
-			cambiarValorConfig("BLOCKS",bloque);
-			eliminarEstructuraConfig();
+			t_config * configLocal = config_create(rutaBinario);
+			config_set_value(configLocal,"SIZE",aux);
+			config_set_value(configLocal,"BLOCKS",bloque);
+			config_save(configLocal);
+			config_destroy(configLocal);
+
 			free(aux);
 			free(bloque);
 		}
@@ -312,10 +330,11 @@ void asignarBloquesABinarios(int tamanioNecesario, char * binario,char * listaRe
 
 	sprintf(aux_tmp,"%d",tamanioNecesario);
 
-	crearConfig(binario);
-	cambiarValorConfig("SIZE",aux_tmp);
-	cambiarValorConfig("BLOCKS",bloques);
-	eliminarEstructuraConfig();
+	t_config * configLocal = config_create(binario);
+	config_set_value(configLocal,"SIZE",aux_tmp);
+	config_set_value(configLocal,"BLOCKS",bloques);
+	config_save(configLocal);
+	config_destroy(configLocal);
 
 	free(aux_tmp);
 	free(bloques);
@@ -330,4 +349,10 @@ void liberarQueryCreateLevantada(query * queryCreate)
 			free(queryCreate->tabla);
 		free(queryCreate);
 	}
+}
+
+int existeCeroTmp(char * rutaTmpCero)
+{
+	struct stat estadoCompactacion = {0};
+	return stat(rutaTmpCero,&estadoCompactacion);
 }

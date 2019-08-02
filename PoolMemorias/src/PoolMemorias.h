@@ -66,6 +66,9 @@
 #define BUF_LEN (1024*EVENT_SIZE)
 
 
+t_list * listaMemoriasConfig;
+
+
 int criterioConsistencia = EC;
 
 
@@ -132,6 +135,7 @@ int tamanioValue;
 typedef struct{
 	query * unaQuery;
 	int flagConsola;
+	int socketCliente;
 }argumentosQuery;
 
 t_bitarray * marcosMemoria;

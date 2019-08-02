@@ -39,8 +39,6 @@ struct stat estado = {0};
 
  */
 
-pthread_t hiloDump;
-
 
 void gestionarFileSystem();
 
@@ -52,8 +50,6 @@ void gestionarFileSystem();
  * Crea la carpeta punto de montaje + las carpetas administrativas
  */
 void levantarFileSystem();
-
-void ejecutarDumping();
 
 /*
  *	Crea la carpeta de metadata + archivos metadata.bin y bitmap.bin

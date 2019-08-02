@@ -24,4 +24,6 @@ void liberarQueryCreateLevantada(query * queryCreate);
 
 char * asignarUnBloqueBin();
 
+int existeCeroTmp(char * rutaTmpCero);
+
 #endif /* COMPACTADOR_H_ */

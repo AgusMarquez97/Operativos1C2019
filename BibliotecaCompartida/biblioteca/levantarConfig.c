@@ -60,3 +60,6 @@ void cambiarValorConfig(char * key, char * nuevoValor)
 	config_set_value(config,key,nuevoValor);
 	guardarConfig();
 }
+
+
+

@@ -17,16 +17,19 @@ void iniciarLFS()
 
 	levantarConfig();
 
-	handshake();
+	//handshake();
 
 	gestionarFileSystem();
 
 	levantarMemTable();
 
+	hiloDump = makeDetachableThread(ejecutarDumping,NULL);
+
 	hiloConsola = crearHilo(consola,NULL);
-	hiloServidor = makeDetachableThread(iniciarServidor,NULL);
+	//hiloServidor = makeDetachableThread(iniciarServidor,NULL);
 
 	esperarHilo(hiloConsola);
+
 }
 
 /*
@@ -225,9 +228,11 @@ void procesarQuery(argumentosQuery * args)
 		free(args->unaQuery->tabla);
 		break;
 	case INSERT:
+		pthread_mutex_lock(&mutex_memTable);
 		procesarInsert(args->unaQuery,flagConsola);
 		free(args->unaQuery->value);
 		free(args->unaQuery->tabla);
+		pthread_mutex_unlock(&mutex_memTable);
 		break;
 		break;
 	case CREATE:
@@ -429,52 +434,53 @@ registro * procesarSelectMemTable(query* unaQuery)
 
 	t_list * temp;
 	t_list * listaRegistros;
-	registro * registroFinal;
+	registro * registroFinal = NULL;
 
 	if(dictionary_has_key(memTable,unaQuery->tabla))
 	{
-		temp = (t_list *)dictionary_get(memTable,unaQuery->tabla);
+		pthread_mutex_lock(&mutex_memTable);
+
+		temp = (t_list *) dictionary_get(memTable,unaQuery->tabla);
 
 		if(temp != NULL)
 		{
-			if(!list_is_empty(temp))
-			{
-
-		bool condicion(void * elementoLista)
-		{
-			return ((registro*)elementoLista)->key == unaQuery->key;
-		}
-
-		listaRegistros = (t_list*)list_filter(temp,(void*)condicion);
-
-
-		if(listaRegistros)
-			{
-			registroFinal = list_get(listaRegistros,0);
-
-			if(list_size(listaRegistros) == 1)
+				if(!list_is_empty(temp))
 				{
-					return registroFinal;
+
+						bool condicion(void * elementoLista)
+						{
+							return ((registro*)elementoLista)->key == unaQuery->key;
+						}
+
+						listaRegistros = (t_list*)list_filter(temp,(void*)condicion);
+
+						if(listaRegistros)
+						{
+							if(!list_is_empty(listaRegistros))
+								{
+									registroFinal = list_get(listaRegistros,0);
+
+									if(list_size(listaRegistros) > 1)
+									{
+									void mayorTimestamp(registro * unRegistro)
+											{
+										if(unRegistro->timestamp > registroFinal->timestamp)
+												{
+											registroFinal = unRegistro;
+												}
+											}
+									list_iterate(listaRegistros,(void*)mayorTimestamp);
+									}
+								}
+							list_destroy(listaRegistros);
+						}
+						//list_destroy(temp); // VALIDAR
 				}
 
-		void mayorTimestamp(registro * unRegistro)
-				{
-			if(unRegistro->timestamp > registroFinal->timestamp)
-					{
-				registroFinal = unRegistro;
-					}
-				}
-
-		list_iterate(listaRegistros,(void*)mayorTimestamp);
-
-				}
-		list_destroy(listaRegistros);
-		list_destroy(temp); // VALIDAR
-		return registroFinal;
-			}
 		}
+		pthread_mutex_unlock(&mutex_memTable);
 	}
-	return NULL;
+	return registroFinal;
 
 }
 
@@ -834,12 +840,13 @@ void monitorearConfig()
 
 void actualizarConfig()
 {
-	crearConfig(rutaConfig);
 
-	retardo = obtenerInt("RETARDO");
-	dumping = obtenerInt("TIEMPO_DUMP");
+	t_config * configLocal = config_create(rutaConfig);
 
-	eliminarEstructuraConfig();
+	retardo = config_get_int_value(configLocal,"RETARDO");
+	dumping = config_get_int_value(configLocal,"TIEMPO_DUMP");
+
+	config_destroy(configLocal);
 }
 
 
