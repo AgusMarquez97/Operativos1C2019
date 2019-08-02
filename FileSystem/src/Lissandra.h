@@ -57,6 +57,8 @@
 #include <ftw.h>
 #include <dirent.h>
 
+#include <semaphore.h>
+
 #define EVENT_SIZE (sizeof(struct inotify_event)+24)
 #define BUF_LEN (1024*EVENT_SIZE)
 
@@ -81,19 +83,19 @@ int cantidadBloques;
 
 t_bitarray* unBitarray;
 
-pthread_mutex_t mutex_bloques; //= PTHREAD_MUTEX_INITIALIZER
-pthread_mutex_t mutex_bitarray;
-
 /*
  * Con mutex_compactacion se bloquean:
  * SELECT | DROP => sobre una tabla en particulas
  * SELECT: Para que no consulte un archivo recien creado que no tiene el formato adecuado (Sin bloques ni tamanio)
- * DROP: Para que no se pueda borrar un archivo que recien se creo en el compactador
+ * DROP: Para que no se pueda borrar un archivo que recien se creo en el compactador => para no joder compac
+ * DESCRIBE_DROP: Para que en el medio de un describe no me tiren un drop
  */
-pthread_mutex_t mutex_select;
-pthread_mutex_t mutex_drop;
+pthread_mutex_t mutex_select_compactacion, mutex_drop_compactacion, mutex_describe_drop;
 
-t_log * logMemTable;
+/*
+ * Busca evitar asignar un bloque cuando se acabaron hasta que se realice un drop o una compactacion
+ */
+sem_t bitarray_bloques;
 
 /*
  * En LFS se piensa en 2 hilos permanentes (server + consola) + Los hilos on demand que se vayan creando para atender las requests
@@ -126,6 +128,7 @@ typedef struct {
 typedef struct{
 	query * unaQuery;
 	int flag;
+	int socketCliente;
 }argumentosQuery;
 
 
@@ -138,13 +141,13 @@ char * puntoMontaje;
 void levantarConfig();
 
 void iniciarLFS();
-void levantarVariablesServidor();
 
 /*
  * Funciones que tendrán los hilos de consola y server.
  */
 void consola();
 void iniciarServidor();
+void levantarServidorLFS(char * servidorIP, char* servidorPuerto);
 void loggearInfoServidor(char * IP, char * Puerto);
 void rutinaServidor(int socketCliente);
 void responderQuery(int socketCliente, argumentosQuery * args);
@@ -162,20 +165,33 @@ void procesarQuery(argumentosQuery * args);
 
 void agregarAMemTable(t_dictionary * memTable, query * unaQuery, int flagConsola);
 
-/*
- * NO garantiza mutua exclusion. Permite lecturas sucias
- */
+
+void procesarSelect(query * unaQuery, int flagConsola, int socketCliente);
 registro * procesarSelectMemTable(query* unaQuery);
+registro * rutinaFileSystemSelect(char * tabla, int32_t key); //  VALIDAR CONSUMO DE MEMORIA
+
+
+
 
 void procesarInsert(query * unaQuery, int flagConsola);
+void agregarUnRegistroMemTable(query * unaQuery, int flagConsola);
 
-void procesarCreate(query * unaQuery, int flagConsola);
+
+void procesarCreate(query * unaQuery, int flagConsola, int socketCliente);
+int rutinaFileSystemCreate(query * unaQuery, int flag);
 
 /*
  * Por desarrollar
  */
-void procesarDescribe(query * unaQuery);
-void procesarDrop(query * unaQuery);
+void procesarDescribe(query * unaQuery, int flagConsola, int socketCliente);
+char * rutinaFileSystemDescribe(char * tabla);
+char * obtenerNombre(char * ruta);
+
+
+
+void procesarDrop(query * unaQuery, int flagConsola, int socketCliente);
+int rutinaFileSystemDrop(char * tabla);
+
 
 //Para pruebas
 /*
@@ -193,7 +209,6 @@ void imprimirListaRegistros(t_list * unaLista);
 void agregarRegistro(t_list * unaLista, registro* unRegistro);
 void agregarListaRegistros(t_list * lista,t_list * listaAgregar);
 registro * obtenerRegistro(t_list * lista, int posicionLista);
-void agregarUnRegistroMemTable(query * unaQuery, int flagConsola);
 void liberarMemTable(t_dictionary ** memTable);
 int obtenerTamanioRegistrosDeUnaLista(t_list * registros);
 /*
@@ -214,21 +229,22 @@ void loggearMemTable(t_dictionary * memTable);
 void loggearSelectMemT(query* unaQuery);
 void loggearRegistroEncontrado(int key, char * value, int flagConsola);
 void loggearRegistroNoEncontrado(int key, int flagConsola);
-void loggearTablaNoEncontrado(char * tabla, int flagConsola);
+void loggearTablaNoEncontrada(char * tabla, int flagConsola);
 void loggearNuevaConexion(int socket);
-void loggearTablaCreadaOK(t_log * loggeador,query * unaQuery,int flagConsola, int flagFS);
+void loggearTablaCreadaOK(char * tabla,int flagConsola);
 void loggearErrorTablaExistente(query * unaQuery,int flagConsola);
 
 void loggearTablaDropeadaOK(char * tabla, int flagConsola);
 void loggearErrorDrop(char * tabla, int flagConsola);
 
+
+/*
+ * FS
+ */
+
 void gestionarFileSystem();
 
-registro * rutinaFileSystemSelect(char * tabla, int32_t key);
-int rutinaFileSystemCreate(argumentosQuery * args);
-int rutinaFileSystemDrop(char * tabla);
-char * rutinaFileSystemDescribe(char * tabla);
-char * obtenerNombre(char * ruta);
+
 
 void terminarAplicacion();
 /*

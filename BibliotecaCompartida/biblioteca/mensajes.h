@@ -121,5 +121,10 @@ void enviarRequest(int socketReceptor, int32_t request);
 int recibirQuery(int socketEmisor, query ** myQuery);
 
 
+void loggearNuevaConexion(int socket);
+void loggearDatosRecibidos(int socket, int datosRecibidos);
+void loggearInfoServidor(char * IP, char * Puerto);
+
+
 
 #endif /* MENSAJES_H_ */

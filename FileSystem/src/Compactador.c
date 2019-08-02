@@ -7,6 +7,12 @@ void compactar(query * queryCreate){
 	int cantidadParticiones = queryCreate->cantParticiones;
 	char * nombreTabla = strdup(queryCreate->tabla);
 
+	char * logCompactacion = malloc( strlen("Compactacion de la tabla   '' OK") + strlen(nombreTabla) + 3);
+
+	strcpy(logCompactacion,"Compactacion de la tabla '");
+	strcat(logCompactacion,nombreTabla);
+	strcat(logCompactacion,"' OK");
+
 	//liberarQueryCreateLevantada(queryCreate);
 
 	char * directorioTabla = malloc(strlen(carpetaTables) + strlen(queryCreate->tabla) + 2);
@@ -23,38 +29,22 @@ void compactar(query * queryCreate){
 
 		usleep(tiempoCompactacion*1000);
 
-		pthread_mutex_lock(&mutex_drop);
+
 			if(stat(directorioTabla,&estadoCompactacion) != -1)
 			{
+
 			strcat(directorioTabla,"/");
+			pthread_mutex_lock(&mutex_drop_compactacion);
 			renombrarArchivosTemporales(directorioTabla);
 			registrosBinTmpc = obtenerRegistrosBinTmpc(directorioTabla);
 			t_list * registrosCompactados = obtenerListaCompactada(registrosBinTmpc);
 			compactarBinarios(directorioTabla,registrosCompactados,cantidadParticiones); // Vuelve a crear los bin
-			/*
-			void liberarCompactados(registro * unReg)
-			{
-				bool condicionReg(registro * registro)
-				{
-					return registro == unReg;
-				}
-				if(!list_any_satisfy(registrosBinTmpc,(void*)condicionReg))
-				{
-					free(unReg);
-				}
-				else
-				{
-
-				}
-			}
-			list_iterate(registrosCompactados,(void*)liberarCompactados);
-			*/
+			pthread_mutex_unlock(&mutex_drop_compactacion);
 			list_destroy(registrosCompactados);
 			list_destroy_and_destroy_elements(registrosBinTmpc,free);
-
 			}
-		pthread_mutex_unlock(&mutex_drop);
 
+		loggearInfo(logCompactacion);
 		}
 }
 
@@ -248,7 +238,7 @@ void compactarBinarios(char * tabla, t_list * listaRegistros, int cantidadPartic
 
 	limpiarBloquesBitmap(tabla); // Limpia los archivos .bin y .tmpc => Libera sus bloques y borra los archivos
 
-	pthread_mutex_lock(&mutex_select);
+	pthread_mutex_lock(&mutex_select_compactacion);
 
 	char * nro = malloc(40);
 	rutaBinario = malloc(strlen(tabla) + strlen("999999999.bin") + 1);
@@ -299,7 +289,7 @@ void compactarBinarios(char * tabla, t_list * listaRegistros, int cantidadPartic
 
 	free(nro);
 	free(rutaBinario);
-	pthread_mutex_unlock(&mutex_select);
+	pthread_mutex_unlock(&mutex_select_compactacion);
 }
 
 

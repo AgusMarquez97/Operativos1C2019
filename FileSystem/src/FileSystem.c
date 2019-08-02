@@ -13,24 +13,17 @@
 
 void gestionarFileSystem()
 {
-	remove("Filesystem.log");
-	fileSystemLog = retornarLogConPath("Filesystem.log","FileSystem");
-
-	inicializarSemaforos();
-	limpiarFileSystem();
 	levantarFileSystem();
 	levantarMetadata();
+
+	inicializarSemaforos();
+
 	hiloDump = crearHilo(ejecutarDumping,NULL);
+
 	//liberarNombres(); //->No liberar que luego no se pueden usar
 }
 
-void limpiarFileSystem()
-{
-	/*
-	 * Necesito un borrado recursivo!
-	 */
-	borrarDirectorioVacio(puntoMontaje);
-}
+
 
 void levantarFileSystem()
 {
@@ -138,14 +131,6 @@ void crearCarpetaBloques()
 	free(blocks);
 }
 
-void borrarDirectorioVacio(char * directorio)
-{
-	if(rmdir(directorio)!=0)
-	{
-	//loggearInfoEnLog(fileSystemLog,"No se pudo borrar el directorio");
-	}
-}
-
 
 int borrarArchivosDirectorio(const char *path, const struct stat *datosArchivo,int flags)
 {
@@ -165,10 +150,10 @@ void limpiarTabla(char * rutaTabla)
 
 void inicializarSemaforos()
 {
-	pthread_mutex_init(&mutex_bloques, NULL);
-	pthread_mutex_init(&mutex_bitarray, NULL);
-	pthread_mutex_init(&mutex_select, NULL);
-	pthread_mutex_init(&mutex_drop, NULL);
+	pthread_mutex_init(&mutex_select_compactacion, NULL);
+	pthread_mutex_init(&mutex_drop_compactacion, NULL);
+	pthread_mutex_init(&mutex_describe_drop, NULL);
+	sem_init(&bitarray_bloques,0,cantidadBloques);
 }
 
 void ejecutarDumping()
@@ -236,14 +221,14 @@ void crearMetadataTabla(char * directorioTabla, query * queryCreate, int flagCon
 				consistencia = strdup("EC");
 				break;
 			default: //Este error nunca deberia pasar
-				loggearErrorEnLog(fileSystemLog,"Error de consistencia no detectado");
+				loggearError("Error de consistencia no detectado");
 				if(flagConsola)
 					printf("Error de consistencia no detectado\n");
 			}
 
-			char * particiones = malloc(30);
+			char * particiones = malloc(50);
 			sprintf(particiones,"%d",queryCreate->cantParticiones);
-			char * tiempoCompactacion = malloc(30);
+			char * tiempoCompactacion = malloc(50);
 			sprintf(tiempoCompactacion,"%lli",queryCreate->compactationTime);
 
 			crearConfig(metadataTabla);
@@ -318,15 +303,15 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola)
 
 		hiloCompactador = crearHilo(compactar,queryCreate);
 
-		loggearTablaCreadaOK(fileSystemLog,queryCreate,flagConsola,1);
+		loggearTablaCreadaOK(queryCreate->tabla,flagConsola);
 		free(directorioTabla);
 
 	return 0;
 }
 
-int rutinaFileSystemCreate(argumentosQuery * args)
+int rutinaFileSystemCreate(query * unaQuery, int flag)
 {
-	int retorno = crearCarpetaTabla(args->unaQuery,args->flag);
+	int retorno = crearCarpetaTabla(unaQuery,flag);
 	return retorno;
 }
 
@@ -560,6 +545,7 @@ int  buscarPrimerBloqueLibre()
 {
 	int aux = 0;
 
+	sem_wait(&bitarray_bloques);
 
 	while(bitarray_test_bit(unBitarray,aux))
 	{
@@ -593,8 +579,6 @@ void levantarMetadata()
 void liberarLogs()
 {
 	log_destroy(logger);
-	//log_destroy(logMemTable);
-	//log_destroy(fileSystemLog);
 }
 
 void liberarHilos()
@@ -732,7 +716,8 @@ char * obtenerRegistrosArchivo(char * ruta)
 	i++;
 	}
 
-	free(bloques);
+	liberarCadenaSplit(bloques);
+
 	return aux;
 }
 
@@ -744,9 +729,12 @@ registro * rutinaFileSystemSelect(char * tabla, int32_t key)
 	strcat(rutaAbs,tabla);
 	strcat(rutaAbs,"/");
 
-	registros=leerTabla(rutaAbs,key);
+	registros = leerTabla(rutaAbs,key);
+
 	free(rutaAbs);
+
 	registro * registroMax;
+
 	if(registros!=NULL)
 	{
 		if(!list_is_empty(registros))
@@ -805,9 +793,9 @@ t_list * leerTabla(char * tabla, int32_t key)
             	else
             	{
 
-            		pthread_mutex_lock(&mutex_select);
+            		pthread_mutex_lock(&mutex_select_compactacion);
 					char * registros = obtenerRegistrosArchivo(rutaAbs);
-					pthread_mutex_unlock(&mutex_select);
+					pthread_mutex_unlock(&mutex_select_compactacion);
 					t_list * registrosAux = obtenerRegistros(registros, key);
 					list_add_all(listaRegistros,registrosAux);
 					list_destroy(registrosAux);
@@ -891,9 +879,9 @@ int eliminarDirectorio(char * directorio)
                     	else
                     	{
 
-                    		pthread_mutex_lock(&mutex_drop);
+                    		pthread_mutex_lock(&mutex_drop_compactacion);
                     		borrarBloques(rutaAbs);
-                    		pthread_mutex_unlock(&mutex_drop);
+                    		pthread_mutex_unlock(&mutex_drop_compactacion);
 
 
                     	}
@@ -930,6 +918,7 @@ while(bloques[i]!=NULL)
 		bloque =  txt_open_for_append(rutaBloque);
 		txt_close_file(bloque);
 		free(bloques[i]);
+		sem_post(&bitarray_bloques);
 		i++;
 	}
 free(rutaBloque);

@@ -240,4 +240,12 @@ void actualizarConfig();
 void crearMemoria();
 void sumarNumeroMemoria();
 
+int obtenerCantidadMarcos(int tamanioPagina, int tamanioMemoria);
+
+
+void handshakeKernel();
+void handshakeFS();
+
+
+
 #endif /* POOLMEMORIAS_H_ */

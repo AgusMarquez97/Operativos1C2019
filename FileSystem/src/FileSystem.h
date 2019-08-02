@@ -39,8 +39,6 @@ struct stat estado = {0};
 
  */
 
-t_log * fileSystemLog;
-
 pthread_t hiloDump;
 
 
@@ -65,9 +63,6 @@ void crearCarpetaTables();
 void crearCarpetaBloques();
 
 void inicializarSemaforos();
-void limpiarFileSystem();
-void borrarDirectorioVacio(char * directorio);
-
 
 /*
  * Crea las estructuras administrativas para la tabla
@@ -85,7 +80,7 @@ int crearCarpetaTabla(query * queryCreate, int flagConsola);
  *	Rutina que manda a ejecutar LFS con un hilo frente a CREATE
  */
 
-int rutinaFileSystemCreate(argumentosQuery * args);
+int rutinaFileSystemCreate(query * unaQuery, int flag);
 int rutinaFileSystemDrop(char * tabla);
 char * rutinaFileSystemDescribe(char * tabla);
 

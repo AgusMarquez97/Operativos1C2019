@@ -236,7 +236,8 @@ int recibir(int socketConexion, void* buffer,int32_t tamanioARecibir) {
 			strcat(info,"\n");
 			loggearWarning(info);
 		}
-
+		free(info);
+		free(aux);
 		return 0;
 	}
 

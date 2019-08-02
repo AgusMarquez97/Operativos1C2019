@@ -328,7 +328,7 @@ int recibirQuery(int socketEmisor, query ** myQuery) {
 		default:
 			return -1;
 	}
-	//free(*myQuery);
+	free(buffer);
 	return cantidadRecibida;
 }
 
@@ -351,6 +351,8 @@ void loggearSelect(char * tabla, int32_t key)
 	free(log);
 
 }
+
+
 void loggearInsert(char * tabla, int32_t key, char * value, int64_t timestamp)
 {
 	char * aux = malloc(200);
@@ -398,5 +400,59 @@ void loggearCreate(char *tabla,int32_t consistencyType, int32_t cantParticiones,
 	free(log);
 }
 
+
+
+
+void loggearNuevaConexion(int socket)
+{
+	  char * info = malloc(strlen("Nueva conexion asignada al socket: ") + 10 + 4);
+	  char * aux = malloc(10);
+
+	  strcpy(info,"Nueva conexion asignada al socket: ");
+	  sprintf(aux,"%d",socket);
+	  strcat(info,aux);
+	  strcat(info,"\n");
+
+	  loggearInfo(info);
+
+	  free(info);
+      free(aux);
+}
+void loggearDatosRecibidos(int socket, int datosRecibidos)
+{
+		  char * info = malloc(strlen("Se recibieron  bytes del socket  ") + 30 + 5);
+		  char * aux = malloc(30);
+
+		  strcpy(info,"Se recibieron  ");
+		  sprintf(aux,"%d",datosRecibidos);
+		  strcat(info," bytes del socket ");
+		  sprintf(aux,"%d",socket);
+		  strcat(info,aux);
+		  strcat(info,"\n");
+
+		  loggearInfo(info);
+
+		  free(info);
+	      free(aux);
+}
+
+
+void loggearInfoServidor(char * IP, char * Puerto)
+{
+
+	char * ipServidor = malloc(strlen("IP del servidor: ") + strlen(IP) + 1);
+	strcpy(ipServidor,"IP del servidor: ");
+	strcat(ipServidor,IP);
+
+	char * puertoServidor = malloc(strlen("Puerto de escucha: ") + strlen(Puerto) + 1);
+	strcpy(puertoServidor,"Puerto de escucha: ");
+	strcat(puertoServidor,Puerto);
+
+	loggearInfo(ipServidor);
+	loggearInfo(puertoServidor);
+
+	free(ipServidor);
+	free(puertoServidor);
+}
 
 
