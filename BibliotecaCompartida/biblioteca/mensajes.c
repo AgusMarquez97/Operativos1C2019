@@ -90,21 +90,6 @@ void enviarInsert(int socketReceptor, char* tabla, int32_t key, char* value, int
 
 }
 
-
-/*
- * enviarCreate:
- * DIVISION DE TAMANIOS DEL BUFFER:
- * 1° POSICION: 4 BYTES -> TAMANIO_BUFFER (int32_t)
- * 2° POSICION: 4 BYTES -> TIPO_QUERY (int32_t)
- * 3° POSICION: 4 BYTES -> TAMANIO_NOMBRE_TABLA (int32_t)
- * 4° POSICION: N BYTES (DEFINIDOS EN 3°) -> NOMBRE_TABLA (CHAR *)
- * 5° POSICION: 4 BYTES -> CONSISTENCYTYPE (int32_t)
- * 6° POSICION: 4 BYTES -> CANTPARTICIONES (int32_t)
- * 8° POSICION: 8 BYTES -> COMPACTATIONTIME (int64_t) -> VER DE CAMBIAR A CHAR *
- * EN TOTAL: SIZEOF(int32_t)*5 + SIZEOF((int64_t) + N BYTES DE STRING (STRLEN(NOMBRE_TABLA) + 1)
- * */
-
-
 void enviarCreate(int socketReceptor,char* tabla,int32_t consistencyType,int32_t cantParticiones,int64_t compactationTime)
 {
 	int desplazamiento = 0;
