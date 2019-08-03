@@ -125,6 +125,8 @@ float RETARDO_EJECUCION,sleep_ejecucion;
 long REFRESH_METADATA;
 
 char * sc_memory = "IP:PUERTO";
+char * IP_MEMORIA_INICIAL;
+char * PUERTO_MEMORIA_INICIAL;
 t_queue* memorias_ec = NULL;
 
 t_log * kernel_log = NULL;
@@ -153,21 +155,78 @@ int ejecutar_insert(query * query_struct);
 int ejecutar_metrics();
 
 
-void journal_request()
+void journal_request(query * query_struct)
 {
 	printf("Journaling solicitado con exito");
+
+	char * IP = strdup("127.0.0.1");
+	char * Puerto = strdup("1366");
+	int socket_memoria = levantarCliente(IP,Puerto);
+
+	enviarQuery(socket_memoria,query_struct);
+
+	free(IP);
+	free(Puerto);
 }
+
+
+
+int tipo_consistencia_tabla(char * nombre_tabla)
+{
+ // Necesito las estructuras
+return 1;
+}
+
+
+bool kernel_conoce_tabla(char * nombre_tabla)
+{
+//Me fijo en las estructuras del kernel a ver si tengo conocimiento de la tabla
+}
+
+
+char * obtener_proxima_memoria(int tipo_consistencia)
+{
+	//Sin implementar
+}
+
+
+
+enviar_query_a_memoria(query * query_struct)
+{
+	int tipo_consistencia,socket_memoria;
+	char * direccion_memoria,IP,PUERTO;
+
+	tipo_consistencia = tipo_consistencia_tabla(query_struct->tabla);
+	direccion_memoria = obtener_proxima_memoria(tipo_consistencia);
+
+	//Aca se obtienen los datos de memoria
+	//IP = direccion_memoria_split[0];
+	//PUERTO = direccion_memoria_split[1];
+
+	socket_memoria = levantarCliente(IP,PUERTO);
+
+	enviarQuery(socket_memoria,query_struct);
+
+	free(IP);
+	free(PUERTO);
+}
+
 
 
 int ejecutar_select(query * query_struct)
 {
-
-	char * nombre_tabla = query_struct->tabla;
 	double *tiempo_ejecucion = malloc(sizeof(double));
 	clock_t inicio,fin;
 	inicio = clock();
-	//printf("Se ejecuta el siguiente request (Por ahora solo se muestra esto por pantalla): \"SELECT %s %d\"\n\n",nombre_tabla,query_struct->key);
-	//En algun lugar de por aca va a estar la conexion a la memoria
+
+	if (kernel_conoce_tabla(query_struct->tabla)) {
+	  enviar_query_a_memoria(query_struct);
+	} else
+	{
+		printf("No existe la tabla\n");
+		return -1;
+	}
+
 	fin = clock();
 
 	*tiempo_ejecucion = ((double) (fin - inicio)) / CLOCKS_PER_SEC; // En segundos
@@ -191,33 +250,20 @@ int ejecutar_select(query * query_struct)
 int ejecutar_drop(query * query_struct)
 {
 
-	char * tabla = query_struct->tabla;
-	printf("Se ejecuta el siguiente request: \"DROP %s\"\n",tabla);
-	//Se supone que deberia consultar en la metadata para conocer la consistencia de la tabla
-	char * proxima_memoria = (char *) queue_pop(memorias_ec); //Aca probablemente deberia ir un mutex
-	printf("La consistencia de la tabla es EC. Se envia a la memoria: %s\n",proxima_memoria);
-	queue_push(memorias_ec,proxima_memoria);
-	printf("Por motivos de prueba vamos a hacer que ande el drop\n");
-	return 0;
+	if (kernel_conoce_tabla(query_struct->tabla)) {
+	  enviar_query_a_memoria(query_struct);
+	} else
+	{
+		printf("No existe la tabla\n");
+		return -1;
+	}
 
 }
 
 
-int ejecutar_run(query * query_struct)
+int ejecutar_create(query * query_struct)
 {
-
-	printf("Se ejecuta el request desde la API. El script a ejecutar es: %s\n",query_struct->script);
-	return -1;
-
-}
-
-
-int derivar_request(query * query_struct)
-{
-
-	printf("Esto algun dia hara algo, pero no hoy.\n");//,query_struct->consistencyType);
-	return 0;
-
+  enviar_query_a_memoria(query_struct);
 }
 
 
@@ -242,25 +288,27 @@ int ejecutar_add(query * query_struct /*char * string_memoria*/)
 
 	  } else if (query_struct->consistencyType == SHC/*!strcasecmp(memoria[2],"SHC")*/) {
 		printf("El criterio de la memoria es SHC.\n");
-	  }/* else if (!strcasecmp(memoria[2],"EC")) {
-		printf("El criterio de la memoria es EC.\n");
-	  } else {
-		   printf("%s: Criterio inexistente.\n",memoria[2]);
-		 }*/
+	  }
 
 }
 
 
 int ejecutar_insert(query * query_struct)
 {
-
 	char * nombre_tabla = query_struct->tabla;
 	double *tiempo_ejecucion = malloc(sizeof(double));
 	clock_t inicio,fin;
 	inicio = clock();
 	printf("Se ejecuta el siguiente request (Por ahora solo se muestra esto por pantalla): \"INSERT %s %d\"\n",nombre_tabla,query_struct->key);
 
-	//En algun lugar de por aca va a estar la conexion a la memoria
+	if (kernel_conoce_tabla(query_struct->tabla)) {
+	  enviar_query_a_memoria(query_struct);
+	} else
+	{
+		printf("No existe la tabla\n");
+		return -1;
+	}
+
 	fin = clock();
 
 	*tiempo_ejecucion = ((double) (fin - inicio)) / CLOCKS_PER_SEC; // En segundos
@@ -361,6 +409,21 @@ void * monitorear_config()
 
 	    }
 
+}
+
+
+
+void * refrescar_memorias()
+{
+	while (1)
+	{
+		int socket_memoria_inicial = levantarCliente(IP_MEMORIA_INICIAL,PUERTO_MEMORIA_INICIAL);
+		enviarRequest(socket_memoria,/*algo*/);
+
+		//Cargo lo que me llega
+
+		sleep(1);
+	}
 }
 
 
