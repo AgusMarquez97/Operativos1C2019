@@ -236,32 +236,23 @@ int ejecutar_request(query * query_struct)
 
 	switch (codigo_request) {
 
-	  case (JOURNAL): 	printf("Se recibio un JOURNAL...\n");
-				//resultado_ejecucion_request = ejecutar_journal(query_struct);
-			 	break;
-
-	  case (ADD): 		printf("Se recibio un ADD...\n");
-				resultado_ejecucion_request = ejecutar_add(query_struct);
-			 	break;
-
-	  case (RUN): 		printf("Se recibio un RUN...\n");
-				//resultado_ejecucion_request = ejecutar_run(query_struct);
-			 	break;
-
-	  case (SELECT): 	//printf("Se recibio un SELECT...\n");
+	  case (SELECT):
 				resultado_ejecucion_request = ejecutar_select(query_struct);
 			 	break;
 
-	  case (DROP): 		printf("Se recibio un DROP...\n");
+	  case (DROP):
 				resultado_ejecucion_request = ejecutar_drop(query_struct);
 			 	break;
 
-	  case (METRICS):	//printf("Se recibio un METRICS...\n");
-				resultado_ejecucion_request = ejecutar_metrics();
+	  case (INSERT):
+				resultado_ejecucion_request = ejecutar_insert(query_struct);
 			 	break;
 
-	  default: 		printf("No es un select, se deriva el request...\n");
-				resultado_ejecucion_request = derivar_request(query_struct);
+	  case (CREATE):
+				resultado_ejecucion_request = ejecutar_create(query_struct);
+			 	break;
+
+	  default: 		printf("No es un request conocido - ERROR\n");
 		   		break;
 
 	}
