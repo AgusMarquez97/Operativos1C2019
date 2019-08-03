@@ -1,0 +1,19 @@
+#!/bin/bash
+
+-O0 -g3 -Wall -c -fmessage-length=0 -fPIC -MMD -MP -MF"hilos.d" -MT"hilos.o" -o "hilos.o" "hilos.c"
+
+gcc -O0 -g3 -Wall -c -fmessage-length=0 -fPIC -MMD -MP -MF"levantarConfig.d" -MT"levantarConfig.o" -o "levantarConfig.o" "levantarConfig.c" 
+
+gcc -O0 -g3 -Wall -c -fmessage-length=0 -fPIC -MMD -MP -MF"logs.d" -MT"logs.o" -o "logs.o" "logs.c" 
+
+gcc -O0 -g3 -Wall -c -fmessage-length=0 -fPIC -MMD -MP -MF"mensajes.d" -MT"mensajes.o" -o "mensajes.o" "mensajes.c"
+
+gcc -O0 -g3 -Wall -c -fmessage-length=0 -fPIC -MMD -MP -MF"parser.d" -MT"parser.o" -o "parser.o" "parser.c"
+
+gcc -O0 -g3 -Wall -c -fmessage-length=0 -fPIC -MMD -MP -MF"serializacion.d" -MT"serializacion.o" -o "serializacion.o" "serializacion.c"
+
+gcc -O0 -g3 -Wall -c -fmessage-length=0 -fPIC -MMD -MP -MF"sockets.d" -MT"sockets.o" -o "sockets.o" "sockets.c"
+
+gcc -O0 -g3 -Wall -c -fmessage-length=0 -fPIC -MMD -MP -MF"utils.d" -MT"utils.o" -o "utils.o" "utils.c"
+ 
+gcc -shared -o "libBibliotecaCompartida.so"  hilos.o levantarConfig.o logs.o mensajes.o parser.o serializacion.o sockets.o utils.o   -lpthread -lcommons

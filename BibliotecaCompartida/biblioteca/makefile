@@ -1,10 +1,12 @@
 # Makefile template for shared library
 
 CC = gcc # C compiler
+
 CFLAGS = -fPIC -Wall -Wextra -O2 -g # C flags
 LDFLAGS = -shared  # linking flags
 RM = rm -f  # rm command
-TARGET_LIB = BibliotecaCompartida.so # target lib
+
+TARGET_LIB = libBibliotecaCompartida.so # target lib
 
 SRCS = hilos.c levantarConfig.c parser.c serializacion.c utils.c sockets.c mensajes.c logs.c  # source files
 OBJS = $(SRCS:.c=.o)
