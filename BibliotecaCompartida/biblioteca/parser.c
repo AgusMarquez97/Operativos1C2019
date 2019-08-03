@@ -261,7 +261,6 @@ int parsear(char * string_query,query **struct_query)
 		  liberarCadenaSplit(query_split);
 		return ERROR;
 	  } else {
-			printf("El run es correcto\n");
 			((*struct_query))->requestType = RUN;
 			((*struct_query))->script = strdup(query_split[1]);
 			liberarCadenaSplit(query_split);

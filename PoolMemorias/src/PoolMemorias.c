@@ -10,7 +10,9 @@
 
 #include "PoolMemorias.h"
 
-int main(void) {
+int main(int argc, char ** argv) {
+
+
 	tamanioValue = 20;
 
 	listaSegmentos = list_create();
@@ -63,7 +65,7 @@ void leerArchivoConfiguracion(){
 		configuracionMemoria->IP_SEEDS = obtenerArray("IP_SEEDS");
 		configuracionMemoria->PUERTO_SEEDS = obtenerArray("PUERTO_SEEDS");
 
-		configuracionMemoria->IP = eliminarComillasMemoria(obtenerString("IP_FS"));
+		configuracionMemoria->IP = eliminarComillasMemoria(obtenerString("IP"));
 		configuracionMemoria->PUERTO = obtenerString("PUERTO");
 
 		configuracionMemoria->MEMORY_NUMBER = obtenerString("MEMORY_NUMBER");
@@ -467,7 +469,7 @@ void procesarQuery(argumentosQuery * args)
 				procesarJournal(args->unaQuery,flagConsola);
 				break;
 			case RUN:
-				cambiarConsistencia();
+				ejecutarLQL(args);
 				break;
 			case GOSSIP:
 				pthread_mutex_lock(&mutex_gossip);
@@ -570,6 +572,10 @@ void cambiarConsistencia()
 
 void procesarInsert(query* queryInsert, int flagConsola)
 {
+ if(estaLlena() == true)
+ {
+	 ejecutarLRU();
+ }
 	if(strlen(queryInsert->value) <= tamanioValue)
 	{
 		t_list * listaPaginas;
@@ -860,10 +866,19 @@ int journal()
 
 	list_clean(historialPaginas);
 	memset(memoriaPrincipal,0,tamanioMemoria);
+	liberarMarcos();
 
 	return 1;
 }
 
+
+void liberarMarcos()
+{
+	for(int i = 0; i < cantidadMarcos;i++)
+	{
+		liberarMarco(i);
+	}
+}
 
 
 //-----------------------------------------------------------------------
@@ -987,6 +1002,19 @@ void eliminarDeHistorial(pagina * unaPagina)
 
 			}
 	list_remove_by_condition(historialPaginas,(void *)yaExiste);
+}
+
+
+bool estaLlena()
+{
+	for(int i = 0; i < cantidadMarcos;i++)
+		{
+			if(estaLibre(i))
+			{
+				return false;
+			}
+		}
+	return true;
 }
 
 int obtenerMarcoLibre()
@@ -1570,6 +1598,55 @@ void enviarPoolMemoria(int socketMemoria)
 	enviarQuery(socketMemoria,queryGossipMemoria);
 
 	free(cadenaMemorias);
+}
+
+
+
+void ejecutarLQL(argumentosQuery * args)
+{
+
+		char * buffer = malloc(1000);
+		memset(buffer,0,1000);
+		char caracter;
+		int i = 0;
+
+		FILE * archivoScript = NULL;
+
+		archivoScript = fopen(args->unaQuery->script,"r+");
+
+		query * unaQueryAEnviar = NULL;
+
+
+		while((caracter = fgetc(archivoScript)) != EOF)
+		{
+			if(caracter != '\n')
+			{
+				buffer[i] = caracter;
+				i++;
+			}
+			else
+			{
+				argumentosQuery * unArgumento = malloc(sizeof(query));
+				unArgumento->flagConsola = 0;
+				unArgumento->socketCliente = args->socketCliente;
+				char * cadenaAEnviar = strdup(buffer);
+
+				parsear(cadenaAEnviar,&unaQueryAEnviar);
+
+				unArgumento->unaQuery = unaQueryAEnviar;
+				procesarQuery(unArgumento);
+				free(cadenaAEnviar);
+				memset(buffer,0,i);
+				i = 0;
+			}
+
+		}
+
+		free(buffer);
+
+		fclose(archivoScript);
+		loggearInfo("RUN EXITOSO");
+
 }
 
 

@@ -275,5 +275,11 @@ int obtenerTamanioGossipActual();
 void enviarPoolMemoria(int socketMemoria);
 bool existeEnElPool(int nro);
 
+void ejecutarLQL(argumentosQuery * args);
+
+bool estaLlena();
+
+void liberarMarcos();
+
 
 #endif /* POOLMEMORIAS_H_ */

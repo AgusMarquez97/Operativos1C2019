@@ -47,7 +47,7 @@ void levantarConfig()
 
 	if(obtenerString("DIRECCION_IP"))
 		{
-				IP = strdup(obtenerString("DIRECCION_IP"));
+				IP = eliminarComillasMemoria(strdup(obtenerString("DIRECCION_IP")));
 		}else
 		{
 				IP = strdup("127.0.0.1");
