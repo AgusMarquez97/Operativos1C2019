@@ -33,7 +33,7 @@ int main(void) {
 	//pthread_create(&hilo_conexionKernel, NULL, (void*) conexionKernel, NULL);
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 
-	hiloServidor = crearHilo(levantarServidorMemoria,NULL);
+	//hiloServidor = crearHilo(levantarServidorMemoria,NULL);
 
 
 	//pthread_join(hilo_conexionKernel,NULL);
@@ -187,11 +187,11 @@ void handshake()
 
 void handshakeFS()
 {
-	int datosRecibidos;
+		int datosRecibidos;
 		int socketCliente = levantarCliente(configuracionMemoria->IP_FS,configuracionMemoria->PUERTO_FS);
 		tamanioValue = -1;
 
-		enviarInt(socketCliente,HANDSHAKE);
+		enviarRequest(socketCliente,HANDSHAKE);
 
 		loggearInfo("Iniciando HANDSHAKE");
 
@@ -397,8 +397,8 @@ void procesarSelect(query* selectQuery, int flagConsola)
 	int datosRecibidos;
 	registro * registroFinalMemoria = NULL;
 
-	if(criterioConsistencia == -1)
-		printf("TABLA NO EXISTE EN FS");
+	//if(criterioConsistencia == -1)
+		//printf("TABLA NO EXISTE EN FS");
 
 		if(existeEnMemoria(selectQuery->tabla))
 		{
@@ -814,7 +814,7 @@ void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, in
 {
 	t_list * paginas;
 
-	paginas = (t_list*) dictionary_remove(tablaSegmentos,tabla);
+	paginas = (t_list*) dictionary_get(tablaSegmentos,tabla);
 
 	if(paginas == NULL)
 	{
@@ -841,7 +841,7 @@ void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, in
 	free(regAgregar);
 
 	list_add(paginas,paginaActual);
-
+	dictionary_remove(tablaSegmentos,tabla);
 	dictionary_put(tablaSegmentos,tabla,paginas);
 }
 
@@ -868,7 +868,7 @@ void eliminarDeHistorial(pagina * unaPagina)
 
 int obtenerMarcoLibre()
 {
-	int sacame = 0;
+
 	for(int i = 0; i < cantidadMarcos;i++)
 	{
 		if(estaLibre(i))
@@ -882,7 +882,7 @@ int obtenerMarcoLibre()
 	loggearInfo("Marcos completos: se inicia el LRU");
 	int LRU = ejecutarLRU();
 	if(LRU==-1)
-		return obtenerMarcoLibre();
+		return 0;
 	else
 		return LRU;
 }
@@ -986,21 +986,26 @@ registro * obtenerRegistro(char * tabla, int key)
 {
 		t_list * listaPaginas;
 		registro * registroRetorno = NULL,* registroFinal = NULL;
-				listaPaginas = (t_list *) dictionary_get(tablaSegmentos,tabla);
-				void buscarKey(pagina * pagina)
-				{
-					registroRetorno = leerMarco(pagina->nroMarco);
-					agregarAHistorialPags(pagina);
-					if(registroRetorno->key==key)
-					{
-						registroFinal = registroRetorno;
-					}else{
-						free(registroRetorno->value);
-						free(registroRetorno);
-					}
-				}
 
-				list_iterate(listaPaginas,(void*)buscarKey);
+		listaPaginas = (t_list *) dictionary_get(tablaSegmentos,tabla);
+
+		if(listaPaginas)
+		{
+			void buscarKey(pagina * pagina)
+			{
+				registroRetorno = leerMarco(pagina->nroMarco);
+				agregarAHistorialPags(pagina);
+				if(registroRetorno->key==key)
+				{
+					registroFinal = registroRetorno;
+				}else{
+					free(registroRetorno->value);
+					free(registroRetorno);
+				}
+			}
+
+			list_iterate(listaPaginas,(void*)buscarKey);
+		}
 					if(registroFinal != NULL)
 						return registroFinal;
 			return NULL;

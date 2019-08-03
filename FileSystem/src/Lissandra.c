@@ -17,7 +17,7 @@ void iniciarLFS()
 
 	levantarConfig();
 
-	handshake();
+	//handshake();
 
 	gestionarFileSystem();
 
@@ -62,7 +62,7 @@ void levantarConfig()
 	hiloMonitor = makeDetachableThread(monitorearConfig,NULL); //Va a ser hilo detacheable
 }
 
-
+/*
 void handshake()
 {
 	int socketRespuesta;
@@ -73,7 +73,7 @@ void handshake()
     if((socketRespuesta = aceptarConexion(socketServidor)) != -1)
 	{
     		loggearInfo("Realizando el handshake");
-    		recibirInt(socketRespuesta,&nroRecibido);
+    		recibirRequest(socketRespuesta,&nroRecibido);
 
     		if(nroRecibido == HANDSHAKE)
     		{
@@ -88,7 +88,7 @@ void handshake()
 	}
     close(socketServidor);
 }
-
+*/
 
 /*
  * LEVANTAR SERVIDOR
@@ -140,6 +140,7 @@ void rutinaServidor(int socketCliente)
 			if(myQuery)
 			{
 		args = malloc(sizeof(argumentosQuery));
+
 		args->unaQuery = myQuery;
 		args->socketCliente = socketCliente;
 		args->flag = 0;
@@ -251,6 +252,10 @@ void procesarQuery(argumentosQuery * args)
 		procesarDrop(args->unaQuery,flagConsola,args->socketCliente);
 		free(args->unaQuery->tabla);
 		pthread_mutex_unlock(&mutex_describe_drop);
+		break;
+	case HANDSHAKE:
+		loggearInfo("Realizando el handshake");
+		enviarInt(args->socketCliente,maxValue);
 		break;
 	default:
 		loggearWarning("Se produjo un error inesperado");

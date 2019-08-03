@@ -8,7 +8,6 @@
 #ifndef LISSANDRA_H_
 #define LISSANDRA_H_
 
-
 #include <biblioteca/sockets.h>
 #include <biblioteca/serializacion.h>
 #include <biblioteca/mensajes.h>

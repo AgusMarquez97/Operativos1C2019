@@ -9,23 +9,11 @@
  */
 
 #define _GNU_SOURCE
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include "kernel_api.c"
+
+//#include "kernel_api.h"
+//#include "kernel_utils.h"
+
 #include "kernel.h"
-#include <commons/string.h>
-#include <commons/collections/queue.h>
-#include <commons/collections/list.h>
-#include <commons/collections/node.h>	
-#include <semaphore.h>
-#include <pthread.h>
 
 #define MAXDATASIZE 1000
 
