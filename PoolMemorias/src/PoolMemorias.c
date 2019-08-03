@@ -20,7 +20,7 @@ int main(void) {
 	remove("Lissandra.log");
 	iniciarLog("Memoria");
 	leerArchivoConfiguracion();
-	//handshake();
+	handshake();
 	reservarMemoriaPrincipal();
 	inicializarSemaforos();
 	loggearInfoFileSystem(configuracionMemoria->IP_FS,configuracionMemoria->PUERTO_FS);
@@ -33,7 +33,7 @@ int main(void) {
 	//pthread_create(&hilo_conexionKernel, NULL, (void*) conexionKernel, NULL);
 	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
 
-	//hiloServidor = crearHilo(levantarServidorMemoria,NULL);
+	hiloServidor = crearHilo(levantarServidorMemoria,NULL);
 
 
 	//pthread_join(hilo_conexionKernel,NULL);
