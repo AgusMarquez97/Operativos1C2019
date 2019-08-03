@@ -334,7 +334,9 @@ void procesarInsert(query * unaQuery, int flagConsola)
 
 	if(strlen(unaQuery->value) <= maxValue)
 		{
+		pthread_mutex_lock(&mutex_memTable);
 		agregarUnRegistroMemTable(unaQuery,flagConsola);
+		pthread_mutex_unlock(&mutex_memTable);
 		}
 	else
 		{
