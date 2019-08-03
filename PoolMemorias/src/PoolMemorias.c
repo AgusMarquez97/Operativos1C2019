@@ -19,29 +19,29 @@ int main(void) {
 
 	remove("Lissandra.log");
 	iniciarLog("Memoria");
+
 	leerArchivoConfiguracion();
+
+	//levantarPoolMemorias();
+
 	handshake();
 	reservarMemoriaPrincipal();
 	inicializarSemaforos();
 	loggearInfoFileSystem(configuracionMemoria->IP_FS,configuracionMemoria->PUERTO_FS);
 
+
 	hiloJournal = makeDetachableThread(ejecutarRutinaJournal,NULL);
 
 	pthread_t hilo_consola;//, hilo_conexionKernel;
 
+	hilo_consola = crearHilo((void *) consola,NULL);
 
-	//pthread_create(&hilo_conexionKernel, NULL, (void*) conexionKernel, NULL);
-	pthread_create(&hilo_consola,NULL,(void *) consola,NULL);
+	hiloServidor = makeDetachableThread(levantarServidorMemoria,NULL);
 
-	//hiloServidor = crearHilo(levantarServidorMemoria,NULL);
+	//hiloGossip = makeDetachableThread(ejecutarGossping,NULL);
 
+	esperarHilo(hilo_consola);
 
-	//pthread_join(hilo_conexionKernel,NULL);
-	pthread_join(hilo_consola,NULL);
-
-	//esperarHilo(hiloServidor);
-
-	free(configuracionMemoria);
 	return 0;
 
 }
@@ -56,43 +56,121 @@ void leerArchivoConfiguracion(){
 		crearConfig(PATHCONFIG);
 		configuracionMemoria = (configuracion*) malloc(sizeof(configuracion));
 
-		configuracionMemoria->IP_FS = getCleanString(obtenerString("IP_FS"));
-		configuracionMemoria->IP_SEEDS = obtenerArray("IP_SEEDS");
+
 		configuracionMemoria->PUERTO_FS = obtenerString("PUERTO_FS");
+		configuracionMemoria->IP_FS = eliminarComillasMemoria(obtenerString("IP_FS"));
+
+		configuracionMemoria->IP_SEEDS = obtenerArray("IP_SEEDS");
 		configuracionMemoria->PUERTO_SEEDS = obtenerArray("PUERTO_SEEDS");
+
+		configuracionMemoria->IP = eliminarComillasMemoria(obtenerString("IP_FS"));
 		configuracionMemoria->PUERTO = obtenerString("PUERTO");
-		configuracionMemoria->MEMORY_NUMBER = obtenerInt("MEMORY_NUMBER");
+
+		configuracionMemoria->MEMORY_NUMBER = obtenerString("MEMORY_NUMBER");
+
 		configuracionMemoria->RETARDO_FS = obtenerInt("RETARDO_FS");
+
 		configuracionMemoria->RETARDO_GOSSIPING = obtenerDouble("RETARDO_GOSSIPING");
+
 		configuracionMemoria->RETARDO_JOURNAL = obtenerDouble("RETARDO_JOURNAL");
+
 		configuracionMemoria->RETARDO_MEM = obtenerInt("RETARDO_MEM");
+
 		configuracionMemoria->TAM_MEM = obtenerInt("TAM_MEM");
 
 		hiloMonitor = makeDetachableThread(monitorearConfig,NULL); //Va a ser hilo detacheable
+
 
 		//eliminarEstructuraConfig();
 
 		//loggearArchivoDeConfiguracion();
 }
 
-void levantarMemoriaComoServidor()
+
+void levantarPoolMemorias()
 {
-	tamanioValue = 52;
+		query * queryGossip = malloc(sizeof(query));
 
-	listaSegmentos = list_create();
-	historialPaginas = list_create();
-	tablaSegmentos = dictionary_create();
+		queryGossip->requestType = GOSSIP;
 
-	//iniciarLog("Memoria"); -> PENSAR LOG
+	 	listaGossip = list_create();
+		char ** aux = configuracionMemoria->IP_SEEDS;
+		char * NroIPPuertoMemoria;
 
-	leerArchivoConfiguracion();
-	reservarMemoriaPrincipal();
-	inicializarSemaforos();
+		for(int a = 0; aux[a] != NULL; a++)
+			{
+			aux[a] = eliminarComillasMemoria(configuracionMemoria->IP_SEEDS[a]);
+			}
 
-	hiloJournal = makeDetachableThread(ejecutarRutinaJournal,NULL);
+		//Se añade nuestra direccion de IP PUERTO a la lista de gossip
 
-	levantarServidorMemoria();
+		NroIPPuertoMemoria = malloc(strlen(configuracionMemoria->MEMORY_NUMBER) + strlen(configuracionMemoria->IP) + strlen(configuracionMemoria->PUERTO) + strlen(";\n") + 10);
+
+		strcpy(NroIPPuertoMemoria,configuracionMemoria->MEMORY_NUMBER);
+		strcat(NroIPPuertoMemoria,";");
+		strcat(NroIPPuertoMemoria,configuracionMemoria->IP);
+		strcat(NroIPPuertoMemoria,";");
+		strcat(NroIPPuertoMemoria,configuracionMemoria->PUERTO);
+		strcat(NroIPPuertoMemoria,"\n");
+
+		datosMemoria = malloc(sizeof(estructuraGossip));
+		datosMemoria->NroIPPuerto = strdup(NroIPPuertoMemoria);
+		datosMemoria->activa = true;
+		datosMemoria->nroMemoria = atoi(configuracionMemoria->MEMORY_NUMBER);
+
+		list_add(listaGossip,datosMemoria);
+
+		free(NroIPPuertoMemoria);
+
+		//Se añade la direccion de IP PUERTO de todas las memorias que conocemos
+
+		for(int i = 0;aux[i] != NULL; i++)
+		{
+			datosMemoria = malloc(sizeof(estructuraGossip));
+			NroIPPuertoMemoria = malloc(strlen(aux[i]) + strlen(configuracionMemoria->PUERTO_SEEDS[i]) + strlen(";\n") + 10);
+
+			strcpy(NroIPPuertoMemoria,configuracionMemoria->MEMORY_NUMBER);
+			strcat(NroIPPuertoMemoria,";");
+			strcat(NroIPPuertoMemoria,aux[i]);
+			strcat(NroIPPuertoMemoria,";");
+			strcat(NroIPPuertoMemoria,configuracionMemoria->PUERTO_SEEDS[i]);
+			strcat(NroIPPuertoMemoria,"\n");
+
+			datosMemoria->NroIPPuerto = strdup(NroIPPuertoMemoria);
+			datosMemoria->nroMemoria = atoi(configuracionMemoria->MEMORY_NUMBER) + i;
+
+			loggearInfo(aux[i]);
+			loggearInfo(configuracionMemoria->PUERTO_SEEDS[i]);
+
+
+			int socketMemoria = levantarCliente(aux[i],configuracionMemoria->PUERTO_SEEDS[i]);
+
+			if(socketMemoria != -1)
+				{
+				queryGossip->tabla = strdup(NroIPPuertoMemoria);
+
+				free(queryGossip->tabla);
+				free(queryGossip);
+
+				enviarQuery(socketMemoria,queryGossip);
+				//recibirQuery(socketMemoria,&queryGossip);
+
+				//if(queryGossip->requestType == GOSSIP)
+				//	agregarPool(queryGossip->tabla);
+
+				//datosMemoria->activa = true;
+				}
+			else
+				{
+				datosMemoria->activa = false;
+				}
+
+			list_add(listaGossip,datosMemoria);
+			free(NroIPPuertoMemoria);
+		}
 }
+
+
 
 void consola(){
 	system("clear");
@@ -188,25 +266,36 @@ void handshake()
 void handshakeFS()
 {
 		int datosRecibidos;
+		loggearInfo(configuracionMemoria->IP_FS);
+		loggearInfo(configuracionMemoria->PUERTO_FS);
 		int socketCliente = levantarCliente(configuracionMemoria->IP_FS,configuracionMemoria->PUERTO_FS);
 		tamanioValue = -1;
 
-		enviarRequest(socketCliente,HANDSHAKE);
-
-		loggearInfo("Iniciando HANDSHAKE");
-
-		datosRecibidos = recibirInt(socketCliente,&tamanioValue);
-
-		if(datosRecibidos > 0 && tamanioValue != -1)
+		if(socketCliente != -1)
 		{
-			loggearInfo("Handshake con FS exitoso");
-		}
-		else
+			enviarRequest(socketCliente,HANDSHAKE);
+
+			loggearInfo("Iniciando HANDSHAKE");
+
+			datosRecibidos = recibirInt(socketCliente,&tamanioValue);
+
+			if(datosRecibidos > 0 && tamanioValue != -1)
+			{
+				loggearInfo("Handshake con FS exitoso");
+			}
+			else
+			{
+				loggearError("Error al realizar el handshake con FS");
+			}
+			close(socketCliente);
+		}else
 		{
-			loggearError("Error al realizar el handshake con FS");
+			loggearError("ERROR AL CONECTAR CON FS");
+				printf("ERROR AL CONECTAR CON FS");
+			exit(1);
 		}
 
-		close(socketCliente);
+
 }
 
 
@@ -250,13 +339,15 @@ void enviarConsistencia()
 
 void levantarServidorMemoria()
 {
-			IPMemoria = eliminarComillasMemoria(configuracionMemoria->IP_SEEDS[configuracionMemoria->MEMORY_NUMBER]);
+			IPMemoria = configuracionMemoria->IP;
 			puertoMemoria = configuracionMemoria->PUERTO;
 
 			loggearInfoServidor(IPMemoria,puertoMemoria);
 
 			int socketRespuesta;
 			pthread_t hiloAtendedor = 0;
+
+
 			int socketServidor = levantarServidor(IPMemoria,puertoMemoria);
 
 			argumentosQuery * args = malloc(sizeof(argumentosQuery));
@@ -314,7 +405,7 @@ void enviarQuerysFS(char * tabla, t_list * registros)
 
 	if(socketFS != -1)
 	{
-
+		usleep(configuracionMemoria->RETARDO_FS*1000);
 		void enviarUnaQuery(query * unaQuery)
 		{
 			enviarQuery(socketFS,unaQuery);
@@ -378,8 +469,14 @@ void procesarQuery(argumentosQuery * args)
 			case RUN:
 				cambiarConsistencia();
 				break;
-			case HANDSHAKE:
-				//enviarPool(args->socketCliente);
+			case GOSSIP:
+				pthread_mutex_lock(&mutex_gossip);
+				agregarPool(args->unaQuery->tabla);
+				free(args->unaQuery->tabla);
+				pthread_mutex_unlock(&mutex_gossip);
+				break;
+			case GOSSIP_KERNEL:
+				enviarPoolKernel(args->socketCliente);
 				break;
 	default:
 		loggearInfo("Request Aun No Disponible");
@@ -411,6 +508,7 @@ void procesarSelect(query* selectQuery, int flagConsola)
 				socketFS = conexionFS();
 				if(socketFS != -1)
 				{
+					usleep(configuracionMemoria->RETARDO_FS*1000);
 					enviarQuery(socketFS,selectQuery);
 					datosRecibidos = recibirQuery(socketFS,&queryInsertFS);
 					close(socketFS);
@@ -458,6 +556,7 @@ void procesarSelect(query* selectQuery, int flagConsola)
 		}
 		else
 		{
+			usleep(configuracionMemoria->RETARDO_FS*1000);
 			buscarRegistroFS(selectQuery,flagConsola);
 		}
 
@@ -497,9 +596,16 @@ void procesarInsert(query* queryInsert, int flagConsola)
 
 				}
 				list_iterate(listaPaginas,(void*)buscarKey);
+
 				if(registroFinal != NULL && nroMarco != -1)
 				{
 				memset(memoriaPrincipal + nroMarco*tamanioPag,0,tamanioPag);
+
+				if(queryInsert->timestamp > registroFinal->timestamp)
+				{
+					registroFinal->value = strdup(queryInsert->value);
+					registroFinal->timestamp = queryInsert->timestamp;
+				}
 				escribirMarco(nroMarco,registroFinal);
 				free(registroFinal->value);
 				free(registroFinal);
@@ -535,6 +641,7 @@ void procesarCreate(query* queryCreate, int flagConsola)
 	socketFS = conexionFS();
 	if(socketFS != -1)
 	{
+		usleep(configuracionMemoria->RETARDO_FS*1000);
 		enviarQuery(socketFS,queryCreate);
 		datosRecibidos = recibirInt(socketFS,&estadoResultado);
 		close(socketFS);
@@ -563,6 +670,7 @@ void procesarDescribe(query* queryDescribe, int flagConsola)
 	socketFS = conexionFS();
 	if(socketFS != -1)
 	{
+			usleep(configuracionMemoria->RETARDO_FS*1000);
 			enviarQuery(socketFS,queryDescribe);
 			datosRecibidos = recibirQuery(socketFS,&describe);
 			close(socketFS);
@@ -640,6 +748,7 @@ void procesarDrop(query* queryDrop, int flagConsola)
 
 	if(socketFS != -1)
 		{
+			usleep(configuracionMemoria->RETARDO_FS*1000);
 			enviarQuery(socketFS,queryDrop);
 			datosRecibidos = recibirInt(socketFS,&estadoResultado);
 			close(socketFS);
@@ -679,7 +788,9 @@ void ejecutarJournal(int flagConsola)
 {
 	//Cuando este ocurriendo un journal no debe accederse a la memoria principal!
 	pthread_mutex_lock(&mutex_journal);
+	pthread_mutex_lock(&mutex_journal_LRU);
 	int resultadoJournal = journal();
+	pthread_mutex_unlock(&mutex_journal_LRU);
 	pthread_mutex_unlock(&mutex_journal);
 	if(resultadoJournal == 1)
 	{
@@ -812,37 +923,49 @@ void liberarMarco(int nroMarco)
 
 void agregarPagina(char * tabla, int32_t key,char * value, int64_t timestamp, int flagModificado)
 {
+	char * nombreTabla = strdup(tabla);
+	int nroMarco = obtenerMarcoLibre();
 	t_list * paginas;
 
-	paginas = (t_list*) dictionary_get(tablaSegmentos,tabla);
-
-	if(paginas == NULL)
+	if(nroMarco == -1)
 	{
-		paginas = list_create();
-
+		dictionary_put(tablaSegmentos,nombreTabla,NULL);
+		list_add(listaSegmentos,nombreTabla);
+		nroMarco = 0;
 	}
 
-	pagina * paginaActual = malloc(sizeof(pagina));
 
-	paginaActual->nroMarco = obtenerMarcoLibre();
-	paginaActual->nroPagina = list_size(paginas);
-	paginaActual->flagModificado = flagModificado;
+			paginas = (t_list*) dictionary_get(tablaSegmentos,tabla);
 
-	registro * regAgregar = malloc(sizeof(registro));
-	regAgregar->key = key;
-	regAgregar->value = strdup(value);
-	regAgregar->timestamp = timestamp;
+			if(paginas == NULL)
+			{
+				paginas = list_create();
 
-	escribirMarco(paginaActual->nroMarco,regAgregar);
+			}
 
-	agregarAHistorialPags(paginaActual);
 
-	free(regAgregar->value); // VER SI ROMPE ESTA LINEA!
-	free(regAgregar);
+			pagina * paginaActual = malloc(sizeof(pagina));
 
-	list_add(paginas,paginaActual);
-	dictionary_remove(tablaSegmentos,tabla);
-	dictionary_put(tablaSegmentos,tabla,paginas);
+			paginaActual->nroMarco = nroMarco;
+			paginaActual->nroPagina = list_size(paginas);
+			paginaActual->flagModificado = flagModificado;
+
+			registro * regAgregar = malloc(sizeof(registro));
+			regAgregar->key = key;
+			regAgregar->value = strdup(value);
+			regAgregar->timestamp = timestamp;
+
+			escribirMarco(paginaActual->nroMarco,regAgregar);
+
+			agregarAHistorialPags(paginaActual);
+
+			free(regAgregar->value); // VER SI ROMPE ESTA LINEA!
+			free(regAgregar);
+
+			list_add(paginas,paginaActual);
+			dictionary_remove(tablaSegmentos,tabla);
+			dictionary_put(tablaSegmentos,tabla,paginas);
+
 }
 
 void agregarAHistorialPags(pagina * unaPagina)
@@ -882,7 +1005,7 @@ int obtenerMarcoLibre()
 	loggearInfo("Marcos completos: se inicia el LRU");
 	int LRU = ejecutarLRU();
 	if(LRU==-1)
-		return 0;
+		return -1;
 	else
 		return LRU;
 }
@@ -928,7 +1051,9 @@ int ejecutarLRU()
 	}
 	loggearInfo("MEMORIA FULL -> SE PROCEDE A REALIZAR UN JOURNAL");
 
+	pthread_mutex_lock(&mutex_journal_LRU);
 	journal(); // SI NO HAY PAGINAS DISPONIBLES => SE LIBERA TODA LA MEMORIA
+	pthread_mutex_unlock(&mutex_journal_LRU);
 
 	return -1;
 }
@@ -1199,6 +1324,9 @@ void inicializarSemaforos()
 {
 pthread_mutex_init(&mutex_marcos_libres, NULL);
 pthread_mutex_init(&mutex_journal, NULL);
+pthread_mutex_init(&mutex_journal_LRU, NULL);
+pthread_mutex_init(&mutex_gossip, NULL);
+
 
 }
 
@@ -1297,48 +1425,152 @@ void actualizarConfig()
 
 void ejecutarGossping()
 {
-	/*while(1)
+	char * mensajeAEnviar = malloc(strlen("Gossiping Pool Enviado a Memoria ' Fallido Memoria caida enviado OK a tabla........") + 100 + 1);
+	while(1)
 	{
 
+		usleep(configuracionMemoria->RETARDO_GOSSIPING*1000);
+		int socket;
 
-		usleep(configuracionMemoria->RETARDO_GOSSIPING);
-
-
-		bool conectarConMemoria(char * ipPuerto)
+		void rutinaPoolMemorias(estructuraGossip * datosMemoriaLocal)
 		{
-			return conectarConMemoria();
+			char ** aux = string_split(datosMemoriaLocal->NroIPPuerto,";");
+			char * cadenaAux = string_substring_until(aux[2],strlen(aux[2])-1);
+
+			socket = levantarCliente(aux[1],cadenaAux);
+
+			if(socket != -1)
+			{
+				enviarPoolMemoria(socket);
+				strcpy(mensajeAEnviar,"Pool Enviado a Memoria Nro '");
+				strcat(mensajeAEnviar,aux[0]);
+				strcat(mensajeAEnviar,"' OK");
+				close(socket);
+			}
+			else
+			{
+				datosMemoriaLocal->activa = false;
+				strcpy(mensajeAEnviar,"Memoria Nro '");
+				strcat(mensajeAEnviar,aux[0]);
+				strcat(mensajeAEnviar,"' desactivada del pool");
+			}
+			free(cadenaAux);
+			liberarCadenaSplit(aux);
 		}
 
-		t_list * listaMemoriasActivas = filter(listaMemoriasConfig,conectarConMemoria);
+		list_iterate(listaGossip,(void*)rutinaPoolMemorias);
 
-
-
-	}*/
+	}
 
 }
 
-void sumarMemoriaAlPool()
+void agregarPool(char * datosMemorias)
 {
-	/*
-	 * Actualizar config
-	 */
-	int nroMemoria = configuracionMemoria->MEMORY_NUMBER + 1;
-	char * nroMemoriaChar = string_itoa(nroMemoria);
-	crearConfig(PATHCONFIG);
 
-	cambiarValorConfig("MEMORY_NUMBER",nroMemoriaChar);
+	estructuraGossip * datosMemoriaLocal = malloc(sizeof(datosMemoriaLocal));
 
-	eliminarEstructuraConfig();
+	char ** datosConexion;
+	char ** aux;
+
+	char * cad;
+
+	datosConexion = string_split(datosMemorias,"\n");
+
+	for(int i = 0; datosConexion[i] != NULL;i++)
+	{
+		aux = string_split(datosConexion[i],";");
+
+		if(!existeEnElPool(atoi(aux[0])))
+		{
+			cad = malloc(strlen(datosConexion[i]) + strlen("/n") + 2);
+
+			strcpy(cad,datosConexion[i]);
+			strcat(cad,"\n");
+
+			datosMemoriaLocal->activa = true;
+			datosMemoriaLocal->NroIPPuerto = strdup(cad);
+			datosMemoriaLocal->nroMemoria = atoi(aux[0]);
+
+			list_add(listaGossip,datosMemoriaLocal);
+
+			free(cad);
+		}
+
+		liberarCadenaSplit(aux);
+	}
+
+	liberarCadenaSplit(datosConexion);
+}
+
+bool existeEnElPool(int nro)
+{
+	bool yaExiste(estructuraGossip * datosMemoria)
+	{
+		return datosMemoria->nroMemoria == nro;
+	}
+	return list_any_satisfy(listaGossip,(void*)yaExiste);
 }
 
 
+void enviarPoolKernel(int socketKernel)
+{
+	query * queryGossipKernel = malloc(sizeof(query));
+	char * cadenaMemorias = malloc(obtenerTamanioGossipActual() + 400);
+	strcpy(cadenaMemorias,"");
 
+	void agregarMemoria(estructuraGossip * datosUnaMemoria)
+	{
+		if(datosUnaMemoria->activa)
+			strcat(cadenaMemorias,datosUnaMemoria->NroIPPuerto);
+	}
 
+	list_iterate(listaGossip,(void*)agregarMemoria);
 
+	queryGossipKernel->requestType = GOSSIP_KERNEL;
+	queryGossipKernel->tabla = strdup(cadenaMemorias);
 
+	enviarQuery(socketKernel,queryGossipKernel);
 
+	free(cadenaMemorias);
+}
 
+int obtenerTamanioGossipActual()
+{
+	int nro = 0;
 
+	void sumarTamanio(estructuraGossip * datosUnaMemoria)
+	{
+		if(datosUnaMemoria->activa)
+			nro += strlen(datosUnaMemoria->NroIPPuerto);
+	}
+
+	list_iterate(listaGossip,(void *)sumarTamanio);
+
+	return nro;
+}
+
+void enviarPoolMemoria(int socketMemoria)
+{
+	query * queryGossipMemoria = malloc(sizeof(query));
+
+	char * cadenaMemorias = malloc(obtenerTamanioGossipActual() + 400);
+	strcpy(cadenaMemorias,"");
+
+	void agregarMemoria(estructuraGossip * datosUnaMemoria)
+	{
+		if(datosUnaMemoria->activa)
+		strcat(cadenaMemorias,datosUnaMemoria->NroIPPuerto);
+	}
+
+	list_iterate(listaGossip,(void*)agregarMemoria);
+
+	queryGossipMemoria->requestType = GOSSIP;
+	queryGossipMemoria->tabla = strdup(cadenaMemorias);
+
+	enviarQuery(socketMemoria,queryGossipMemoria);
+
+	free(cadenaMemorias);
+}
 
 
 /*

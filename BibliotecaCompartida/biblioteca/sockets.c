@@ -21,7 +21,10 @@ int levantarCliente(char* servidorIP,char* servidorPuerto)
 		retorno = conectarConServidor(&socketCliente,servidorObjetivo);
 
 		if(retorno == -1)
+		{
+			close(socketCliente);
 			return retorno;
+		}
 
 		strcpy(mensaje,"El socket ");
 		strcat(mensaje,aux);

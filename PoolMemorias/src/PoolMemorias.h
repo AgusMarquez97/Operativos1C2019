@@ -66,7 +66,14 @@
 #define BUF_LEN (1024*EVENT_SIZE)
 
 
-t_list * listaMemoriasConfig;
+typedef struct{
+	int nroMemoria;
+	char * NroIPPuerto;
+	bool activa;
+} estructuraGossip;
+
+estructuraGossip * datosMemoria;
+t_list * listaGossip; // cuyos elementos seran de tipo * estructuraGossip
 
 
 int criterioConsistencia = EC;
@@ -76,25 +83,30 @@ char * IPMemoria;
 char * puertoMemoria;
 
 
-pthread_t hiloMonitor, hiloJournal, hiloServidor;
+pthread_t hiloMonitor, hiloJournal, hiloServidor, hiloGossip;
 
 pthread_mutex_t mutex_marcos_libres;
-pthread_mutex_t mutex_journal;
+pthread_mutex_t mutex_journal, mutex_journal_LRU, mutex_gossip;
 
 //	---------- DEFINCION DE ESTRUCTURAS DEL SISTEMA: VER ISSUE https://github.com/sisoputnfrba/foro/issues/1319
 
 typedef struct {
 	char * PUERTO;
+	char * IP;
+
 	char* IP_FS;
 	char * PUERTO_FS;
-	char** IP_SEEDS;
-	char** PUERTO_SEEDS;
+
+	char ** IP_SEEDS;
+	char ** PUERTO_SEEDS;
+	char *  MEMORY_NUMBER;
+
 	int32_t RETARDO_MEM;
 	int32_t RETARDO_FS;
 	int64_t TAM_MEM;
 	int64_t RETARDO_JOURNAL;
 	int64_t RETARDO_GOSSIPING;
-	int32_t MEMORY_NUMBER;
+
 } configuracion;
 
 // - Puntero para la lectura de los campos del archivo de configuracion
@@ -245,7 +257,6 @@ void actualizarConfig();
 
 
 void ejecutarGossping();
-void sumarMemoriaAlPool();
 
 int obtenerCantidadMarcos(int tamanioPagina, int tamanioMemoria);
 
@@ -255,6 +266,14 @@ void handshakeFS();
 
 void cambiarConsistencia();
 
+void levantarPoolMemorias();
+
+void agregarPool(char * datosMemorias);
+bool existeEnElPool(int nro);
+void enviarPoolKernel(int socketKernel);
+int obtenerTamanioGossipActual();
+void enviarPoolMemoria(int socketMemoria);
+bool existeEnElPool(int nro);
 
 
 #endif /* POOLMEMORIAS_H_ */

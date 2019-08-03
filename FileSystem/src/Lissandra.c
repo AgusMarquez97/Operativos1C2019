@@ -220,6 +220,7 @@ void consola()
 
 void procesarQuery(argumentosQuery * args)
 {
+	usleep(retardo*1000);
 	int flagConsola = args->flag;
 
 	switch(args->unaQuery->requestType)

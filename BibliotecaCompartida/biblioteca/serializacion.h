@@ -43,6 +43,11 @@ void deserializarListaInts(void* buffer,t_list* listaEnteros, int* desplazamient
 void deserializarListaString( void* buffer, t_list* listaString, int* desplazamiento);
 
 
+
+
+void serializarRequestCorta(int nro, void* buffer, char* tabla, int* desplazamiento);
+void deserializarRequestCorta(char** tabla, void* buffer, int* desplazamiento);
+
 int32_t requestType;
 char* tabla;
 int32_t key;

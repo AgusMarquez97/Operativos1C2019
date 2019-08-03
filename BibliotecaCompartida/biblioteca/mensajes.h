@@ -26,6 +26,8 @@ int recibirInt(int socketEmisor, int32_t* entero);
 int recibirChar(int socketEmisor, char* caracter);
 int recibirString(int socketEmisor, char** cadena);
 
+void enviarRequestCorta(int socketReceptor,char* tabla, int tipoQuery);
+
 /*
  * Funcion utilizada para enviar querys a traves de un socket ya conectado
  */

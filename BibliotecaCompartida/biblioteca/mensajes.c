@@ -134,6 +134,20 @@ void enviarDrop(int socketReceptor,char* tabla)
 	free(buffer);
 }
 
+void enviarRequestCorta(int socketReceptor,char* tabla, int tipoQuery)
+{
+	int desplazamiento = 0;
+	int32_t tamanioMensaje = sizeof(int32_t)*2 + strlen(tabla) + 1;
+	int32_t tamanioTotal = tamanioMensaje + sizeof(int32_t);
+	void* buffer = malloc(tamanioTotal);
+
+	serializarInt(buffer,tamanioMensaje,&desplazamiento);//Serializo el tamanio total del buffer
+	serializarRequestCorta(tipoQuery,buffer,tabla,&desplazamiento);
+
+	enviar(socketReceptor, buffer, tamanioTotal);
+	free(buffer);
+}
+
 void enviarRequest(int socketReceptor, int32_t request)
 {
 	int desplazamiento = 0;
@@ -187,6 +201,12 @@ void enviarQuery(int socketReceptor, query* myQuery)
 				break;
 			case HANDSHAKE:
 				enviarRequest(socketReceptor,HANDSHAKE);
+				break;
+			case GOSSIP_KERNEL:
+				enviarRequestCorta(socketReceptor,myQuery->tabla,GOSSIP_KERNEL);
+				break;
+			case GOSSIP:
+				enviarRequestCorta(socketReceptor,myQuery->tabla,GOSSIP);
 				break;
 			default:
 				loggearError("Request no valido");
@@ -337,6 +357,12 @@ int recibirQuery(int socketEmisor, query ** myQuery) {
 		case RUN:
 		((*myQuery))->requestType = RUN;
 		loggearInfo("Se obtiene la consistencia de la memoria");
+			break;
+		case GOSSIP:
+			deserializarRequestCorta(&(*myQuery)->tabla, buffer, &desplazamiento);
+			break;
+		case GOSSIP_KERNEL:
+			deserializarRequestCorta(&(*myQuery)->tabla, buffer, &desplazamiento);
 			break;
 		default:
 			return -1;

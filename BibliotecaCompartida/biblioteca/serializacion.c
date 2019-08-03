@@ -202,3 +202,14 @@ void deserializarListaString( void* buffer, t_list* listaString, int* desplazami
 
 //SERIALIZAR Y DESEREALIZAR LISTAS
 
+
+
+void serializarRequestCorta(int nro, void* buffer, char* tabla, int* desplazamiento){
+	serializarInt(buffer,nro,desplazamiento);
+	serializarString(buffer, tabla, desplazamiento);
+}
+
+void deserializarRequestCorta(char** tabla, void* buffer, int* desplazamiento){
+	deserializarString(buffer,tabla, desplazamiento);
+}
+
