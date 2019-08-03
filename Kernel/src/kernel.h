@@ -186,7 +186,7 @@ bool kernel_conoce_tabla(char * nombre_tabla)
 
 char * obtener_proxima_memoria(int tipo_consistencia)
 {
-	//Devuelve, en teoria, <IP>:<PUERTO>
+	//Sin implementar
 }
 
 
@@ -199,9 +199,9 @@ enviar_query_a_memoria(query * query_struct)
 	tipo_consistencia = tipo_consistencia_tabla(query_struct->tabla);
 	direccion_memoria = obtener_proxima_memoria(tipo_consistencia);
 
-	char ** direccion_memoria_split = string_split(direccion_memoria, ":");
-	IP = direccion_memoria_split[0];
-	PUERTO = direccion_memoria_split[1];
+	//Aca se obtienen los datos de memoria
+	//IP = direccion_memoria_split[0];
+	//PUERTO = direccion_memoria_split[1];
 
 	socket_memoria = levantarCliente(IP,PUERTO);
 
