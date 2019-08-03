@@ -17,10 +17,10 @@
 #include <commons/collections/dictionary.h>
 #include <semaphore.h>
 #include <pthread.h>
-#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/levantarConfig.c>
-#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/parser.c>
-#include "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/enumsAndStructs.h"
-#include "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/logs.c"
+#include <biblioteca/levantarConfig.h>
+#include <biblioteca/parser.h>
+#include "biblioteca/enumsAndStructs.h"
+#include <biblioteca/logs.h>
 //#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/src/kernel_utils.c>
 #include <readline/readline.h>
 #include <readline/history.h>

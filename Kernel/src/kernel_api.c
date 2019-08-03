@@ -3,10 +3,10 @@
  */
 
 
-#include<stdio.h>
-#include<time.h>
-#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/BibliotecaCompartida/biblioteca/enumsAndStructs.h>
-#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/src/kernel.h>
+#include <stdio.h>
+#include <time.h>
+#include <biblioteca/enumsAndStructs.h>
+#include "kernel.h"
 
 
 void journal_request()

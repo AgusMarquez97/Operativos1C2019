@@ -18,8 +18,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/src/kernel_api.c>
-#include </home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/src/kernel.h>
+#include "kernel_api.c"
+#include "kernel.h"
 #include <commons/string.h>
 #include <commons/collections/queue.h>
 #include <commons/collections/list.h>
@@ -109,7 +109,7 @@ void metricas_writes(/*t_list* lista_metricas*/int tipo_salida)//, int cant_writ
 		  printf("Write latency: %f\n\n\n",latency);
 		  break;
 	  default: printf("Tipo incorrecto de salida\n");
-		   return -1;
+		   return;
 	}
 	
 	
@@ -357,7 +357,7 @@ void *exec(void * numero_exec) {
 			  log_info(kernel_log,"**** Fin del script por fallo en un request. Se esperan %f segundos\n",sleep_ejecucion);
 			  sleep(sleep_ejecucion);
 			  log_info(kernel_log,"**** Lista la espera.\n");
-			  return;
+			  return 0;
 
 			}
 
@@ -588,7 +588,7 @@ void * atender_conexion(void * new_fd) {
 
 		printf("client: received %s", buf);
 		buf[numbytes] = '\0';
-		input=string_substring(buf, 0, string_length(buf) - 2); return;//}
+		input=string_substring(buf, 0, string_length(buf) - 2); return 0;//}
 		//}
 
 	};
@@ -735,7 +735,7 @@ void *consola()
 }
 
 
-void *monitorear_config()
+void *monitorear_config_thread_function()
 {
 	log_info(kernel_log,"**** Hilo de modificacion de configuracion inicializado ****");
 	//const char * config_file = "/home/utnso/Documentos/operativos/lissandra/tp-2019-1c-Segmentation-Fault/Kernel/config/kernel_config.cfg";
@@ -885,7 +885,7 @@ void inicializar_threads() {
 	//pthread_join(consolathread_id,NULL);
 	pthread_detach(consolathread_id);
 
-	pthread_create(&monitorconfigthread_id, NULL, monitorear_config, NULL);
+	pthread_create(&monitorconfigthread_id, NULL, monitorear_config_thread_function, NULL);
 	pthread_detach(monitorconfigthread_id);
 
 	pthread_create(&purgarexitthread_id, NULL, purgar_estado_exit, NULL);
