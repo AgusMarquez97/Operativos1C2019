@@ -162,11 +162,16 @@ int solicitar_memorias(char * ip_memoria, char * puerto_memoria, t_queue * queue
 
 	printf("Solicitando pool de memorias...\n");
 
-	queue_push(queue_memorias,"555.666.777:1234:EasdsaC");
+	int socket_memoria_inicial = levantarCliente(IP_MEMORIA_INICIAL,PUERTO_MEMORIA_INICIAL);
+	char * lista_memorias = enviarRequest(socket_memoria_inicial,GOSSIP_KERNEL //Esto va a andar cuando se agregeu el enum);
+	agregar_memorias_a_criterios(lista_memorias);
+
+	//Cargo lo que me llega
+
 	return 0;
 }
 
-int agregar_memorias_a_criterios() {
+int agregar_memorias_a_criterios(char * lista_memorias) {
 	/*
 	 * Agrega las memorias del pool que conoce a los distintos criterios
 	 *
@@ -848,6 +853,7 @@ void inicializar_threads() {
 	pthread_t consolathread_id;
 	pthread_t monitorconfigthread_id;
 	pthread_t purgarexitthread_id;
+	pthread_t refrescarmemorias_id;
 
 	pthread_create(&readythread_id, NULL, agregar_a_ready, NULL);
 	pthread_detach(readythread_id);
@@ -869,6 +875,9 @@ void inicializar_threads() {
 
 	pthread_create(&purgarexitthread_id, NULL, purgar_estado_exit, NULL);
 	pthread_detach(purgarexitthread_id);
+
+	pthread_create(&refrescarmemorias_id, NULL, refrescar_memorias, NULL);
+	pthread_detach(refrescarmemorias_id);
 }
 
 void inicializar_colas() {

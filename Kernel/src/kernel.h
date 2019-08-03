@@ -125,6 +125,8 @@ float RETARDO_EJECUCION,sleep_ejecucion;
 long REFRESH_METADATA;
 
 char * sc_memory = "IP:PUERTO";
+char * IP_MEMORIA_INICIAL;
+char * PUERTO_MEMORIA_INICIAL;
 t_queue* memorias_ec = NULL;
 
 t_log * kernel_log = NULL;
@@ -407,6 +409,21 @@ void * monitorear_config()
 
 	    }
 
+}
+
+
+
+void * refrescar_memorias()
+{
+	while (1)
+	{
+		int socket_memoria_inicial = levantarCliente(IP_MEMORIA_INICIAL,PUERTO_MEMORIA_INICIAL);
+		enviarRequest(socket_memoria,/*algo*/);
+
+		//Cargo lo que me llega
+
+		sleep(1);
+	}
 }
 
 
